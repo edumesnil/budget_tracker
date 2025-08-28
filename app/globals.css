@@ -1,0 +1,259 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Base colors */
+    --background: 60 10% 98%;
+    --foreground: 196 30% 15%;
+
+    /* Card colors */
+    --card: 0 0% 100%;
+    --card-foreground: 196 30% 15%;
+
+    /* Popover colors */
+    --popover: 0 0% 100%;
+    --popover-foreground: 196 30% 15%;
+
+    /* Primary colors - Dark Teal */
+    --primary: 196 30% 15%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary colors - Very Light Mint Green */
+    --secondary: 90 70% 95%;
+    --secondary-foreground: 196 30% 15%;
+
+    /* Accent colors - Softer Mint Green */
+    --accent: 90 60% 92%;
+    --accent-foreground: 196 30% 15%;
+
+    /* Muted colors */
+    --muted: 196 15% 92%;
+    --muted-foreground: 196 15% 40%;
+
+    /* Destructive colors */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Border colors - Neutral teal */
+    --border: 174 10% 85%;
+    --input: 174 10% 85%;
+    --ring: 174 60% 35%;
+
+    /* Sidebar colors - Light mode */
+    --sidebar: 196 30% 15%;
+    --sidebar-foreground: 90 30% 90%;
+    --sidebar-border: 196 20% 20%;
+    /* Lighter version of dark teal for active background */
+    --sidebar-accent: 196 25% 25%;
+    /* Electric lime green for active text */
+    --sidebar-accent-foreground: 90 80% 70%;
+
+    /* Financial colors - Teal for income */
+    --income: 174 60% 35%;
+    --expense: 355 80% 60%;
+
+    /* Chart colors */
+    --chart-1: 174, 60%, 35%;
+    --chart-2: 355, 80%, 60%;
+    --chart-3: 90, 70%, 75%;
+    --chart-4: 90, 70%, 65%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    /* Base colors */
+    --background: 196 30% 10%;
+    --foreground: 90 15% 90%;
+
+    /* Card colors */
+    --card: 196 25% 15%;
+    --card-foreground: 90 15% 90%;
+
+    /* Popover colors */
+    --popover: 196 25% 15%;
+    --popover-foreground: 90 15% 90%;
+
+    /* Primary colors - Dark Teal */
+    --primary: 196 30% 15%;
+    --primary-foreground: 90 30% 90%;
+
+    /* Secondary colors - Dark mint */
+    --secondary: 90 30% 20%;
+    --secondary-foreground: 90 15% 90%;
+
+    /* Accent colors - Softer Mint Green for dark mode */
+    --accent: 90 40% 25%;
+    --accent-foreground: 90 15% 90%;
+
+    /* Muted colors */
+    --muted: 196 20% 20%;
+    --muted-foreground: 90 15% 70%;
+
+    /* Destructive colors */
+    --destructive: 0 63% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Border colors - Dark teal */
+    --border: 196 20% 25%;
+    --input: 196 20% 25%;
+    --ring: 174 60% 40%;
+
+    /* Sidebar colors - Dark mode */
+    --sidebar: 196 30% 12%;
+    --sidebar-foreground: 90 15% 90%;
+    --sidebar-border: 196 20% 20%;
+    /* Lighter version of dark teal for active background */
+    --sidebar-accent: 196 25% 25%;
+    /* Electric lime green for active text */
+    --sidebar-accent-foreground: 90 80% 70%;
+
+    /* Financial colors - Teal for income */
+    --income: 174 60% 40%;
+    --expense: 355 70% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body {
+    @apply h-full overflow-hidden;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Layout utilities */
+@layer utilities {
+  .sidebar-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 20px;
+  }
+
+  .dark .sidebar-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+}
+
+/* Toast animations */
+@keyframes slideInFromBottom {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutToBottom {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@layer components {
+  [data-state="open"][data-swipe="end"] {
+    animation: slideInFromBottom 0.3s ease-out;
+  }
+
+  [data-state="closed"][data-swipe="end"] {
+    animation: slideOutToBottom 0.3s ease-in;
+  }
+
+  [data-state="open"][data-swipe="move"] {
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  [data-state="closed"][data-swipe="move"] {
+    animation: fadeOut 0.2s ease-in;
+  }
+
+  /* Financial amount colors */
+  .amount-positive {
+    @apply text-income;
+  }
+
+  .amount-negative {
+    @apply text-expense;
+  }
+
+  /* Card styles */
+  .card-borderless {
+    @apply border-0 shadow-sm;
+  }
+
+  /* Badge styles */
+  .badge-income {
+    @apply bg-income/10 text-income border-income/20;
+  }
+
+  .badge-expense {
+    @apply bg-expense/10 text-expense border-expense/20;
+  }
+}
+
+/* Ensure sidebar has consistent width */
+#sidebar {
+  flex: 0 0 auto;
+}
+
+/* Prevent content from affecting sidebar width */
+.sidebar-fixed-width {
+  width: 16rem;
+}
+
+[data-collapsed="true"] .sidebar-fixed-width {
+  width: 4rem;
+}
+
+/* Improve scrolling behavior */
+main {
+  max-width: 100%;
+}
+
