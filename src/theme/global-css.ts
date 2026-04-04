@@ -1,7 +1,7 @@
 export const globalCss = {
   extend: {
     '*': {
-      '--global-color-border': '{colors.border.default}',
+      '--global-color-border': '{colors.border.subtle}',
       '--global-color-placeholder': 'colors.fg.subtle',
       '--global-color-selection': 'colors.colorPalette.subtle.bg',
       '--global-color-focus-ring': 'colors.colorPalette.solid.bg',
