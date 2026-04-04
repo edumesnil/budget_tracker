@@ -19,11 +19,6 @@ export default defineConfig({
     }),
   ],
 
-  conditions: {
-    dark: '.dark &',
-    light: '.light &',
-  },
-
   theme: {
     extend: {
       recipes,
@@ -32,14 +27,10 @@ export default defineConfig({
         colors: {
           income: {
             DEFAULT: { value: 'hsl(174, 60%, 35%)' },
-            light: { value: 'hsl(174, 60%, 45%)' },
-            dark: { value: 'hsl(174, 60%, 40%)' },
             muted: { value: 'hsl(174, 60%, 35% / 0.12)' },
           },
           expense: {
             DEFAULT: { value: 'hsl(3, 72%, 54%)' },
-            light: { value: 'hsl(3, 80%, 60%)' },
-            dark: { value: 'hsl(3, 70%, 58%)' },
             muted: { value: 'hsl(3, 72%, 54% / 0.12)' },
           },
           chart: {
@@ -49,25 +40,6 @@ export default defineConfig({
             4: { value: 'hsl(45, 85%, 55%)' },
             5: { value: 'hsl(280, 60%, 55%)' },
           },
-        },
-        fonts: {
-          sans: { value: '"DM Sans", system-ui, -apple-system, sans-serif' },
-          mono: { value: '"JetBrains Mono", "Fira Code", ui-monospace, monospace' },
-        },
-      },
-      semanticTokens: {
-        colors: {
-          // Sidebar: always dark — direct hex values, immune to theming
-          sidebarBg: { value: '#111113' },
-          sidebarBorder: { value: '#272a2d' },
-          sidebarFg: { value: '#edeef0' },
-          sidebarFgMuted: { value: '#777b84' },
-          sidebarActive: { value: '#272a2d' },
-          sidebarHover: { value: '#212225' },
-          // Financial semantic tokens only
-          income: { value: { base: 'hsl(174, 60%, 32%)', _dark: 'hsl(174, 60%, 45%)' } },
-          expense: { value: { base: 'hsl(3, 72%, 50%)', _dark: 'hsl(3, 72%, 62%)' } },
-          destructive: { value: { base: '{colors.red.default}', _dark: '{colors.red.default}' } },
         },
       },
     },

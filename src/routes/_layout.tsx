@@ -2,7 +2,6 @@ import { Outlet, Navigate, NavLink, useLocation } from 'react-router'
 import { useAuth } from '@/hooks/use-auth'
 import { useTheme } from '@/hooks/use-theme'
 import { css } from '../../styled-system/css'
-import { Spinner } from '@/components/ui/spinner'
 import {
   LayoutDashboard,
   ArrowLeftRight,
@@ -23,27 +22,12 @@ const NAV_ITEMS = [
 export function DashboardLayout() {
   const { user, isLoading, signOut } = useAuth()
   const { theme, toggle } = useTheme()
-  const isDark = theme === 'dark'
   const location = useLocation()
 
   if (isLoading) {
     return (
-      <div
-        className={css({
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '100vh',
-          bg: 'bg.canvas',
-        })}
-      >
-        <Spinner
-          className={css({
-            width: '8',
-            height: '8',
-            color: 'teal.default',
-          })}
-        />
+      <div className={css({ display: 'flex', alignItems: 'center', justifyContent: 'center', h: '100vh' })}>
+        Loading...
       </div>
     )
   }
@@ -52,77 +36,38 @@ export function DashboardLayout() {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 
-  const initial = user.email?.charAt(0).toUpperCase() ?? 'U'
-
   return (
-    <div
-      className={css({
+    <div className={css({ display: 'flex', h: '100vh', overflow: 'hidden' })}>
+      {/* Sidebar */}
+      <aside className={css({
         display: 'flex',
-        height: '100vh',
-        overflow: 'hidden',
-      })}
-    >
-      {/* Sidebar — always dark. Uses style prop for color to escape CSS layer cascade:
-           Park UI's globalCss sets body { color: fg.default } as UNLAYERED,
-           which beats all @layer utilities. style prop is also unlayered. */}
-      <aside
-        style={{ color: 'var(--colors-sidebar-fg)', backgroundColor: 'var(--colors-sidebar-bg)' }}
-        className={css({
+        flexDir: 'column',
+        w: '56',
+        minW: '56',
+        h: '100vh',
+        bg: 'gray.2',
+        borderRight: '1px solid',
+        borderColor: 'gray.4',
+        flexShrink: 0,
+      })}>
+        {/* Title */}
+        <div className={css({
           display: 'flex',
-          flexDirection: 'column',
-          width: '56',
-          minWidth: '56',
-          height: '100vh',
-          borderRight: '1px solid',
-          borderColor: 'sidebarBorder',
-          flexShrink: 0,
-        })}
-      >
-        {/* Wordmark */}
-        <div
-          className={css({
-            display: 'flex',
-            alignItems: 'center',
-            gap: '2.5',
-            px: '5',
-            py: '4',
-            borderBottom: '1px solid',
-            borderColor: 'sidebarBorder',
-          })}
-        >
-          <div
-            className={css({
-              width: '6',
-              height: '6',
-              rounded: 'sm',
-              bg: 'teal.9',
-              flexShrink: 0,
-            })}
-          />
-          <span
-            className={css({
-              fontSize: 'sm',
-              fontWeight: '600',
-              letterSpacing: 'tight',
-              color: 'sidebarFg',
-            })}
-          >
-            Budget
+          alignItems: 'center',
+          gap: '2.5',
+          px: '5',
+          py: '4',
+          borderBottom: '1px solid',
+          borderColor: 'gray.4',
+        })}>
+          <div className={css({ w: '6', h: '6', rounded: 'sm', bg: 'colorPalette.9', flexShrink: 0 })} />
+          <span className={css({ fontSize: 'sm', fontWeight: '600', color: 'fg.default' })}>
+            Budget Tracker
           </span>
         </div>
 
-        {/* Navigation */}
-        <nav
-          className={css({
-            flex: 1,
-            py: '3',
-            px: '2',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.5',
-            overflowY: 'auto',
-          })}
-        >
+        {/* Nav */}
+        <nav className={css({ flex: 1, py: '3', px: '2', display: 'flex', flexDir: 'column', gap: '0.5' })}>
           {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
@@ -134,98 +79,46 @@ export function DashboardLayout() {
                   gap: '2.5',
                   px: '3',
                   py: '2',
-                  borderRadius: 'md',
+                  rounded: 'md',
                   fontSize: 'sm',
                   fontWeight: isActive ? '500' : '400',
-                  transition: 'background 150ms ease, color 150ms ease',
-                  color: isActive ? 'sidebarFg' : 'sidebarFgMuted',
-                  bg: isActive ? 'sidebarActive' : 'transparent',
+                  color: isActive ? 'fg.default' : 'fg.muted',
+                  bg: isActive ? 'gray.3' : 'transparent',
                   textDecoration: 'none',
-                  _hover: {
-                    bg: 'sidebarHover',
-                    color: 'sidebarFg',
-                  },
+                  transition: 'background 150ms, color 150ms',
+                  _hover: { bg: 'gray.3', color: 'fg.default' },
                 })
               }
             >
-              <Icon size={16} strokeWidth={checkActive(to, location.pathname) ? 2 : 1.5} />
+              <Icon size={16} />
               <span>{label}</span>
             </NavLink>
           ))}
         </nav>
 
-        {/* User section */}
-        <div
-          className={css({
-            borderTop: '1px solid',
-            borderColor: 'sidebarBorder',
-            p: '3',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1',
-          })}
-        >
-          <div
-            className={css({
-              display: 'flex',
-              alignItems: 'center',
-              gap: '2.5',
-              px: '2',
-              py: '1.5',
-            })}
-          >
-            <div
-              className={css({
-                width: '7',
-                height: '7',
-                borderRadius: 'full',
-                bg: 'teal.dark.4',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 'xs',
-                fontWeight: '600',
-                color: 'teal.dark.11',
-                flexShrink: 0,
-              })}
-            >
-              {initial}
+        {/* User */}
+        <div className={css({ borderTop: '1px solid', borderColor: 'gray.4', p: '3' })}>
+          <div className={css({ display: 'flex', alignItems: 'center', gap: '2.5', px: '2', py: '1.5' })}>
+            <div className={css({
+              w: '7', h: '7', rounded: 'full', bg: 'colorPalette.3',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 'xs', fontWeight: '600', color: 'colorPalette.11',
+            })}>
+              {user.email?.charAt(0).toUpperCase() ?? 'U'}
             </div>
-            <p
-              className={css({
-                fontSize: 'xs',
-                color: 'sidebarFgMuted',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                flex: 1,
-              })}
-            >
+            <p className={css({ fontSize: 'xs', color: 'fg.muted', truncate: true, flex: 1 })}>
               {user.email}
             </p>
           </div>
-
           <button
             onClick={() => signOut()}
             className={css({
-              display: 'flex',
-              alignItems: 'center',
-              gap: '2.5',
-              width: 'full',
-              px: '3',
-              py: '2',
-              borderRadius: 'md',
-              fontSize: 'sm',
-              color: 'sidebarFgMuted',
-              cursor: 'pointer',
-              bg: 'transparent',
-              border: 'none',
-              textAlign: 'left',
-              _hover: {
-                bg: 'sidebarHover',
-                color: 'sidebarFg',
-              },
-              transition: 'background 150ms ease, color 150ms ease',
+              display: 'flex', alignItems: 'center', gap: '2.5',
+              w: 'full', px: '3', py: '2', rounded: 'md',
+              fontSize: 'sm', color: 'fg.muted',
+              cursor: 'pointer', bg: 'transparent', border: 'none',
+              _hover: { bg: 'gray.3', color: 'fg.default' },
+              transition: 'background 150ms, color 150ms',
             })}
           >
             <LogOut size={14} />
@@ -234,81 +127,34 @@ export function DashboardLayout() {
         </div>
       </aside>
 
-      {/* Main content area */}
-      <div
-        className={css({
-          display: 'flex',
-          flexDirection: 'column',
-          flex: 1,
-          overflow: 'hidden',
-          bg: 'bg.canvas',
-        })}
-      >
+      {/* Main */}
+      <div className={css({ display: 'flex', flexDir: 'column', flex: 1, overflow: 'hidden' })}>
         {/* Topbar */}
-        <header
-          className={css({
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-end',
-            height: '12',
-            px: '6',
-            borderBottom: '1px solid',
-            borderColor: 'border.subtle',
-            bg: 'bg.canvas',
-            flexShrink: 0,
-          })}
-        >
+        <header className={css({
+          display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
+          h: '12', px: '6', borderBottom: '1px solid', borderColor: 'gray.4',
+        })}>
           <button
             onClick={toggle}
-            aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            aria-label={theme === 'dark' ? 'Light mode' : 'Dark mode'}
             className={css({
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '8',
-              height: '8',
-              borderRadius: 'md',
-              border: 'none',
-              bg: 'transparent',
-              color: 'fg.subtle',
-              cursor: 'pointer',
-              _hover: {
-                bg: 'bg.subtle',
-                color: 'fg.default',
-              },
-              transition: 'background 150ms ease, color 150ms ease',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              w: '8', h: '8', rounded: 'md', border: 'none',
+              bg: 'transparent', color: 'fg.muted', cursor: 'pointer',
+              _hover: { bg: 'gray.3', color: 'fg.default' },
             })}
           >
-            {isDark ? <Sun size={15} /> : <Moon size={15} />}
+            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
           </button>
         </header>
 
-        {/* Page content */}
-        <main
-          className={css({
-            flex: 1,
-            overflow: 'auto',
-            bg: 'bg.canvas',
-            color: 'fg.default',
-          })}
-        >
-          <div
-            className={css({
-              p: { base: '4', md: '8' },
-              maxWidth: '7xl',
-              mx: 'auto',
-            })}
-          >
+        {/* Content */}
+        <main className={css({ flex: 1, overflow: 'auto' })}>
+          <div className={css({ p: { base: '4', md: '8' }, maxW: '7xl', mx: 'auto' })}>
             <Outlet />
           </div>
         </main>
       </div>
     </div>
   )
-}
-
-// Helper to derive active state for icon stroke outside NavLink callback scope
-function checkActive(to: string, pathname: string): boolean {
-  if (to === '/dashboard') return pathname === '/dashboard'
-  return pathname.startsWith(to)
 }
