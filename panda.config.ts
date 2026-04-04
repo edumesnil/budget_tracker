@@ -57,14 +57,14 @@ export default defineConfig({
       },
       semanticTokens: {
         colors: {
-          // Sidebar: always dark — hardcoded values, not theme-switching
+          // Sidebar: always dark — direct hex values, immune to theming
           sidebar: {
-            bg: { value: { base: '{colors.gray.dark.2}', _dark: '{colors.gray.dark.2}' } },
-            border: { value: { base: '{colors.gray.dark.4}', _dark: '{colors.gray.dark.4}' } },
-            fg: { value: { base: '{colors.gray.dark.12}', _dark: '{colors.gray.dark.12}' } },
-            'fg.muted': { value: { base: '{colors.gray.dark.10}', _dark: '{colors.gray.dark.10}' } },
-            active: { value: { base: '{colors.gray.dark.4}', _dark: '{colors.gray.dark.4}' } },
-            hover: { value: { base: '{colors.gray.dark.3}', _dark: '{colors.gray.dark.3}' } },
+            bg: { value: '#111113' },
+            border: { value: '#272a2d' },
+            fg: { value: '#edeef0' },
+            'fg.muted': { value: '#777b84' },
+            active: { value: '#272a2d' },
+            hover: { value: '#212225' },
           },
           // Financial semantic tokens only
           income: { value: { base: 'hsl(174, 60%, 32%)', _dark: 'hsl(174, 60%, 45%)' } },
