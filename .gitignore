@@ -12,3 +12,5 @@ styled-system/
 Thumbs.db
 *.tsbuildinfo
 npm-debug.log*
+supabase/.temp/
+supabase/.branches/
