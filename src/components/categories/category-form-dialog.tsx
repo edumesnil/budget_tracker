@@ -168,6 +168,7 @@ export function CategoryFormDialog({
                       <Select.Control>
                         <Select.Trigger>
                           <Select.ValueText placeholder="Select a group" />
+                        <Select.Indicator />
                         </Select.Trigger>
                       </Select.Control>
                       <Select.Positioner>

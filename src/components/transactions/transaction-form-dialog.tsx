@@ -208,6 +208,7 @@ export function TransactionFormDialog({
                       <Select.Control>
                         <Select.Trigger>
                           <Select.ValueText placeholder="Select a category" />
+                        <Select.Indicator />
                         </Select.Trigger>
                         <Select.Indicator />
                       </Select.Control>
