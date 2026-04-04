@@ -405,17 +405,23 @@ v1 used `next-themes` (Next.js-specific). In v2:
 - Auth callback handled client-side (no server route needed for email/password)
 - Session persists in localStorage
 
-## Primary View: Budget vs Actual (Year View)
+## Primary View: Dashboard
 
-The app's main view should mirror the yearly spreadsheet: a table showing 12 months as columns, categories grouped under their group headers as rows, with Budget and Réel (actual) sub-columns per month. Group rows show subtotals. A "Total Mois" summary row shows the monthly surplus/deficit.
+The dashboard is the main view — a high-level financial overview that surfaces what matters without making you dig through tables. The spreadsheet informed the data model (groups, categories, budget vs actual tracking), not the UI. The app should be smarter than a spreadsheet, not a replica of one.
 
-This is not a generic dashboard with cards — it's a structured budget tracking table that maps directly to how the user thinks about their finances. The v1 card-based dashboard was a v0 default that didn't match the actual workflow.
+Dashboard should answer at a glance:
+- How am I doing this month? (surplus/deficit, income vs expenses)
+- Where am I over/under budget? (by category group, with drill-down)
+- What's the trend? (spending over time, month-over-month comparison)
+- What's my financial position? (investment/emergency fund snapshot)
 
-Secondary views:
-- **Monthly detail** — drill into a specific month, see all transactions grouped by category
-- **Transaction list** — filterable/searchable list of all transactions
+Design details will be explored during implementation — the dashboard is a prototyping-driven surface, not something to over-specify upfront.
+
+Other views:
+- **Budget** — set monthly budget amounts per category, organized by group. Supports recurring (carry forward) and one-time overrides.
+- **Transactions** — filterable list, manual entry form, and (later) the import review UI
 - **Categories** — manage groups and categories
-- **Dashboard** — summary cards, charts, account snapshot widget (investment/emergency fund balances)
+- **Year overview** — annual budget vs actual comparison (the spreadsheet view, available as a secondary/drill-down view, not the primary surface)
 
 ## LLM Adapter (Future)
 
@@ -491,8 +497,8 @@ These are phases, not detailed steps. The implementation plan (separate document
 1. **Foundation** — Vite+ scaffold, Panda CSS + Park UI setup, local Supabase with clean schema (6 tables + RLS + indexes + seed data from the Mensuel sheet)
 2. **Auth** — Supabase auth, login/register routes, auth guard layout
 3. **Categories** — Groups + categories CRUD hook + UI (validates the full stack end-to-end)
-4. **Budget Year View** — The primary view: 12-month budget vs actual table, grouped by category group. This is the core of the app.
-5. **Transactions** — CRUD hook + UI with category assignment, month filtering. Feeds the "Réel" column in the budget view.
-6. **Dashboard** — Summary cards, spending charts, account snapshot widget (investment/emergency fund)
+4. **Transactions** — CRUD hook + UI with category assignment, month filtering
+5. **Budgets** — Budget management per category, organized by group, recurring support
+6. **Dashboard** — Primary view: financial overview, budget vs actual summary, spending trends, account snapshot widget
 7. **Import Pipeline** — PDF parsing + LLM categorization + review UI. The main feature that eliminates manual transaction entry.
 8. **Polish** — Theme refinement, error states, loading states, responsive layout
