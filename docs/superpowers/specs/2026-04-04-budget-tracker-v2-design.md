@@ -96,7 +96,7 @@ Down from 50+. One component per concern. Zero duplicates.
 
 Informed by the user's actual Google Sheets workflow (Budget.xlsx). The spreadsheet uses a two-level hierarchy: groups (MAISON, AUTO, NOURRITURE...) containing categories (Hypothèque, Gas, Épicerie...). The core view is Budget vs Réel (actual) per month, per category, aggregated by group. "Mensuel" sheet is the canonical budget template.
 
-### Tables (6)
+### Tables (7)
 
 ```sql
 CREATE TABLE users (
@@ -165,6 +165,7 @@ CREATE TABLE account_snapshots (
 - **category_groups** — Matches the spreadsheet section headers (MAISON, AUTO, etc.). Groups don't receive transactions; they organize categories for display and subtotalling in the budget view.
 - **categories.group_id** — Each category belongs to a group. Transactions and budgets reference categories, not groups. Views aggregate up to group level.
 - **account_snapshots** — Simple manual entry for investment/emergency fund balances across banks. No automation — just punch in numbers when you check accounts. Dashboard shows latest balance per account + totals per type.
+- **merchant_mappings** — Maps merchant names from bank statements to categories. Populated by AI categorization + user corrections. Grows over time so future imports need less AI assistance. See "Import Pipeline Design" section for details.
 - Dropped `family_member` column (unused in v1 data)
 - `month` constrained to `1-12` (v1 used `0` as a hack for recurring)
 - `is_recurring` on budgets means "carry this amount forward to future months until changed" — matches how the spreadsheet template works
@@ -192,6 +193,7 @@ CREATE INDEX idx_budgets_user_year_month ON budgets(user_id, year, month);
 CREATE INDEX idx_categories_user ON categories(user_id);
 CREATE INDEX idx_categories_group ON categories(group_id);
 CREATE INDEX idx_snapshots_user_date ON account_snapshots(user_id, snapshot_date);
+CREATE INDEX idx_merchant_mappings_user ON merchant_mappings(user_id);
 ```
 
 ## Data Layer
@@ -263,10 +265,11 @@ onSettled: () => {
 When one entity mutates, sibling queries that depend on it must refresh:
 
 ```
-Category/Group mutated → invalidate: categories, transactions, budgets, dashboard
-Transaction mutated    → invalidate: transactions, budgets (year view actuals), dashboard
-Budget mutated         → invalidate: budgets, dashboard
-Snapshot mutated       → invalidate: snapshots, dashboard
+Category/Group mutated  → invalidate: categories, transactions, budgets, dashboard
+Transaction mutated     → invalidate: transactions, dashboard
+Budget mutated          → invalidate: budgets, dashboard
+Snapshot mutated        → invalidate: snapshots, dashboard
+Import batch confirmed  → invalidate: transactions, merchant_mappings, dashboard
 ```
 
 **staleTime per entity:**
@@ -354,6 +357,16 @@ export interface AccountSnapshot {
   snapshot_date: string
   created_at: string
 }
+
+export interface MerchantMapping {
+  id: string
+  user_id: string
+  merchant_pattern: string
+  category_id: string
+  confidence: number
+  created_at: string
+  categories?: Category // joined
+}
 ```
 
 ## Design Tokens (Panda CSS)
@@ -407,21 +420,65 @@ v1 used `next-themes` (Next.js-specific). In v2:
 
 ## Primary View: Dashboard
 
-The dashboard is the main view — a high-level financial overview that surfaces what matters without making you dig through tables. The spreadsheet informed the data model (groups, categories, budget vs actual tracking), not the UI. The app should be smarter than a spreadsheet, not a replica of one.
+The dashboard has two honest states based on data freshness. It never shows stale actuals as if they were current.
 
-Dashboard should answer at a glance:
-- How am I doing this month? (surplus/deficit, income vs expenses)
-- Where am I over/under budget? (by category group, with drill-down)
-- What's the trend? (spending over time, month-over-month comparison)
-- What's my financial position? (investment/emergency fund snapshot)
+### Pre-import state (most of the month)
 
-Design details will be explored during implementation — the dashboard is a prototyping-driven surface, not something to over-specify upfront.
+The user typically imports bank statements once a month. Between imports, the dashboard shows what it actually knows:
 
-Other views:
-- **Budget** — set monthly budget amounts per category, organized by group. Supports recurring (carry forward) and one-time overrides.
-- **Transactions** — filterable list, manual entry form, and (later) the import review UI
+- **Budget plan** — fixed/recurring expenses (mortgage, insurance, subscriptions) shown as committed. Variable budgets (Épicerie, Restaurants, Autre) shown as "available to spend."
+- **Last import date** — visible, not hidden. "Last import: March 2"
+- **Import prompt** — "Upload April statement when ready." Not buried in a menu.
+- **Net worth snapshot** — investment/emergency fund totals, last updated date, "update" button
+- **Quick-add** — button to log notable expenses immediately (dentist visit, big purchase). Not required, but useful for users who want mid-month budget awareness. These manually-added transactions reduce the "available to spend" in their category.
+
+### Post-import state (after statement upload)
+
+After importing a statement, the dashboard switches to review mode:
+
+- **Monthly surplus/deficit** — the one number that matters, big and clear
+- **Group-level budget health** — visual cards for each group (MAISON, AUTO, NOURRITURE...), each with a progress bar showing budgeted vs actual, color-coded (within/approaching/over budget). Click to drill into individual categories.
+- **Month-over-month trend** — 6-month spending trend line, income vs expenses
+- **AUTRE breakdown** — irregular expenses get special attention since they're the hardest to predict
+- **Net worth snapshot** — same as pre-import state
+
+### Other views
+
+- **Budget** — set monthly budget amounts per category, organized by group. Supports recurring (carry forward to future months) and one-time overrides per month.
+- **Transactions** — filterable list, manual quick-add form, and the import review UI
 - **Categories** — manage groups and categories
-- **Year overview** — annual budget vs actual comparison (the spreadsheet view, available as a secondary/drill-down view, not the primary surface)
+- **Import** — upload bank statements (PDF/CSV), AI-categorized review, batch confirm
+
+## Import Pipeline Design
+
+The import pipeline is the core workflow that eliminates manual transaction entry. Architecture designed around three concepts:
+
+### 1. Merchant memory (gets smarter with use)
+
+When the AI categorizes a transaction, save the merchant→category mapping. Next import, known merchants are auto-categorized without calling the LLM. Over time, 80%+ of transactions are handled by the mapping table; the AI becomes a fallback for new merchants only.
+
+```sql
+CREATE TABLE merchant_mappings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  merchant_pattern text NOT NULL,     -- "METRO PLUS", "SPOTIFY", "SHELL"
+  category_id uuid NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+  confidence numeric DEFAULT 1.0,     -- 1.0 = user confirmed, <1.0 = AI suggested
+  created_at timestamptz DEFAULT now()
+);
+```
+
+### 2. Batch review UX
+
+The import review screen is optimized for speed, not for forms. Keyboard-driven:
+- List of transactions, each with a suggested category
+- Arrow keys to navigate, Enter to accept, Tab to change category, D to skip
+- Process 50 transactions in 2 minutes
+- Duplicates with quick-added transactions flagged for resolution
+
+### 3. Reconciliation
+
+If the user quick-added transactions during the month, the import should detect potential duplicates (same amount + similar date + same category) and let the user confirm or dismiss matches.
 
 ## LLM Adapter (Future)
 
