@@ -64,7 +64,8 @@ budget-tracker/
 │   │   ├── use-auth.ts                 # Auth state, login/logout/register
 │   │   ├── use-transactions.ts         # Queries + mutations for transactions
 │   │   ├── use-budgets.ts              # Queries + mutations for budgets
-│   │   ├── use-categories.ts           # Queries + mutations for categories
+│   │   ├── use-categories.ts           # Queries + mutations for categories + groups
+│   │   ├── use-snapshots.ts            # Queries + mutations for account snapshots
 │   │   └── use-import.ts              # Placeholder for PDF parse + AI categorize
 │   ├── lib/
 │   │   ├── supabase.ts                 # Client singleton
@@ -93,7 +94,9 @@ Down from 50+. One component per concern. Zero duplicates.
 
 ## Database Schema
 
-### Tables
+Informed by the user's actual Google Sheets workflow (Budget.xlsx). The spreadsheet uses a two-level hierarchy: groups (MAISON, AUTO, NOURRITURE...) containing categories (Hypothèque, Gas, Épicerie...). The core view is Budget vs Réel (actual) per month, per category, aggregated by group. "Mensuel" sheet is the canonical budget template.
+
+### Tables (6)
 
 ```sql
 CREATE TABLE users (
@@ -102,10 +105,21 @@ CREATE TABLE users (
   created_at timestamptz DEFAULT now()
 );
 
+CREATE TABLE category_groups (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name text NOT NULL,                   -- "MAISON", "AUTO", "NOURRITURE", etc.
+  icon text,
+  color text,
+  sort_order integer DEFAULT 0,         -- controls display order in budget view
+  created_at timestamptz DEFAULT now()
+);
+
 CREATE TABLE categories (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  name text NOT NULL,
+  group_id uuid REFERENCES category_groups(id) ON DELETE SET NULL,
+  name text NOT NULL,                   -- "Hypothèque", "Gas", "Spotify"
   type text NOT NULL CHECK (type IN ('INCOME', 'EXPENSE')),
   color text,
   icon text,
@@ -134,19 +148,31 @@ CREATE TABLE budgets (
   is_recurring boolean DEFAULT false,
   created_at timestamptz DEFAULT now()
 );
+
+CREATE TABLE account_snapshots (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  account_name text NOT NULL,           -- "CELI Desjardins", "REER Wealthsimple"
+  account_type text NOT NULL CHECK (account_type IN ('CELI', 'REER', 'REEE', 'EMERGENCY', 'OTHER')),
+  balance numeric NOT NULL,
+  snapshot_date date NOT NULL,
+  created_at timestamptz DEFAULT now()
+);
 ```
 
-### Changes from v1
+### Design Decisions
 
-- Proper foreign keys with `ON DELETE CASCADE/SET NULL` (missing before)
-- Dropped `family_member` column (unused)
+- **category_groups** — Matches the spreadsheet section headers (MAISON, AUTO, etc.). Groups don't receive transactions; they organize categories for display and subtotalling in the budget view.
+- **categories.group_id** — Each category belongs to a group. Transactions and budgets reference categories, not groups. Views aggregate up to group level.
+- **account_snapshots** — Simple manual entry for investment/emergency fund balances across banks. No automation — just punch in numbers when you check accounts. Dashboard shows latest balance per account + totals per type.
+- Dropped `family_member` column (unused in v1 data)
 - `month` constrained to `1-12` (v1 used `0` as a hack for recurring)
-- `is_recurring` kept as simple boolean flag — no engine, just a marker
-- `users` table stays minimal; Supabase Auth handles sessions
+- `is_recurring` on budgets means "carry this amount forward to future months until changed" — matches how the spreadsheet template works
+- Income sources (Eric, Maryse, Gouv Qc, Gouv Can) are modeled as categories in an income-type group, not special fields
 
 ### Row Level Security
 
-Each table gets the same pattern:
+All 6 tables get the same pattern:
 
 ```sql
 ALTER TABLE <table> ENABLE ROW LEVEL SECURITY;
@@ -157,8 +183,6 @@ CREATE POLICY "<table>_update" ON <table> FOR UPDATE USING (auth.uid() = user_id
 CREATE POLICY "<table>_delete" ON <table> FOR DELETE USING (auth.uid() = user_id);
 ```
 
-Standard per-user row isolation. No shared data between users.
-
 ### Indexes
 
 ```sql
@@ -166,6 +190,8 @@ CREATE INDEX idx_transactions_user_date ON transactions(user_id, date);
 CREATE INDEX idx_transactions_user_category ON transactions(user_id, category_id);
 CREATE INDEX idx_budgets_user_year_month ON budgets(user_id, year, month);
 CREATE INDEX idx_categories_user ON categories(user_id);
+CREATE INDEX idx_categories_group ON categories(group_id);
+CREATE INDEX idx_snapshots_user_date ON account_snapshots(user_id, snapshot_date);
 ```
 
 ## Data Layer
@@ -237,9 +263,10 @@ onSettled: () => {
 When one entity mutates, sibling queries that depend on it must refresh:
 
 ```
-Category mutated  → invalidate: categories, transactions, budgets, dashboard
-Transaction mutated → invalidate: transactions, dashboard
-Budget mutated    → invalidate: budgets, dashboard
+Category/Group mutated → invalidate: categories, transactions, budgets, dashboard
+Transaction mutated    → invalidate: transactions, budgets (year view actuals), dashboard
+Budget mutated         → invalidate: budgets, dashboard
+Snapshot mutated       → invalidate: snapshots, dashboard
 ```
 
 **staleTime per entity:**
@@ -270,14 +297,27 @@ export interface User {
   created_at: string
 }
 
+export interface CategoryGroup {
+  id: string
+  user_id: string
+  name: string
+  icon: string | null
+  color: string | null
+  sort_order: number
+  created_at: string
+  categories?: Category[] // joined
+}
+
 export interface Category {
   id: string
   user_id: string
+  group_id: string | null
   name: string
   type: 'INCOME' | 'EXPENSE'
   color: string | null
   icon: string | null
   created_at: string
+  category_groups?: CategoryGroup // joined
 }
 
 export interface Transaction {
@@ -303,6 +343,16 @@ export interface Budget {
   is_recurring: boolean
   created_at: string
   categories?: Category // joined
+}
+
+export interface AccountSnapshot {
+  id: string
+  user_id: string
+  account_name: string
+  account_type: 'CELI' | 'REER' | 'REEE' | 'EMERGENCY' | 'OTHER'
+  balance: number
+  snapshot_date: string
+  created_at: string
 }
 ```
 
@@ -354,6 +404,18 @@ v1 used `next-themes` (Next.js-specific). In v2:
 - `_layout.tsx` (dashboard shell) checks auth and redirects to `/login` if unauthenticated
 - Auth callback handled client-side (no server route needed for email/password)
 - Session persists in localStorage
+
+## Primary View: Budget vs Actual (Year View)
+
+The app's main view should mirror the yearly spreadsheet: a table showing 12 months as columns, categories grouped under their group headers as rows, with Budget and Réel (actual) sub-columns per month. Group rows show subtotals. A "Total Mois" summary row shows the monthly surplus/deficit.
+
+This is not a generic dashboard with cards — it's a structured budget tracking table that maps directly to how the user thinks about their finances. The v1 card-based dashboard was a v0 default that didn't match the actual workflow.
+
+Secondary views:
+- **Monthly detail** — drill into a specific month, see all transactions grouped by category
+- **Transaction list** — filterable/searchable list of all transactions
+- **Categories** — manage groups and categories
+- **Dashboard** — summary cards, charts, account snapshot widget (investment/emergency fund balances)
 
 ## LLM Adapter (Future)
 
@@ -407,16 +469,6 @@ Only what's needed (installed via `npx @park-ui/cli add`):
 - `setup` page
 - Dead `/dashboard/reports` sidebar link
 
-## Explicitly Out of Scope
-
-- Statement import / PDF parsing / AI categorization (structure prepared, not built)
-- Reports page
-- Recurring transaction automation (flag exists, no engine)
-- Multi-user / sharing / household features
-- Mobile / PWA
-- Deployment to cloud
-- Testing (Vitest is available via Vite+, tests added incrementally as features stabilize)
-
 ## Git Strategy
 
 1. Stash current uncommitted changes
@@ -424,14 +476,23 @@ Only what's needed (installed via `npx @park-ui/cli add`):
 3. Clean slate — remove v1 source files, scaffold Vite+ project
 4. Build incrementally on the new branch
 
+## Explicitly Out of Scope (for now, but designed for)
+
+- Statement import / PDF parsing / AI categorization — the project structure, LLM adapter interface, and category system are designed to support this. Implementation comes after the core CRUD is stable.
+- Recurring transaction automation (flag exists, no engine)
+- Multi-user / sharing / household features
+- Mobile / PWA
+- Deployment to cloud
+
 ## Implementation Order (High Level)
 
 These are phases, not detailed steps. The implementation plan (separate document) will break each into specific tasks with agent assignments.
 
-1. **Foundation** — Vite+ scaffold, Panda CSS + Park UI setup, local Supabase with clean schema
+1. **Foundation** — Vite+ scaffold, Panda CSS + Park UI setup, local Supabase with clean schema (6 tables + RLS + indexes + seed data from the Mensuel sheet)
 2. **Auth** — Supabase auth, login/register routes, auth guard layout
-3. **Categories** — CRUD hook + UI (simplest entity, validates the full stack)
-4. **Transactions** — CRUD hook + UI with category joins, month filtering
-5. **Budgets** — CRUD hook + UI with budget vs actual calculations
-6. **Dashboard** — Overview page composing data from all hooks, charts
-7. **Polish** — Theme refinement, error states, loading states, responsive layout
+3. **Categories** — Groups + categories CRUD hook + UI (validates the full stack end-to-end)
+4. **Budget Year View** — The primary view: 12-month budget vs actual table, grouped by category group. This is the core of the app.
+5. **Transactions** — CRUD hook + UI with category assignment, month filtering. Feeds the "Réel" column in the budget view.
+6. **Dashboard** — Summary cards, spending charts, account snapshot widget (investment/emergency fund)
+7. **Import Pipeline** — PDF parsing + LLM categorization + review UI. The main feature that eliminates manual transaction entry.
+8. **Polish** — Theme refinement, error states, loading states, responsive layout
