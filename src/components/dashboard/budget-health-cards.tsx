@@ -3,6 +3,7 @@ import { css } from '../../../styled-system/css'
 import { formatCurrency } from '@/lib/utils'
 import type { BudgetGroup, MergedBudget } from '@/hooks/use-budgets'
 import type { Transaction } from '@/types/database'
+import * as Card from '@/components/ui/card'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -155,15 +156,7 @@ function GroupCard({
   const expenseEntries = group.entries.filter((e) => e.budget.categories?.type === 'EXPENSE')
 
   return (
-    <div
-      className={css({
-        borderWidth: '1px',
-        borderColor: 'border.default',
-        rounded: 'lg',
-        bg: 'bg.default',
-        overflow: 'hidden',
-      })}
-    >
+    <Card.Root>
       {/* Header — clickable to expand */}
       <button
         type="button"
@@ -280,7 +273,7 @@ function GroupCard({
           ))}
         </div>
       )}
-    </div>
+    </Card.Root>
   )
 }
 

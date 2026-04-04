@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Toaster, toaster } from '@/components/ui/toast'
 import { formatCurrency, getCurrentPeriod } from '@/lib/utils'
 import type { BudgetWithCategory, MergedBudget } from '@/hooks/use-budgets'
+import * as Card from '@/components/ui/card'
 
 // ---------------------------------------------------------------------------
 // Month label helper
@@ -339,109 +340,88 @@ export default function BudgetsPage() {
           })}
         >
           {/* Income */}
-          <div
-            className={css({
-              px: '4',
-              py: '3',
-              borderWidth: '1px',
-              borderColor: 'border.default',
-              rounded: 'lg',
-              bg: 'bg.default',
-            })}
-          >
-            <p
-              className={css({
-                fontSize: 'xs',
-                fontWeight: '600',
-                color: 'fg.muted',
-                letterSpacing: 'wide',
-                textTransform: 'uppercase',
-                mb: '1',
-              })}
-            >
-              Budgeted income
-            </p>
-            <p
-              className={css({
-                fontSize: 'lg',
-                fontWeight: '600',
-                fontFamily: 'mono',
-                color: 'income',
-              })}
-            >
-              +{formatCurrency(totals.totalBudgetedIncome)}
-            </p>
-          </div>
+          <Card.Root>
+            <Card.Body>
+              <p
+                className={css({
+                  fontSize: 'xs',
+                  fontWeight: '600',
+                  color: 'fg.muted',
+                  letterSpacing: 'wide',
+                  textTransform: 'uppercase',
+                  mb: '1',
+                })}
+              >
+                Budgeted income
+              </p>
+              <p
+                className={css({
+                  fontSize: 'lg',
+                  fontWeight: '600',
+                  fontFamily: 'mono',
+                  color: 'income',
+                })}
+              >
+                +{formatCurrency(totals.totalBudgetedIncome)}
+              </p>
+            </Card.Body>
+          </Card.Root>
 
           {/* Expenses */}
-          <div
-            className={css({
-              px: '4',
-              py: '3',
-              borderWidth: '1px',
-              borderColor: 'border.default',
-              rounded: 'lg',
-              bg: 'bg.default',
-            })}
-          >
-            <p
-              className={css({
-                fontSize: 'xs',
-                fontWeight: '600',
-                color: 'fg.muted',
-                letterSpacing: 'wide',
-                textTransform: 'uppercase',
-                mb: '1',
-              })}
-            >
-              Budgeted expenses
-            </p>
-            <p
-              className={css({
-                fontSize: 'lg',
-                fontWeight: '600',
-                fontFamily: 'mono',
-                color: 'expense',
-              })}
-            >
-              −{formatCurrency(totals.totalBudgetedExpense)}
-            </p>
-          </div>
+          <Card.Root>
+            <Card.Body>
+              <p
+                className={css({
+                  fontSize: 'xs',
+                  fontWeight: '600',
+                  color: 'fg.muted',
+                  letterSpacing: 'wide',
+                  textTransform: 'uppercase',
+                  mb: '1',
+                })}
+              >
+                Budgeted expenses
+              </p>
+              <p
+                className={css({
+                  fontSize: 'lg',
+                  fontWeight: '600',
+                  fontFamily: 'mono',
+                  color: 'expense',
+                })}
+              >
+                −{formatCurrency(totals.totalBudgetedExpense)}
+              </p>
+            </Card.Body>
+          </Card.Root>
 
           {/* Projected net */}
-          <div
-            className={css({
-              px: '4',
-              py: '3',
-              borderWidth: '1px',
-              borderColor: 'border.default',
-              rounded: 'lg',
-              bg: 'bg.default',
-            })}
-          >
-            <p
-              className={css({
-                fontSize: 'xs',
-                fontWeight: '600',
-                color: 'fg.muted',
-                letterSpacing: 'wide',
-                textTransform: 'uppercase',
-                mb: '1',
-              })}
-            >
-              Projected net
-            </p>
-            <p
-              className={css({
-                fontSize: 'lg',
-                fontWeight: '600',
-                fontFamily: 'mono',
-                color: netPositive ? 'income' : 'expense',
-              })}
-            >
-              {netPositive ? '+' : '−'}{formatCurrency(Math.abs(net))}
-            </p>
-          </div>
+          <Card.Root>
+            <Card.Body>
+              <p
+                className={css({
+                  fontSize: 'xs',
+                  fontWeight: '600',
+                  color: 'fg.muted',
+                  letterSpacing: 'wide',
+                  textTransform: 'uppercase',
+                  mb: '1',
+                })}
+              >
+                Projected net
+              </p>
+              <p
+                className={css({
+                  fontSize: 'lg',
+                  fontWeight: '600',
+                  fontFamily: 'mono',
+                  color: netPositive ? 'income' : 'expense',
+                })}
+              >
+                {netPositive ? '+' : '−'}{formatCurrency(Math.abs(net))}
+              </p>
+            </Card.Body>
+          </Card.Root>
         </div>
       )}
 
@@ -519,15 +499,7 @@ function BudgetGroupSection({
   const hasIncome = group.totalIncome > 0
 
   return (
-    <div
-      className={css({
-        borderWidth: '1px',
-        borderColor: 'border.default',
-        rounded: 'lg',
-        overflow: 'hidden',
-        bg: 'bg.default',
-      })}
-    >
+    <Card.Root>
       {/* Group header */}
       <div
         className={css({
@@ -541,6 +513,7 @@ function BudgetGroupSection({
           borderColor: 'border.subtle',
           cursor: 'pointer',
           userSelect: 'none',
+          borderRadius: isCollapsed ? 'inherit' : undefined,
         })}
         onClick={() => setIsCollapsed((v) => !v)}
       >
@@ -648,6 +621,6 @@ function BudgetGroupSection({
           )}
         </div>
       )}
-    </div>
+    </Card.Root>
   )
 }

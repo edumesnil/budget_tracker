@@ -163,8 +163,6 @@ export default function RegisterPage() {
                     px: '3',
                     py: '2',
                     rounded: 'md',
-                    borderWidth: '1px',
-                    borderColor: 'border.default',
                   })}
                 >
                   {error}
@@ -176,9 +174,7 @@ export default function RegisterPage() {
               </Button>
             </form>
           </Card.Body>
-          <Card.Footer
-            className={css({ justifyContent: 'center', borderTop: '1px solid', borderColor: 'border.subtle' })}
-          >
+          <Card.Footer className={css({ justifyContent: 'center' })}>
             <p className={css({ fontSize: 'sm', color: 'fg.muted' })}>
               Already have an account?{' '}
               <Link

@@ -1,5 +1,6 @@
 import { css } from '../../../styled-system/css'
 import * as Table from '@/components/ui/table'
+import * as Card from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import type { Transaction } from '@/types/database'
@@ -74,33 +75,17 @@ export function TransactionTable({
 }: TransactionTableProps) {
   if (transactions.length === 0) {
     return (
-      <div
-        className={css({
-          textAlign: 'center',
-          py: '16',
-          color: 'fg.muted',
-          borderWidth: '1px',
-          borderColor: 'border.default',
-          rounded: 'lg',
-          bg: 'bg.default',
-        })}
-      >
-        <p className={css({ fontWeight: '500', mb: '1' })}>No transactions this month</p>
-        <p className={css({ fontSize: 'sm' })}>Add a transaction to get started.</p>
-      </div>
+      <Card.Root>
+        <Card.Body className={css({ textAlign: 'center', py: '16', color: 'fg.muted' })}>
+          <p className={css({ fontWeight: '500', mb: '1' })}>No transactions this month</p>
+          <p className={css({ fontSize: 'sm' })}>Add a transaction to get started.</p>
+        </Card.Body>
+      </Card.Root>
     )
   }
 
   return (
-    <div
-      className={css({
-        borderWidth: '1px',
-        borderColor: 'border.default',
-        rounded: 'lg',
-        overflow: 'hidden',
-        bg: 'bg.default',
-      })}
-    >
+    <Card.Root>
       <Table.Root>
         <Table.Head>
           <Table.Row>
@@ -273,6 +258,6 @@ export function TransactionTable({
           ))}
         </Table.Body>
       </Table.Root>
-    </div>
+    </Card.Root>
   )
 }

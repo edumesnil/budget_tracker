@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Toaster, toaster } from '@/components/ui/toast'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import type { AccountType } from '@/types/database'
+import * as Card from '@/components/ui/card'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -117,24 +118,18 @@ function TypeSection({
       </div>
 
       {/* Account rows */}
-      <div
-        className={css({
-          borderWidth: '1px',
-          borderColor: 'border.default',
-          rounded: 'md',
-          px: '3',
-          bg: 'bg.default',
-        })}
-      >
-        {accounts.map((a) => (
-          <AccountRow
-            key={a.name}
-            accountName={a.name}
-            balance={a.balance}
-            snapshotDate={a.date}
-          />
-        ))}
-      </div>
+      <Card.Root>
+        <Card.Body className={css({ px: '3', py: '0' })}>
+          {accounts.map((a) => (
+            <AccountRow
+              key={a.name}
+              accountName={a.name}
+              balance={a.balance}
+              snapshotDate={a.date}
+            />
+          ))}
+        </Card.Body>
+      </Card.Root>
     </div>
   )
 }
@@ -187,47 +182,22 @@ export function SnapshotWidget() {
   }
 
   return (
-    <div
-      className={css({
-        borderWidth: '1px',
-        borderColor: 'border.default',
-        rounded: 'xl',
-        bg: 'bg.default',
-        overflow: 'hidden',
-      })}
-    >
-      {/* Card header */}
-      <div
-        className={css({
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          px: '4',
-          py: '3',
-          borderBottom: '1px solid',
-          borderColor: 'border.subtle',
-          bg: 'bg.subtle',
-        })}
-      >
-        <div>
-          <h2
-            className={css({
-              fontSize: 'sm',
-              fontWeight: '600',
-              color: 'fg.default',
-              letterSpacing: 'tight',
-            })}
-          >
-            Net worth
-          </h2>
-          <p className={css({ fontSize: 'xs', color: 'fg.muted', mt: '0.5' })}>
-            Investments &amp; emergency fund
-          </p>
+    <Card.Root>
+      <Card.Header>
+        <div className={css({ display: 'flex', alignItems: 'center', justifyContent: 'space-between' })}>
+          <div>
+            <Card.Title className={css({ fontSize: 'sm', fontWeight: '600' })}>
+              Net worth
+            </Card.Title>
+            <Card.Description>
+              Investments &amp; emergency fund
+            </Card.Description>
+          </div>
+          <Button size="xs" variant="outline" onClick={() => setDialogOpen(true)}>
+            Update balances
+          </Button>
         </div>
-        <Button size="xs" variant="outline" onClick={() => setDialogOpen(true)}>
-          Update balances
-        </Button>
-      </div>
+      </Card.Header>
 
       {/* Grand total */}
       <div
@@ -263,7 +233,7 @@ export function SnapshotWidget() {
       </div>
 
       {/* Account sections */}
-      <div className={css({ px: '4', py: '3', display: 'flex', flexDir: 'column', gap: '3' })}>
+      <Card.Body className={css({ display: 'flex', flexDir: 'column', gap: '3' })}>
         {isLoading ? (
           <div
             className={css({
@@ -299,7 +269,7 @@ export function SnapshotWidget() {
             />
           ))
         )}
-      </div>
+      </Card.Body>
 
       <SnapshotFormDialog
         open={dialogOpen}
@@ -310,6 +280,6 @@ export function SnapshotWidget() {
       />
 
       <Toaster />
-    </div>
+    </Card.Root>
   )
 }
