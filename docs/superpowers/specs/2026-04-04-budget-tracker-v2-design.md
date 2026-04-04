@@ -168,8 +168,10 @@ CREATE TABLE account_snapshots (
 - **merchant_mappings** — Maps merchant names from bank statements to categories. Populated by AI categorization + user corrections. Grows over time so future imports need less AI assistance. See "Import Pipeline Design" section for details.
 - Dropped `family_member` column (unused in v1 data)
 - `month` constrained to `1-12` (v1 used `0` as a hack for recurring)
-- `is_recurring` on budgets means "carry this amount forward to future months until changed" — matches how the spreadsheet template works
+- `is_recurring` on budgets uses **query fallback** — no auto-created rows for future months. When querying budgets for a given month, if no specific entry exists for a category, use the most recent recurring entry. Override any month by creating a specific entry. Simpler than cron-based auto-creation.
+- **Amounts are always positive.** `category.type` (INCOME/EXPENSE) determines direction. Matches how bank statements and the spreadsheet represent amounts. Sign logic lives in display/calculation, not in stored data.
 - Income sources (Eric, Maryse, Gouv Qc, Gouv Can) are modeled as categories in an income-type group, not special fields
+- **AUTRE group is a starting point, not permanent.** As the AI categorizer processes real bank statements, it will surface spending patterns that suggest new groups/categories. The category taxonomy evolves over time — "AUTRE" shrinks as recurring patterns get pulled into proper groups. Categories and groups should be easy to create, merge, and reorganize.
 
 ### Row Level Security
 
@@ -417,6 +419,7 @@ v1 used `next-themes` (Next.js-specific). In v2:
 - `_layout.tsx` (dashboard shell) checks auth and redirects to `/login` if unauthenticated
 - Auth callback handled client-side (no server route needed for email/password)
 - Session persists in localStorage
+- **Dev mode auto-login:** For local development, auto-authenticate with a seed user so the developer isn't typing credentials every session. Controlled by an env var (e.g., `VITE_DEV_AUTOLOGIN=true`). Disabled by default, never in production.
 
 ## Primary View: Dashboard
 
@@ -477,7 +480,17 @@ The import review screen is optimized for speed, not for forms. Keyboard-driven:
 - Process 50 transactions in 2 minutes
 - Duplicates with quick-added transactions flagged for resolution
 
-### 3. Reconciliation
+### 3. Statement format support
+
+**Primary target: Desjardins PDF statements.** TD mortgage is pulled from the Desjardins account. Wealthsimple is used for investments (manual snapshots, not statement import).
+
+Parser priority:
+1. **Desjardins PDF** — primary bank, most transactions
+2. **CSV generic** — fallback for any bank that exports CSV (column mapping UI if format is unknown)
+
+PDF parsing uses pdf.js locally. Each bank format gets a dedicated parser that understands its layout (date position, amount position, description format). New bank parsers can be added incrementally.
+
+### 4. Reconciliation
 
 If the user quick-added transactions during the month, the import should detect potential duplicates (same amount + similar date + same category) and let the user confirm or dismiss matches.
 
@@ -603,6 +616,16 @@ Only what's needed (installed via `npx @park-ui/cli add`):
 - `docs/` migration plan artifacts
 - `setup` page
 - Dead `/dashboard/reports` sidebar link
+
+## Seed Data
+
+Import the category structure and monthly budget template from the "Mensuel" sheet in Budget.xlsx. No historical transaction data (2023-2025 sheets are incomplete summaries, not transaction-level).
+
+Seed includes:
+- **Category groups:** REVENU, MAISON, AUTO, FINANCE, NOURRITURE, ABONNEMENTS, AUTRE
+- **Categories:** All items from Mensuel (Hypothèque, Hydro, Ass. Maison, Gas, Épicerie, Spotify, etc.)
+- **Budget template:** Monthly budget amounts per category from the Mensuel sheet, marked as recurring
+- **Dev user:** Seed user for auto-login during development
 
 ## Git Strategy
 
