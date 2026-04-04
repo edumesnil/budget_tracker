@@ -58,14 +58,12 @@ export default defineConfig({
       semanticTokens: {
         colors: {
           // Sidebar: always dark — direct hex values, immune to theming
-          sidebar: {
-            bg: { value: '#111113' },
-            border: { value: '#272a2d' },
-            fg: { value: '#edeef0' },
-            'fg.muted': { value: '#777b84' },
-            active: { value: '#272a2d' },
-            hover: { value: '#212225' },
-          },
+          sidebarBg: { value: '#111113' },
+          sidebarBorder: { value: '#272a2d' },
+          sidebarFg: { value: '#edeef0' },
+          sidebarFgMuted: { value: '#777b84' },
+          sidebarActive: { value: '#272a2d' },
+          sidebarHover: { value: '#212225' },
           // Financial semantic tokens only
           income: { value: { base: 'hsl(174, 60%, 32%)', _dark: 'hsl(174, 60%, 45%)' } },
           expense: { value: { base: 'hsl(3, 72%, 50%)', _dark: 'hsl(3, 72%, 62%)' } },
