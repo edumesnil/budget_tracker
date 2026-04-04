@@ -8,7 +8,7 @@
     <script>
       (function () {
         var t = localStorage.getItem('budget-tracker-theme')
-        if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+        if (!t) t = 'light'
         document.documentElement.classList.add(t)
       })()
     </script>

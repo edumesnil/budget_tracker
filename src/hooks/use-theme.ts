@@ -7,7 +7,7 @@ function getInitial(): Theme {
   if (typeof window === 'undefined') return 'light'
   const s = localStorage.getItem(KEY)
   if (s === 'light' || s === 'dark') return s
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  return 'light'
 }
 
 export function useTheme() {
