@@ -19,7 +19,16 @@ INSERT INTO auth.users (
   raw_app_meta_data,
   raw_user_meta_data,
   aud,
-  role
+  role,
+  confirmation_token,
+  recovery_token,
+  email_change_token_new,
+  email_change_token_current,
+  email_change,
+  phone,
+  phone_change,
+  phone_change_token,
+  reauthentication_token
 ) VALUES (
   'd0e1f2a3-b4c5-6d7e-8f9a-0b1c2d3e4f5a',
   '00000000-0000-0000-0000-000000000000',
@@ -31,7 +40,37 @@ INSERT INTO auth.users (
   '{"provider": "email", "providers": ["email"]}',
   '{}',
   'authenticated',
-  'authenticated'
+  'authenticated',
+  '',
+  '',
+  '',
+  '',
+  '',
+  '',
+  '',
+  '',
+  ''
+);
+
+-- Create matching auth.identities row (required for Supabase Auth email login)
+INSERT INTO auth.identities (
+  id,
+  provider_id,
+  user_id,
+  identity_data,
+  provider,
+  last_sign_in_at,
+  created_at,
+  updated_at
+) VALUES (
+  'd0e1f2a3-b4c5-6d7e-8f9a-0b1c2d3e4f5a',
+  'd0e1f2a3-b4c5-6d7e-8f9a-0b1c2d3e4f5a',
+  'd0e1f2a3-b4c5-6d7e-8f9a-0b1c2d3e4f5a',
+  jsonb_build_object('sub', 'd0e1f2a3-b4c5-6d7e-8f9a-0b1c2d3e4f5a', 'email', 'dev@budgettracker.local', 'email_verified', true, 'phone_verified', false),
+  'email',
+  now(),
+  now(),
+  now()
 );
 
 -- Create matching public.users row

@@ -1,25 +1,36 @@
+import { Navigate } from 'react-router'
+import { useAuth } from '@/hooks/use-auth'
 import { css } from '../../styled-system/css'
+import { Spinner } from '@/components/ui/spinner'
 
 export default function IndexPage() {
-  return (
-    <div
-      className={css({
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        bg: 'bg',
-        color: 'fg',
-      })}
-    >
-      <h1
+  const { user, isLoading } = useAuth()
+
+  if (isLoading) {
+    return (
+      <div
         className={css({
-          fontSize: '3xl',
-          fontWeight: 'bold',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100vh',
+          bg: 'bg',
         })}
       >
-        Welcome
-      </h1>
-    </div>
-  )
+        <Spinner
+          className={css({
+            width: '8',
+            height: '8',
+            color: 'accent.default',
+          })}
+        />
+      </div>
+    )
+  }
+
+  if (user) {
+    return <Navigate to="/dashboard" replace />
+  }
+
+  return <Navigate to="/login" replace />
 }
