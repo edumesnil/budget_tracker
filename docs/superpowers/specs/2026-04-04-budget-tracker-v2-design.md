@@ -636,11 +636,11 @@ Seed includes:
 
 ## Explicitly Out of Scope (for now, but designed for)
 
-- Statement import / PDF parsing / AI categorization — the project structure, LLM adapter interface, and category system are designed to support this. Implementation comes after the core CRUD is stable.
 - Recurring transaction automation (flag exists, no engine)
 - Multi-user / sharing / household features
 - Mobile / PWA
 - Deployment to cloud
+- **Screenshot import** — Upload a screenshot of bank transactions instead of PDF/CSV. Would use local OCR (Tesseract.js) → same sanitization/categorization pipeline. Appealing because screenshots are faster to capture than finding bank export UIs. Deferred because OCR reliability on bank UIs is inconsistent and requires user correction. The import pipeline architecture supports adding this later without structural changes — it's just an alternative input to the same parse → sanitize → categorize → review flow.
 
 ## Implementation Order (High Level)
 
