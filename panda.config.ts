@@ -1,10 +1,23 @@
 import { defineConfig } from '@pandacss/dev'
+import { createPreset } from '@park-ui/panda-preset'
+import teal from '@park-ui/panda-preset/colors/teal'
+import slate from '@park-ui/panda-preset/colors/slate'
+import { recipes, slotRecipes } from './src/theme/recipes'
 
 export default defineConfig({
   jsxFramework: 'react',
   preflight: true,
   include: ['./src/**/*.{js,jsx,ts,tsx}'],
   exclude: [],
+
+  presets: [
+    '@pandacss/preset-base',
+    createPreset({
+      accentColor: teal,
+      grayColor: slate,
+      radius: 'md',
+    }),
+  ],
 
   conditions: {
     dark: '.dark &',
@@ -13,6 +26,8 @@ export default defineConfig({
 
   theme: {
     extend: {
+      recipes,
+      slotRecipes,
       tokens: {
         colors: {
           income: {
