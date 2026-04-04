@@ -7,7 +7,7 @@ export default function TransactionsPage() {
         className={css({
           fontSize: '3xl',
           fontWeight: 'bold',
-          color: 'fg',
+          color: 'fg.default',
         })}
       >
         Transactions

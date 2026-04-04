@@ -12,10 +12,6 @@ import * as Select from '@/components/ui/select'
 import type { Category } from '@/types/database'
 import type { GroupWithCategories } from '@/hooks/use-categories'
 
-// ---------------------------------------------------------------------------
-// Schema
-// ---------------------------------------------------------------------------
-
 const categorySchema = z.object({
   name: z.string().min(1, 'Name is required'),
   type: z.enum(['INCOME', 'EXPENSE']),
@@ -26,10 +22,6 @@ const categorySchema = z.object({
 
 type CategoryFormValues = z.infer<typeof categorySchema>
 
-// ---------------------------------------------------------------------------
-// Props
-// ---------------------------------------------------------------------------
-
 interface CategoryFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -39,10 +31,6 @@ interface CategoryFormDialogProps {
   onSubmit: (data: CategoryFormValues) => Promise<void>
   isSubmitting: boolean
 }
-
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
 
 export function CategoryFormDialog({
   open,
@@ -63,16 +51,9 @@ export function CategoryFormDialog({
     formState: { errors },
   } = useForm<CategoryFormValues>({
     resolver: zodResolver(categorySchema),
-    defaultValues: {
-      name: '',
-      type: 'EXPENSE',
-      group_id: null,
-      icon: '',
-      color: '',
-    },
+    defaultValues: { name: '', type: 'EXPENSE', group_id: null, icon: '', color: '' },
   })
 
-  // Reset form when dialog opens or category changes
   useEffect(() => {
     if (open) {
       reset({
@@ -95,7 +76,6 @@ export function CategoryFormDialog({
     })
   })
 
-  // Build group options for select
   const groupItems = useMemo(
     () => [
       { label: 'No group', value: '__none__' },
@@ -109,57 +89,50 @@ export function CategoryFormDialog({
     [groupItems],
   )
 
+  const fieldClass = css({ display: 'flex', flexDir: 'column', gap: '1.5' })
+  const labelClass = css({ fontSize: 'sm', fontWeight: '500', color: 'fg.default' })
+  const errorClass = css({ fontSize: 'xs', color: 'fg.error' })
+
   return (
-    <Dialog.Root open={open} onOpenChange={(details: { open: boolean }) => onOpenChange(details.open)}>
+    <Dialog.Root open={open} onOpenChange={(d: { open: boolean }) => onOpenChange(d.open)}>
       <Dialog.Backdrop />
       <Dialog.Positioner>
         <Dialog.Content className={css({ maxW: 'md', w: 'full' })}>
           <form onSubmit={handleFormSubmit}>
             <Dialog.Header>
-              <Dialog.Title>
-                {isEditing ? 'Edit Category' : 'New Category'}
-              </Dialog.Title>
+              <Dialog.Title>{isEditing ? 'Edit category' : 'New category'}</Dialog.Title>
               <Dialog.Description>
                 {isEditing
                   ? 'Update the category details.'
-                  : 'Create a new category for tracking income or expenses.'}
+                  : 'Create a category for tracking income or expenses.'}
               </Dialog.Description>
             </Dialog.Header>
 
             <Dialog.Body className={css({ display: 'flex', flexDir: 'column', gap: '4' })}>
               {/* Name */}
-              <div className={css({ display: 'flex', flexDir: 'column', gap: '1.5' })}>
-                <label
-                  htmlFor="category-name"
-                  className={css({ fontSize: 'sm', fontWeight: 'medium' })}
-                >
+              <div className={fieldClass}>
+                <label htmlFor="category-name" className={labelClass}>
                   Name *
                 </label>
                 <Input
                   id="category-name"
-                  placeholder="e.g., Hypotheque, Epicerie, Spotify"
+                  placeholder="e.g., Rent, Groceries, Spotify"
                   {...register('name')}
                 />
-                {errors.name && (
-                  <p className={css({ fontSize: 'sm', color: 'red.500' })}>
-                    {errors.name.message}
-                  </p>
-                )}
+                {errors.name && <p className={errorClass}>{errors.name.message}</p>}
               </div>
 
-              {/* Type (INCOME / EXPENSE) */}
-              <div className={css({ display: 'flex', flexDir: 'column', gap: '1.5' })}>
-                <label className={css({ fontSize: 'sm', fontWeight: 'medium' })}>
-                  Type *
-                </label>
+              {/* Type */}
+              <div className={fieldClass}>
+                <label className={labelClass}>Type *</label>
                 <Controller
                   name="type"
                   control={control}
                   render={({ field }) => (
                     <RadioGroup.Root
                       value={field.value}
-                      onValueChange={(details: { value: string | null }) => field.onChange(details.value)}
-                      className={css({ display: 'flex', gap: '4' })}
+                      onValueChange={(d: { value: string | null }) => field.onChange(d.value)}
+                      className={css({ display: 'flex', gap: '6' })}
                     >
                       <RadioGroup.Item value="EXPENSE">
                         <RadioGroup.ItemControl />
@@ -174,18 +147,12 @@ export function CategoryFormDialog({
                     </RadioGroup.Root>
                   )}
                 />
-                {errors.type && (
-                  <p className={css({ fontSize: 'sm', color: 'red.500' })}>
-                    {errors.type.message}
-                  </p>
-                )}
+                {errors.type && <p className={errorClass}>{errors.type.message}</p>}
               </div>
 
-              {/* Group select */}
-              <div className={css({ display: 'flex', flexDir: 'column', gap: '1.5' })}>
-                <label className={css({ fontSize: 'sm', fontWeight: 'medium' })}>
-                  Group
-                </label>
+              {/* Group */}
+              <div className={fieldClass}>
+                <label className={labelClass}>Group</label>
                 <Controller
                   name="group_id"
                   control={control}
@@ -193,11 +160,9 @@ export function CategoryFormDialog({
                     <Select.Root
                       collection={groupCollection}
                       value={field.value ? [field.value] : ['__none__']}
-                      onValueChange={(details: { value: string[] }) => {
-                        const selected = details.value[0]
-                        field.onChange(
-                          selected === '__none__' ? null : selected,
-                        )
+                      onValueChange={(d: { value: string[] }) => {
+                        const sel = d.value[0]
+                        field.onChange(sel === '__none__' ? null : sel)
                       }}
                     >
                       <Select.Control>
@@ -207,9 +172,9 @@ export function CategoryFormDialog({
                       </Select.Control>
                       <Select.Positioner>
                         <Select.Content>
-                          {groupItems.map((option) => (
-                            <Select.Item key={option.value} item={option}>
-                              <Select.ItemText>{option.label}</Select.ItemText>
+                          {groupItems.map((opt) => (
+                            <Select.Item key={opt.value} item={opt}>
+                              <Select.ItemText>{opt.label}</Select.ItemText>
                               <Select.ItemIndicator />
                             </Select.Item>
                           ))}
@@ -221,33 +186,27 @@ export function CategoryFormDialog({
               </div>
 
               {/* Icon */}
-              <div className={css({ display: 'flex', flexDir: 'column', gap: '1.5' })}>
-                <label
-                  htmlFor="category-icon"
-                  className={css({ fontSize: 'sm', fontWeight: 'medium' })}
-                >
+              <div className={fieldClass}>
+                <label htmlFor="category-icon" className={labelClass}>
                   Icon
                 </label>
                 <Input
                   id="category-icon"
-                  placeholder="e.g., Home, ShoppingCart, Music"
+                  placeholder="e.g., 🏠  🛒  🎵"
                   {...register('icon')}
                 />
               </div>
 
               {/* Color */}
-              <div className={css({ display: 'flex', flexDir: 'column', gap: '1.5' })}>
-                <label
-                  htmlFor="category-color"
-                  className={css({ fontSize: 'sm', fontWeight: 'medium' })}
-                >
+              <div className={fieldClass}>
+                <label htmlFor="category-color" className={labelClass}>
                   Color
                 </label>
                 <div className={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
                   <Input
-                    id="category-color-picker"
+                    id="category-color-swatch"
                     type="color"
-                    className={css({ w: '12', h: '10', p: '1', cursor: 'pointer' })}
+                    className={css({ w: '10', h: '9', p: '1', cursor: 'pointer', flex: 'none' })}
                     {...register('color')}
                   />
                   <Input
@@ -260,20 +219,14 @@ export function CategoryFormDialog({
               </div>
             </Dialog.Body>
 
-            <Dialog.Footer className={css({ display: 'flex', gap: '3', justifyContent: 'flex-end' })}>
+            <Dialog.Footer>
               <Dialog.CloseTrigger asChild>
                 <Button variant="outline" type="button" disabled={isSubmitting}>
                   Cancel
                 </Button>
               </Dialog.CloseTrigger>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting
-                  ? isEditing
-                    ? 'Updating...'
-                    : 'Creating...'
-                  : isEditing
-                    ? 'Update Category'
-                    : 'Create Category'}
+              <Button type="submit" loading={isSubmitting}>
+                {isEditing ? 'Save changes' : 'Create category'}
               </Button>
             </Dialog.Footer>
           </form>

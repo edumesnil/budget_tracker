@@ -4,10 +4,6 @@ import { Button } from '@/components/ui/button'
 import type { CategoryGroup, Category } from '@/types/database'
 import type { GroupWithCategories } from '@/hooks/use-categories'
 
-// ---------------------------------------------------------------------------
-// Props
-// ---------------------------------------------------------------------------
-
 interface CategoryListProps {
   group: GroupWithCategories
   onEditGroup: (group: CategoryGroup) => void
@@ -17,10 +13,6 @@ interface CategoryListProps {
   onDeleteCategory: (categoryId: string) => void
 }
 
-// ---------------------------------------------------------------------------
-// Sub-components
-// ---------------------------------------------------------------------------
-
 function TypeBadge({ type }: { type: 'INCOME' | 'EXPENSE' }) {
   const isIncome = type === 'INCOME'
   return (
@@ -28,16 +20,18 @@ function TypeBadge({ type }: { type: 'INCOME' | 'EXPENSE' }) {
       className={css({
         display: 'inline-flex',
         alignItems: 'center',
-        px: '2',
+        px: '1.5',
         py: '0.5',
-        rounded: 'full',
+        rounded: 'sm',
         fontSize: 'xs',
-        fontWeight: 'medium',
-        bg: isIncome ? 'green.100' : 'red.100',
-        color: isIncome ? 'green.800' : 'red.800',
+        fontWeight: '500',
+        letterSpacing: 'wide',
+        fontFamily: 'mono',
+        bg: isIncome ? 'teal.light.3' : 'red.light.3',
+        color: isIncome ? 'teal.light.11' : 'red.light.11',
         _dark: {
-          bg: isIncome ? 'green.900/30' : 'red.900/30',
-          color: isIncome ? 'green.300' : 'red.300',
+          bg: isIncome ? 'teal.dark.3' : 'red.dark.3',
+          color: isIncome ? 'teal.dark.11' : 'red.dark.11',
         },
       })}
     >
@@ -63,12 +57,11 @@ function CategoryRow({
         justifyContent: 'space-between',
         py: '2.5',
         px: '4',
-        borderBottomWidth: '1px',
-        borderColor: 'border.muted',
-        _last: { borderBottomWidth: '0' },
-        _hover: { bg: 'bg.muted' },
-        transition: 'colors',
-        transitionDuration: '150ms',
+        borderBottom: '1px solid',
+        borderColor: 'border.subtle',
+        _last: { borderBottom: 'none' },
+        _hover: { bg: 'bg.subtle' },
+        transition: 'background 120ms ease',
       })}
     >
       {/* Left: icon + name */}
@@ -79,22 +72,29 @@ function CategoryRow({
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              w: '8',
-              h: '8',
+              w: '7',
+              h: '7',
               rounded: 'md',
               fontSize: 'sm',
+              flexShrink: 0,
             })}
             style={{
-              backgroundColor: category.color
-                ? `${category.color}15`
-                : undefined,
+              backgroundColor: category.color ? `${category.color}20` : undefined,
               color: category.color ?? undefined,
             }}
           >
             {category.icon}
           </span>
         )}
-        <span className={css({ fontWeight: 'medium' })}>{category.name}</span>
+        <span
+          className={css({
+            fontSize: 'sm',
+            fontWeight: '500',
+            color: 'fg.default',
+          })}
+        >
+          {category.name}
+        </span>
       </div>
 
       {/* Center: type badge */}
@@ -104,21 +104,17 @@ function CategoryRow({
 
       {/* Right: actions */}
       <div className={css({ display: 'flex', gap: '1' })}>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onEdit}
-        >
+        <Button variant="plain" size="xs" onClick={onEdit}>
           Edit
         </Button>
         <Button
-          variant="ghost"
-          size="sm"
+          variant="plain"
+          size="xs"
           onClick={onDelete}
           className={css({
-            color: 'red.500',
-            _hover: { color: 'red.700', bg: 'red.50' },
-            _dark: { _hover: { bg: 'red.900/20' } },
+            color: 'red.default',
+            _hover: { bg: 'red.light.3', color: 'red.light.11' },
+            _dark: { _hover: { bg: 'red.dark.3', color: 'red.dark.11' } },
           })}
         >
           Delete
@@ -127,10 +123,6 @@ function CategoryRow({
     </div>
   )
 }
-
-// ---------------------------------------------------------------------------
-// Main component
-// ---------------------------------------------------------------------------
 
 export function CategoryList({
   group,
@@ -141,7 +133,7 @@ export function CategoryList({
   onDeleteCategory,
 }: CategoryListProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
-  const isVirtualUngrouped = group.id === '__ungrouped__'
+  const isVirtual = group.id === '__ungrouped__'
 
   return (
     <div
@@ -160,53 +152,58 @@ export function CategoryList({
           alignItems: 'center',
           justifyContent: 'space-between',
           px: '4',
-          py: '3',
+          py: '2.5',
           bg: 'bg.subtle',
-          borderBottomWidth: isCollapsed ? '0' : '1px',
-          borderColor: 'border.default',
+          borderBottom: isCollapsed ? 'none' : '1px solid',
+          borderColor: 'border.subtle',
           cursor: 'pointer',
           userSelect: 'none',
         })}
         onClick={() => setIsCollapsed(!isCollapsed)}
       >
-        {/* Left: collapse indicator + name + count */}
-        <div className={css({ display: 'flex', alignItems: 'center', gap: '3' })}>
+        {/* Left: indicator + name + count */}
+        <div className={css({ display: 'flex', alignItems: 'center', gap: '2.5' })}>
           <span
             className={css({
-              fontSize: 'sm',
-              color: 'fg.muted',
-              transition: 'transform',
-              transitionDuration: '200ms',
+              fontSize: 'xs',
+              color: 'fg.subtle',
+              display: 'inline-block',
+              transition: 'transform 200ms ease',
               transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+              lineHeight: '1',
             })}
           >
-            &#x25BC;
+            ▾
           </span>
 
           {group.icon && (
-            <span
-              className={css({ fontSize: 'lg' })}
-              style={{ color: group.color ?? undefined }}
-            >
+            <span style={{ color: group.color ?? undefined }}>
               {group.icon}
             </span>
           )}
 
-          <span className={css({ fontWeight: 'semibold', fontSize: 'md' })}>
+          <span
+            className={css({
+              fontSize: 'sm',
+              fontWeight: '600',
+              color: 'fg.default',
+            })}
+          >
             {group.name}
           </span>
 
           <span
             className={css({
-              fontSize: 'sm',
-              color: 'fg.muted',
+              fontSize: 'xs',
+              color: 'fg.subtle',
               bg: 'bg.muted',
-              px: '2',
+              px: '1.5',
               py: '0.5',
               rounded: 'full',
+              fontFamily: 'mono',
             })}
           >
-            {group.categories.length} {group.categories.length === 1 ? 'category' : 'categories'}
+            {group.categories.length}
           </span>
         </div>
 
@@ -215,31 +212,23 @@ export function CategoryList({
           className={css({ display: 'flex', gap: '1' })}
           onClick={(e) => e.stopPropagation()}
         >
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onAddCategory(group.id)}
-          >
+          <Button variant="plain" size="xs" onClick={() => onAddCategory(group.id)}>
             + Add
           </Button>
 
-          {!isVirtualUngrouped && (
+          {!isVirtual && (
             <>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onEditGroup(group)}
-              >
+              <Button variant="plain" size="xs" onClick={() => onEditGroup(group)}>
                 Edit
               </Button>
               <Button
-                variant="ghost"
-                size="sm"
+                variant="plain"
+                size="xs"
                 onClick={() => onDeleteGroup(group.id)}
                 className={css({
-                  color: 'red.500',
-                  _hover: { color: 'red.700', bg: 'red.50' },
-                  _dark: { _hover: { bg: 'red.900/20' } },
+                  color: 'red.default',
+                  _hover: { bg: 'red.light.3', color: 'red.light.11' },
+                  _dark: { _hover: { bg: 'red.dark.3', color: 'red.dark.11' } },
                 })}
               >
                 Delete
@@ -266,22 +255,27 @@ export function CategoryList({
                 type="button"
                 onClick={() => onAddCategory(group.id)}
                 className={css({
-                  color: 'accent.default',
+                  color: 'teal.default',
                   textDecoration: 'underline',
                   cursor: 'pointer',
-                  _hover: { color: 'accent.emphasized' },
+                  background: 'none',
+                  border: 'none',
+                  fontSize: 'inherit',
+                  fontFamily: 'inherit',
+                  padding: '0',
+                  _hover: { color: 'teal.emphasized' },
                 })}
               >
                 Add one
               </button>
             </div>
           ) : (
-            group.categories.map((category) => (
+            group.categories.map((cat) => (
               <CategoryRow
-                key={category.id}
-                category={category}
-                onEdit={() => onEditCategory(category)}
-                onDelete={() => onDeleteCategory(category.id)}
+                key={cat.id}
+                category={cat}
+                onEdit={() => onEditCategory(cat)}
+                onDelete={() => onDeleteCategory(cat.id)}
               />
             ))
           )}

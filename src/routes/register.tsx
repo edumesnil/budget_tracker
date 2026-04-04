@@ -15,10 +15,7 @@ export default function RegisterPage() {
   const { signUp, user } = useAuth()
   const navigate = useNavigate()
 
-  // If already logged in, redirect to dashboard
-  if (user) {
-    return <Navigate to="/dashboard" replace />
-  }
+  if (user) return <Navigate to="/dashboard" replace />
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -30,7 +27,6 @@ export default function RegisterPage() {
       setIsSubmitting(false)
       return
     }
-
     if (password.length < 6) {
       setError('Password must be at least 6 characters')
       setIsSubmitting(false)
@@ -58,159 +54,145 @@ export default function RegisterPage() {
         alignItems: 'center',
         justifyContent: 'center',
         minHeight: '100vh',
-        bg: 'bg',
+        bg: 'bg.canvas',
         px: '4',
       })}
     >
-      <Card.Root
+      <div
         className={css({
           width: 'full',
-          maxWidth: 'md',
+          maxWidth: '400px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8',
         })}
       >
-        <Card.Header>
-          <Card.Title className={css({ fontSize: '2xl' })}>
-            Create an account
-          </Card.Title>
-          <Card.Description>
-            Enter your email and create a password to get started
-          </Card.Description>
-        </Card.Header>
-        <Card.Body>
-          <form
-            onSubmit={handleSubmit}
+        {/* Header */}
+        <div className={css({ textAlign: 'center' })}>
+          <div
             className={css({
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '4',
+              width: '10',
+              height: '10',
+              rounded: 'lg',
+              bg: 'teal.9',
+              mx: 'auto',
+              mb: '5',
+            })}
+          />
+          <h1
+            className={css({
+              fontSize: '2xl',
+              fontWeight: '600',
+              color: 'fg.default',
+              letterSpacing: 'tight',
+              mb: '1',
             })}
           >
-            <div
-              className={css({
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '1.5',
-              })}
-            >
-              <label
-                htmlFor="email"
-                className={css({
-                  fontSize: 'sm',
-                  fontWeight: 'medium',
-                  color: 'fg',
-                })}
-              >
-                Email
-              </label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="name@example.com"
-                value={email}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-              />
-            </div>
-
-            <div
-              className={css({
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '1.5',
-              })}
-            >
-              <label
-                htmlFor="password"
-                className={css({
-                  fontSize: 'sm',
-                  fontWeight: 'medium',
-                  color: 'fg',
-                })}
-              >
-                Password
-              </label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-                required
-                autoComplete="new-password"
-              />
-            </div>
-
-            <div
-              className={css({
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '1.5',
-              })}
-            >
-              <label
-                htmlFor="confirmPassword"
-                className={css({
-                  fontSize: 'sm',
-                  fontWeight: 'medium',
-                  color: 'fg',
-                })}
-              >
-                Confirm Password
-              </label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
-                required
-                autoComplete="new-password"
-              />
-            </div>
-
-            {error && (
-              <p
-                className={css({
-                  fontSize: 'sm',
-                  color: 'red.500',
-                })}
-              >
-                {error}
-              </p>
-            )}
-
-            <Button
-              type="submit"
-              width="full"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'Creating account...' : 'Register'}
-            </Button>
-          </form>
-        </Card.Body>
-        <Card.Footer
-          className={css({
-            justifyContent: 'center',
-          })}
-        >
-          <p
-            className={css({
-              fontSize: 'sm',
-              color: 'fg.muted',
-            })}
-          >
-            Already have an account?{' '}
-            <Link
-              to="/login"
-              className={css({
-                color: 'accent.default',
-                _hover: { textDecoration: 'underline' },
-              })}
-            >
-              Login
-            </Link>
+            Create account
+          </h1>
+          <p className={css({ fontSize: 'sm', color: 'fg.muted' })}>
+            Start tracking your finances
           </p>
-        </Card.Footer>
-      </Card.Root>
+        </div>
+
+        {/* Card */}
+        <Card.Root>
+          <Card.Body className={css({ pt: '6' })}>
+            <form
+              onSubmit={handleSubmit}
+              className={css({ display: 'flex', flexDirection: 'column', gap: '4' })}
+            >
+              <div className={css({ display: 'flex', flexDirection: 'column', gap: '1.5' })}>
+                <label
+                  htmlFor="email"
+                  className={css({ fontSize: 'sm', fontWeight: '500', color: 'fg.default' })}
+                >
+                  Email
+                </label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="name@example.com"
+                  value={email}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                />
+              </div>
+
+              <div className={css({ display: 'flex', flexDirection: 'column', gap: '1.5' })}>
+                <label
+                  htmlFor="password"
+                  className={css({ fontSize: 'sm', fontWeight: '500', color: 'fg.default' })}
+                >
+                  Password
+                </label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+                  required
+                  autoComplete="new-password"
+                />
+              </div>
+
+              <div className={css({ display: 'flex', flexDirection: 'column', gap: '1.5' })}>
+                <label
+                  htmlFor="confirmPassword"
+                  className={css({ fontSize: 'sm', fontWeight: '500', color: 'fg.default' })}
+                >
+                  Confirm password
+                </label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
+                  required
+                  autoComplete="new-password"
+                />
+              </div>
+
+              {error && (
+                <p
+                  className={css({
+                    fontSize: 'sm',
+                    color: 'fg.error',
+                    bg: 'red.light.3',
+                    px: '3',
+                    py: '2',
+                    rounded: 'md',
+                  })}
+                >
+                  {error}
+                </p>
+              )}
+
+              <Button type="submit" width="full" loading={isSubmitting} loadingText="Creating account...">
+                Create account
+              </Button>
+            </form>
+          </Card.Body>
+          <Card.Footer
+            className={css({ justifyContent: 'center', borderTop: '1px solid', borderColor: 'border.subtle' })}
+          >
+            <p className={css({ fontSize: 'sm', color: 'fg.muted' })}>
+              Already have an account?{' '}
+              <Link
+                to="/login"
+                className={css({
+                  color: 'teal.default',
+                  fontWeight: '500',
+                  _hover: { textDecoration: 'underline' },
+                })}
+              >
+                Sign in
+              </Link>
+            </p>
+          </Card.Footer>
+        </Card.Root>
+      </div>
     </div>
   )
 }
