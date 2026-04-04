@@ -1,7 +1,9 @@
-import { Outlet, NavLink } from 'react-router'
+import { Outlet, Navigate, NavLink, useLocation } from 'react-router'
+import { useAuth } from '@/hooks/use-auth'
 import { useTheme } from '@/hooks/use-theme'
 import { css } from '../../styled-system/css'
-import { LayoutDashboard, ArrowLeftRight, PiggyBank, Tags, Sun, Moon } from 'lucide-react'
+import { Spinner } from '@/components/ui/spinner'
+import { LayoutDashboard, ArrowLeftRight, PiggyBank, Tags, Sun, Moon, LogOut } from 'lucide-react'
 
 const NAV_ITEMS = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -11,8 +13,42 @@ const NAV_ITEMS = [
 ] as const
 
 export function DashboardLayout() {
+  const { user, isLoading, signOut } = useAuth()
   const { theme, toggle } = useTheme()
   const isDark = theme === 'dark'
+  const location = useLocation()
+
+  // Show loading spinner while checking auth
+  if (isLoading) {
+    return (
+      <div
+        className={css({
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100vh',
+          bg: 'bg',
+        })}
+      >
+        <Spinner
+          className={css({
+            width: '8',
+            height: '8',
+            color: 'accent.default',
+          })}
+        />
+      </div>
+    )
+  }
+
+  // Auth guard: redirect to login if not authenticated
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />
+  }
+
+  const handleSignOut = async () => {
+    await signOut()
+  }
 
   return (
     <div
@@ -102,6 +138,83 @@ export function DashboardLayout() {
             </NavLink>
           ))}
         </nav>
+
+        {/* User section at bottom */}
+        <div
+          className={css({
+            borderTop: '1px solid',
+            borderColor: 'gray.800',
+            p: '4',
+          })}
+        >
+          <div
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: '3',
+              mb: '3',
+            })}
+          >
+            <div
+              className={css({
+                width: '8',
+                height: '8',
+                borderRadius: 'full',
+                bg: 'gray.700',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 'sm',
+                fontWeight: 'bold',
+                flexShrink: 0,
+              })}
+            >
+              {user.email?.charAt(0).toUpperCase() ?? 'U'}
+            </div>
+            <div
+              className={css({
+                flex: 1,
+                minWidth: 0,
+              })}
+            >
+              <p
+                className={css({
+                  fontSize: 'sm',
+                  fontWeight: 'medium',
+                  truncate: true,
+                })}
+              >
+                {user.email}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleSignOut}
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: '2',
+              width: 'full',
+              px: '3',
+              py: '2',
+              borderRadius: 'md',
+              fontSize: 'sm',
+              color: 'gray.400',
+              cursor: 'pointer',
+              bg: 'transparent',
+              border: 'none',
+              _hover: {
+                bg: 'gray.800',
+                color: 'white',
+              },
+              transition: 'colors',
+              transitionDuration: '150ms',
+            })}
+          >
+            <LogOut size={18} />
+            <span>Sign out</span>
+          </button>
+        </div>
       </aside>
 
       {/* Main content area */}
