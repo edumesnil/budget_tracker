@@ -144,7 +144,7 @@ function TypeSection({
 // ---------------------------------------------------------------------------
 
 export function SnapshotWidget() {
-  const { latestByAccount, totalsByType, grandTotal, isLoading, create } = useSnapshots()
+  const { latestByAccount, grandTotal, isLoading, create } = useSnapshots()
   const [dialogOpen, setDialogOpen] = useState(false)
 
   // Group latest snapshots by account_type, preserving TYPE_ORDER
@@ -245,7 +245,6 @@ export function SnapshotWidget() {
               w: '40',
               rounded: 'md',
               bg: 'bg.muted',
-              animate: 'pulse',
             })}
           />
         ) : (
