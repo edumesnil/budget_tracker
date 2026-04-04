@@ -7,9 +7,8 @@
     <!-- Theme init: prevent flash of wrong mode -->
     <script>
       (function () {
-        var t = localStorage.getItem('budget-tracker-theme')
-        if (!t) t = 'light'
-        document.documentElement.classList.add(t)
+        localStorage.removeItem('budget-tracker-theme')
+        document.documentElement.classList.add('light')
       })()
     </script>
   </head>

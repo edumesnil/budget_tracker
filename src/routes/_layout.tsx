@@ -46,8 +46,6 @@ export function DashboardLayout() {
         minW: '56',
         h: '100vh',
         bg: 'gray.2',
-        borderRight: '1px solid',
-        borderColor: 'gray.4',
         flexShrink: 0,
       })}>
         {/* Title */}
@@ -57,8 +55,6 @@ export function DashboardLayout() {
           gap: '2.5',
           px: '5',
           py: '4',
-          borderBottom: '1px solid',
-          borderColor: 'gray.4',
         })}>
           <div className={css({ w: '6', h: '6', rounded: 'sm', bg: 'colorPalette.9', flexShrink: 0 })} />
           <span className={css({ fontSize: 'sm', fontWeight: '600', color: 'fg.default' })}>
@@ -97,7 +93,7 @@ export function DashboardLayout() {
         </nav>
 
         {/* User */}
-        <div className={css({ borderTop: '1px solid', borderColor: 'gray.4', p: '3' })}>
+        <div className={css({ p: '3' })}>
           <div className={css({ display: 'flex', alignItems: 'center', gap: '2.5', px: '2', py: '1.5' })}>
             <div className={css({
               w: '7', h: '7', rounded: 'full', bg: 'colorPalette.3',
@@ -128,11 +124,11 @@ export function DashboardLayout() {
       </aside>
 
       {/* Main */}
-      <div className={css({ display: 'flex', flexDir: 'column', flex: 1, overflow: 'hidden' })}>
+      <div className={css({ display: 'flex', flexDir: 'column', flex: 1, overflow: 'hidden', bg: 'bg.canvas' })}>
         {/* Topbar */}
         <header className={css({
           display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
-          h: '12', px: '6', borderBottom: '1px solid', borderColor: 'gray.4',
+          h: '12', px: '6',
         })}>
           <button
             onClick={toggle}
