@@ -503,6 +503,26 @@ The categorization is a **constrained classification task**, not open-ended gene
 
 No web search in the initial implementation. If the AI can't categorize, it says so honestly and the user handles it. Web search can be added later as an optional tool if there's a pattern of unrecognizable merchants.
 
+### Prompt enrichment (few-shot from user's own data)
+
+The LLM doesn't need tools or agent loops — it needs good context. Before each categorization call, pre-compute the prompt context:
+
+1. Fetch the user's categories + groups
+2. Fetch existing merchant_mappings, grouped by category, as few-shot examples
+3. Build a single prompt: "Here are the categories with examples of merchants in each. Classify these unknowns."
+
+Example prompt context:
+```
+Categories:
+- Épicerie (NOURRITURE): METRO PLUS, IGA EXTRA, MAXI, PROVIGO
+- Restaurants (NOURRITURE): MCDONALD'S, TIM HORTONS, REST LE PETIT COIN
+- Abonnements: SPOTIFY, NETFLIX, AMAZON PRIME
+
+Classify: ["SUPER C #2341", "PRLVT 7291822", "STARBUCKS MTL"]
+```
+
+The LLM sees patterns from the user's own mapping history and infers from them. One call, structured response, no tool loop. The prompt gets richer with every import as merchant_mappings grows — the system learns from the user's corrections without any model fine-tuning.
+
 ### PII sanitization pipeline
 
 ```
