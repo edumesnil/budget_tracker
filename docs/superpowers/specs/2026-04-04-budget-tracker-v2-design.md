@@ -198,12 +198,65 @@ export function useTransactions(month: number, year: number) {
 }
 ```
 
-### Patterns
+### Mutation → UI Sync Strategy
+
+v1 suffered from stale data on navigation, full table reloads, and cross-view desync. v2 fixes this with three layers:
+
+**Layer 1 — Cache update from mutation response (default for create/update):**
+Mutations return the updated row via `.select()`. The `onSuccess` handler uses `setQueryData` to surgically update the cached list — no refetch, no loading flash:
+
+```typescript
+onSuccess: (data) => {
+  queryClient.setQueryData(['transactions', { month, year }], (old) =>
+    old.map(t => t.id === data.id ? data : t)
+  )
+}
+```
+
+**Layer 2 — Optimistic updates (for delete and toggles):**
+Remove/toggle actions update the cache *before* the server responds, with rollback on error:
+
+```typescript
+onMutate: async (id) => {
+  await queryClient.cancelQueries({ queryKey: ['transactions', { month, year }] })
+  const previous = queryClient.getQueryData(['transactions', { month, year }])
+  queryClient.setQueryData(['transactions', { month, year }], (old) =>
+    old.filter(t => t.id !== id)
+  )
+  return { previous }
+},
+onError: (err, id, ctx) => {
+  queryClient.setQueryData(['transactions', { month, year }], ctx.previous)
+},
+onSettled: () => {
+  queryClient.invalidateQueries({ queryKey: ['transactions'] })
+},
+```
+
+**Layer 3 — Cross-entity invalidation map:**
+When one entity mutates, sibling queries that depend on it must refresh:
+
+```
+Category mutated  → invalidate: categories, transactions, budgets, dashboard
+Transaction mutated → invalidate: transactions, dashboard
+Budget mutated    → invalidate: budgets, dashboard
+```
+
+**staleTime per entity:**
+
+| Entity | staleTime | Behavior |
+|---|---|---|
+| Categories | 5 min | Rarely change, cached aggressively |
+| Transactions | 0 | Always refetch on mount, but serve cache instantly while background fetch runs |
+| Budgets | 1 min | Moderate cache |
+| Dashboard | 0 | Composite view, always fresh |
+
+With `staleTime: 0`, navigating to a page shows cached data immediately, then silently updates in the background if anything changed. No loading spinner, no blank screen.
+
+### Other Patterns
 
 - Queries fetch with joins where needed (`transactions` joins `categories`)
-- Mutations invalidate relevant query keys on success
 - Derived state (totals, grouped data) computed via `useMemo` in the hook
-- No optimistic updates initially — add only where UX demands it
 - No shared query-utils wrapper — each hook talks to Supabase directly
 
 ### Types
