@@ -112,7 +112,7 @@ export function SnapshotFormDialog({
 
   const fieldClass = css({ display: 'flex', flexDir: 'column', gap: '1.5' })
   const labelClass = css({ fontSize: 'sm', fontWeight: '500', color: 'fg.default' })
-  const errorClass = css({ fontSize: 'xs', color: 'red.default' })
+  const errorClass = css({ fontSize: 'xs', color: 'fg.muted' })
   const datalistId = 'snapshot-account-names'
 
   return (

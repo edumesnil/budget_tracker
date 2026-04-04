@@ -21,7 +21,7 @@ export default function IndexPage() {
           className={css({
             width: '8',
             height: '8',
-            color: 'teal.default',
+            color: 'colorPalette.9',
           })}
         />
       </div>

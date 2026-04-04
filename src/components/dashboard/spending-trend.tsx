@@ -154,23 +154,23 @@ export function SpendingTrend({ transactions, currentMonth, currentYear }: Props
           <CartesianGrid
             vertical={false}
             strokeDasharray="3 3"
-            stroke="hsl(var(--colors-border-subtle, 220 13% 91%))"
+            stroke="var(--colors-border-subtle)"
             strokeOpacity={0.5}
           />
           <XAxis
             dataKey="label"
-            tick={{ fontSize: 11, fill: 'var(--colors-fg-muted, #888)' }}
+            tick={{ fontSize: 11, fill: 'var(--colors-fg-muted)' }}
             axisLine={false}
             tickLine={false}
           />
           <YAxis
-            tick={{ fontSize: 11, fill: 'var(--colors-fg-muted, #888)' }}
+            tick={{ fontSize: 11, fill: 'var(--colors-fg-muted)' }}
             axisLine={false}
             tickLine={false}
             tickFormatter={(v: number) => `${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
             width={40}
           />
-          <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(220 13% 91% / 0.4)' }} />
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--colors-bg-subtle)' }} />
           <Legend
             wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }}
             formatter={(v: string) => v.charAt(0).toUpperCase() + v.slice(1)}
@@ -178,13 +178,13 @@ export function SpendingTrend({ transactions, currentMonth, currentYear }: Props
           <Bar
             dataKey="income"
             name="income"
-            fill="hsl(174, 60%, 35%)"
+            fill="var(--colors-income)"
             radius={[3, 3, 0, 0]}
           />
           <Bar
             dataKey="expenses"
             name="expenses"
-            fill="hsl(3, 72%, 54%)"
+            fill="var(--colors-expense)"
             radius={[3, 3, 0, 0]}
           />
         </BarChart>

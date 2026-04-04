@@ -30,9 +30,9 @@ function getStatus(ratio: number): HealthStatus {
 }
 
 function statusColor(s: HealthStatus): string {
-  if (s === 'over') return 'hsl(3, 72%, 54%)'
-  if (s === 'warn') return 'hsl(45, 85%, 50%)'
-  return 'hsl(174, 60%, 35%)'
+  if (s === 'over') return 'var(--colors-expense)'
+  if (s === 'warn') return 'var(--colors-chart-4)'
+  return 'var(--colors-income)'
 }
 
 /** Build a map of category_id → total spent (EXPENSE only) from transactions */

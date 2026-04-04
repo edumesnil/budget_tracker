@@ -55,12 +55,10 @@ function CategoryCell({ transaction }: { transaction: Transaction }) {
           fontSize: 'xs',
           fontFamily: 'mono',
           letterSpacing: 'wide',
-          bg: isIncome ? 'teal.light.3' : 'red.light.3',
-          color: isIncome ? 'teal.light.11' : 'red.light.11',
-          _dark: {
-            bg: isIncome ? 'teal.dark.3' : 'red.dark.3',
-            color: isIncome ? 'teal.dark.11' : 'red.dark.11',
-          },
+          bg: 'bg.muted',
+          borderWidth: '1px',
+          borderColor: 'border.subtle',
+          color: isIncome ? 'income' : 'expense',
         })}
       >
         {cat.type}
@@ -263,17 +261,8 @@ export function TransactionTable({
                     size="xs"
                     onClick={() => onDelete(tx.id)}
                     className={css({
-                      color: 'red.default',
-                      _hover: {
-                        bg: 'red.light.3',
-                        color: 'red.light.11',
-                      },
-                      _dark: {
-                        _hover: {
-                          bg: 'red.dark.3',
-                          color: 'red.dark.11',
-                        },
-                      },
+                      color: 'fg.muted',
+                      _hover: { bg: 'bg.muted', color: 'fg.default' },
                     })}
                   >
                     Delete

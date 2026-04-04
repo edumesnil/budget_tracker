@@ -143,9 +143,8 @@ function BudgetRow({
           size="xs"
           onClick={onDelete}
           className={css({
-            color: 'red.default',
-            _hover: { bg: 'red.light.3', color: 'red.light.11' },
-            _dark: { _hover: { bg: 'red.dark.3', color: 'red.dark.11' } },
+            color: 'fg.muted',
+            _hover: { bg: 'bg.muted', color: 'fg.default' },
           })}
         >
           Delete

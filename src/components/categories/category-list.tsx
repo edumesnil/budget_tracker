@@ -27,12 +27,10 @@ function TypeBadge({ type }: { type: 'INCOME' | 'EXPENSE' }) {
         fontWeight: '500',
         letterSpacing: 'wide',
         fontFamily: 'mono',
-        bg: isIncome ? 'teal.light.3' : 'red.light.3',
-        color: isIncome ? 'teal.light.11' : 'red.light.11',
-        _dark: {
-          bg: isIncome ? 'teal.dark.3' : 'red.dark.3',
-          color: isIncome ? 'teal.dark.11' : 'red.dark.11',
-        },
+        color: isIncome ? 'income' : 'expense',
+        bg: 'bg.muted',
+        borderWidth: '1px',
+        borderColor: 'border.subtle',
       })}
     >
       {type}
@@ -112,9 +110,8 @@ function CategoryRow({
           size="xs"
           onClick={onDelete}
           className={css({
-            color: 'red.default',
-            _hover: { bg: 'red.light.3', color: 'red.light.11' },
-            _dark: { _hover: { bg: 'red.dark.3', color: 'red.dark.11' } },
+            color: 'fg.muted',
+            _hover: { bg: 'bg.muted', color: 'fg.default' },
           })}
         >
           Delete
@@ -226,9 +223,8 @@ export function CategoryList({
                 size="xs"
                 onClick={() => onDeleteGroup(group.id)}
                 className={css({
-                  color: 'red.default',
-                  _hover: { bg: 'red.light.3', color: 'red.light.11' },
-                  _dark: { _hover: { bg: 'red.dark.3', color: 'red.dark.11' } },
+                  color: 'fg.muted',
+                  _hover: { bg: 'bg.muted', color: 'fg.default' },
                 })}
               >
                 Delete
@@ -255,7 +251,7 @@ export function CategoryList({
                 type="button"
                 onClick={() => onAddCategory(group.id)}
                 className={css({
-                  color: 'teal.default',
+                  color: 'colorPalette.11',
                   textDecoration: 'underline',
                   cursor: 'pointer',
                   background: 'none',
@@ -263,7 +259,7 @@ export function CategoryList({
                   fontSize: 'inherit',
                   fontFamily: 'inherit',
                   padding: '0',
-                  _hover: { color: 'teal.emphasized' },
+                  _hover: { color: 'colorPalette.9' },
                 })}
               >
                 Add one
