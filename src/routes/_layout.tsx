@@ -62,15 +62,17 @@ export function DashboardLayout() {
         overflow: 'hidden',
       })}
     >
-      {/* Sidebar — always dark, tool-panel feel */}
+      {/* Sidebar — always dark. Uses style prop for color to escape CSS layer cascade:
+           Park UI's globalCss sets body { color: fg.default } as UNLAYERED,
+           which beats all @layer utilities. style prop is also unlayered. */}
       <aside
+        style={{ color: 'var(--colors-sidebar-fg)', backgroundColor: 'var(--colors-sidebar-bg)' }}
         className={css({
           display: 'flex',
           flexDirection: 'column',
           width: '56',
           minWidth: '56',
           height: '100vh',
-          bg: 'sidebarBg',
           borderRight: '1px solid',
           borderColor: 'sidebarBorder',
           flexShrink: 0,
