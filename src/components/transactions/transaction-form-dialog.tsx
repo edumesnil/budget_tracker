@@ -1,0 +1,317 @@
+import { useEffect, useMemo } from 'react'
+import { useForm, Controller } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { createListCollection } from '@ark-ui/react/select'
+import { css } from '../../../styled-system/css'
+import * as Dialog from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import * as Select from '@/components/ui/select'
+import * as Checkbox from '@/components/ui/checkbox'
+import type { Transaction } from '@/types/database'
+import type { GroupWithCategories } from '@/hooks/use-categories'
+
+// ---------------------------------------------------------------------------
+// Schema
+// ---------------------------------------------------------------------------
+
+const schema = z.object({
+  amount: z.number().positive('Amount must be positive'),
+  date: z.string().min(1, 'Date is required'),
+  description: z.string().optional(),
+  notes: z.string().optional(),
+  category_id: z.string().uuid().nullable(),
+  is_recurring: z.boolean(),
+})
+
+type FormValues = z.infer<typeof schema>
+
+// ---------------------------------------------------------------------------
+// Props
+// ---------------------------------------------------------------------------
+
+interface TransactionFormDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  transaction: Transaction | null
+  groups: GroupWithCategories[]
+  onSubmit: (data: FormValues) => Promise<void>
+  isSubmitting: boolean
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
+export function TransactionFormDialog({
+  open,
+  onOpenChange,
+  transaction,
+  groups,
+  onSubmit,
+  isSubmitting,
+}: TransactionFormDialogProps) {
+  const isEditing = transaction !== null
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    control,
+    formState: { errors },
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      amount: 0,
+      date: '',
+      description: '',
+      notes: '',
+      category_id: null,
+      is_recurring: false,
+    },
+  })
+
+  useEffect(() => {
+    if (open) {
+      reset({
+        amount: transaction ? Number(transaction.amount) : ('' as unknown as number),
+        date: transaction?.date ?? new Date().toISOString().split('T')[0],
+        description: transaction?.description ?? '',
+        notes: transaction?.notes ?? '',
+        category_id: transaction?.category_id ?? null,
+        is_recurring: transaction?.is_recurring ?? false,
+      })
+    }
+  }, [open, transaction, reset])
+
+  const handleFormSubmit = handleSubmit(async (data) => {
+    await onSubmit(data)
+  })
+
+  // Build a flat list with a "none" option plus grouped items
+  // We keep it flat for createListCollection but render groups visually
+  const categoryItems = useMemo(() => {
+    const items: { label: string; value: string; group: string }[] = [
+      { label: 'No category', value: '__none__', group: '' },
+    ]
+    for (const g of groups) {
+      if (g.id === '__ungrouped__') continue
+      for (const cat of g.categories) {
+        items.push({ label: cat.name, value: cat.id, group: g.name })
+      }
+    }
+    // Ungrouped categories
+    const ungrouped = groups.find((g) => g.id === '__ungrouped__')
+    if (ungrouped) {
+      for (const cat of ungrouped.categories) {
+        items.push({ label: cat.name, value: cat.id, group: 'Ungrouped' })
+      }
+    }
+    return items
+  }, [groups])
+
+  const categoryCollection = useMemo(
+    () => createListCollection({ items: categoryItems }),
+    [categoryItems],
+  )
+
+  // Group the items by their group name for rendering ItemGroup sections
+  const groupedItems = useMemo(() => {
+    const map = new Map<string, typeof categoryItems>()
+    map.set('', [{ label: 'No category', value: '__none__', group: '' }])
+    for (const item of categoryItems) {
+      if (item.value === '__none__') continue
+      const existing = map.get(item.group) ?? []
+      existing.push(item)
+      map.set(item.group, existing)
+    }
+    return map
+  }, [categoryItems])
+
+  const fieldClass = css({ display: 'flex', flexDir: 'column', gap: '1.5' })
+  const labelClass = css({ fontSize: 'sm', fontWeight: '500', color: 'fg.default' })
+  const errorClass = css({ fontSize: 'xs', color: 'red.default' })
+
+  return (
+    <Dialog.Root open={open} onOpenChange={(d: { open: boolean }) => onOpenChange(d.open)}>
+      <Dialog.Backdrop />
+      <Dialog.Positioner>
+        <Dialog.Content className={css({ maxW: 'md', w: 'full' })}>
+          <form onSubmit={handleFormSubmit}>
+            <Dialog.Header>
+              <Dialog.Title>{isEditing ? 'Edit transaction' : 'New transaction'}</Dialog.Title>
+              <Dialog.Description>
+                {isEditing
+                  ? 'Update the transaction details.'
+                  : 'Add a new transaction manually.'}
+              </Dialog.Description>
+            </Dialog.Header>
+
+            <Dialog.Body className={css({ display: 'flex', flexDir: 'column', gap: '4' })}>
+              {/* Amount */}
+              <div className={fieldClass}>
+                <label htmlFor="tx-amount" className={labelClass}>
+                  Amount *
+                </label>
+                <Input
+                  id="tx-amount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  {...register('amount', { valueAsNumber: true })}
+                />
+                {errors.amount && <p className={errorClass}>{errors.amount.message}</p>}
+              </div>
+
+              {/* Date */}
+              <div className={fieldClass}>
+                <label htmlFor="tx-date" className={labelClass}>
+                  Date *
+                </label>
+                <Input
+                  id="tx-date"
+                  type="date"
+                  {...register('date')}
+                />
+                {errors.date && <p className={errorClass}>{errors.date.message}</p>}
+              </div>
+
+              {/* Description */}
+              <div className={fieldClass}>
+                <label htmlFor="tx-description" className={labelClass}>
+                  Description
+                </label>
+                <Input
+                  id="tx-description"
+                  placeholder="e.g., Grocery run, Netflix"
+                  {...register('description')}
+                />
+              </div>
+
+              {/* Category */}
+              <div className={fieldClass}>
+                <label className={labelClass}>Category</label>
+                <Controller
+                  name="category_id"
+                  control={control}
+                  render={({ field }) => (
+                    <Select.Root
+                      collection={categoryCollection}
+                      value={field.value ? [field.value] : ['__none__']}
+                      onValueChange={(d: { value: string[] }) => {
+                        const sel = d.value[0]
+                        field.onChange(sel === '__none__' ? null : sel)
+                      }}
+                    >
+                      <Select.Control>
+                        <Select.Trigger>
+                          <Select.ValueText placeholder="Select a category" />
+                        </Select.Trigger>
+                        <Select.Indicator />
+                      </Select.Control>
+                      <Select.Positioner>
+                        <Select.Content
+                          className={css({ maxH: '64', overflowY: 'auto' })}
+                        >
+                          {/* No category option */}
+                          <Select.Item item={{ label: 'No category', value: '__none__', group: '' }}>
+                            <Select.ItemText>No category</Select.ItemText>
+                            <Select.ItemIndicator />
+                          </Select.Item>
+
+                          {/* Grouped categories */}
+                          {Array.from(groupedItems.entries())
+                            .filter(([group]) => group !== '')
+                            .map(([group, items]) => (
+                              <Select.ItemGroup key={group}>
+                                <Select.ItemGroupLabel
+                                  className={css({
+                                    fontSize: 'xs',
+                                    fontWeight: '600',
+                                    color: 'fg.muted',
+                                    letterSpacing: 'wider',
+                                    textTransform: 'uppercase',
+                                    px: '3',
+                                    py: '1.5',
+                                  })}
+                                >
+                                  {group}
+                                </Select.ItemGroupLabel>
+                                {items.map((item) => (
+                                  <Select.Item key={item.value} item={item}>
+                                    <Select.ItemText>{item.label}</Select.ItemText>
+                                    <Select.ItemIndicator />
+                                  </Select.Item>
+                                ))}
+                              </Select.ItemGroup>
+                            ))}
+                        </Select.Content>
+                      </Select.Positioner>
+                    </Select.Root>
+                  )}
+                />
+                {errors.category_id && (
+                  <p className={errorClass}>{errors.category_id.message}</p>
+                )}
+              </div>
+
+              {/* Notes */}
+              <div className={fieldClass}>
+                <label htmlFor="tx-notes" className={labelClass}>
+                  Notes
+                </label>
+                <Input
+                  id="tx-notes"
+                  placeholder="Optional note"
+                  {...register('notes')}
+                />
+              </div>
+
+              {/* Recurring */}
+              <div className={css({ display: 'flex', alignItems: 'center', gap: '2.5' })}>
+                <Controller
+                  name="is_recurring"
+                  control={control}
+                  render={({ field }) => (
+                    <Checkbox.Root
+                      id="tx-recurring"
+                      checked={field.value}
+                      onCheckedChange={(d) => field.onChange(d.checked === true)}
+                    >
+                      <Checkbox.Control>
+                        <Checkbox.Indicator />
+                      </Checkbox.Control>
+                      <Checkbox.Label
+                        className={css({
+                          fontSize: 'sm',
+                          color: 'fg.default',
+                          cursor: 'pointer',
+                        })}
+                      >
+                        Recurring transaction
+                      </Checkbox.Label>
+                      <Checkbox.HiddenInput />
+                    </Checkbox.Root>
+                  )}
+                />
+              </div>
+            </Dialog.Body>
+
+            <Dialog.Footer>
+              <Dialog.CloseTrigger asChild>
+                <Button variant="outline" type="button" disabled={isSubmitting}>
+                  Cancel
+                </Button>
+              </Dialog.CloseTrigger>
+              <Button type="submit" loading={isSubmitting}>
+                {isEditing ? 'Save changes' : 'Add transaction'}
+              </Button>
+            </Dialog.Footer>
+          </form>
+        </Dialog.Content>
+      </Dialog.Positioner>
+    </Dialog.Root>
+  )
+}
