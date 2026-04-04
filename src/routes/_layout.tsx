@@ -70,9 +70,9 @@ export function DashboardLayout() {
           width: '56',
           minWidth: '56',
           height: '100vh',
-          bg: 'sidebar.bg',
+          bg: 'sidebarBg',
           borderRight: '1px solid',
-          borderColor: 'sidebar.border',
+          borderColor: 'sidebarBorder',
           flexShrink: 0,
         })}
       >
@@ -85,7 +85,7 @@ export function DashboardLayout() {
             px: '5',
             py: '4',
             borderBottom: '1px solid',
-            borderColor: 'sidebar.border',
+            borderColor: 'sidebarBorder',
           })}
         >
           <div
@@ -102,7 +102,7 @@ export function DashboardLayout() {
               fontSize: 'sm',
               fontWeight: '600',
               letterSpacing: 'tight',
-              color: 'sidebar.fg',
+              color: 'sidebarFg',
             })}
           >
             Budget
@@ -136,12 +136,12 @@ export function DashboardLayout() {
                   fontSize: 'sm',
                   fontWeight: isActive ? '500' : '400',
                   transition: 'background 150ms ease, color 150ms ease',
-                  color: isActive ? 'sidebar.fg' : 'sidebar.fg.muted',
-                  bg: isActive ? 'sidebar.active' : 'transparent',
+                  color: isActive ? 'sidebarFg' : 'sidebarFgMuted',
+                  bg: isActive ? 'sidebarActive' : 'transparent',
                   textDecoration: 'none',
                   _hover: {
-                    bg: 'sidebar.hover',
-                    color: 'sidebar.fg',
+                    bg: 'sidebarHover',
+                    color: 'sidebarFg',
                   },
                 })
               }
@@ -156,7 +156,7 @@ export function DashboardLayout() {
         <div
           className={css({
             borderTop: '1px solid',
-            borderColor: 'sidebar.border',
+            borderColor: 'sidebarBorder',
             p: '3',
             display: 'flex',
             flexDirection: 'column',
@@ -192,7 +192,7 @@ export function DashboardLayout() {
             <p
               className={css({
                 fontSize: 'xs',
-                color: 'sidebar.fg.muted',
+                color: 'sidebarFgMuted',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
@@ -214,14 +214,14 @@ export function DashboardLayout() {
               py: '2',
               borderRadius: 'md',
               fontSize: 'sm',
-              color: 'sidebar.fg.muted',
+              color: 'sidebarFgMuted',
               cursor: 'pointer',
               bg: 'transparent',
               border: 'none',
               textAlign: 'left',
               _hover: {
-                bg: 'sidebar.hover',
-                color: 'sidebar.fg',
+                bg: 'sidebarHover',
+                color: 'sidebarFg',
               },
               transition: 'background 150ms ease, color 150ms ease',
             })}
