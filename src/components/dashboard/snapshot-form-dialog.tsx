@@ -169,6 +169,7 @@ export function SnapshotFormDialog({
                       <Select.Control>
                         <Select.Trigger>
                           <Select.ValueText placeholder="Select type" />
+                        <Select.Indicator />
                         </Select.Trigger>
                         <Select.Indicator />
                       </Select.Control>
