@@ -7,7 +7,7 @@ export default function BudgetsPage() {
         className={css({
           fontSize: '3xl',
           fontWeight: 'bold',
-          color: 'fg',
+          color: 'fg.default',
         })}
       >
         Budgets

@@ -8,10 +8,6 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import type { CategoryGroup } from '@/types/database'
 
-// ---------------------------------------------------------------------------
-// Schema
-// ---------------------------------------------------------------------------
-
 const groupSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   icon: z.string().optional(),
@@ -20,10 +16,6 @@ const groupSchema = z.object({
 
 type GroupFormValues = z.infer<typeof groupSchema>
 
-// ---------------------------------------------------------------------------
-// Props
-// ---------------------------------------------------------------------------
-
 interface GroupFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -31,10 +23,6 @@ interface GroupFormDialogProps {
   onSubmit: (data: GroupFormValues) => Promise<void>
   isSubmitting: boolean
 }
-
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
 
 export function GroupFormDialog({
   open,
@@ -52,14 +40,9 @@ export function GroupFormDialog({
     formState: { errors },
   } = useForm<GroupFormValues>({
     resolver: zodResolver(groupSchema),
-    defaultValues: {
-      name: '',
-      icon: '',
-      color: '',
-    },
+    defaultValues: { name: '', icon: '', color: '' },
   })
 
-  // Reset form when dialog opens or group changes
   useEffect(() => {
     if (open) {
       reset({
@@ -78,75 +61,62 @@ export function GroupFormDialog({
     })
   })
 
+  const fieldClass = css({ display: 'flex', flexDir: 'column', gap: '1.5' })
+  const labelClass = css({ fontSize: 'sm', fontWeight: '500', color: 'fg.default' })
+  const errorClass = css({ fontSize: 'xs', color: 'fg.error' })
+
   return (
-    <Dialog.Root open={open} onOpenChange={(details: { open: boolean }) => onOpenChange(details.open)}>
+    <Dialog.Root open={open} onOpenChange={(d: { open: boolean }) => onOpenChange(d.open)}>
       <Dialog.Backdrop />
       <Dialog.Positioner>
         <Dialog.Content className={css({ maxW: 'md', w: 'full' })}>
           <form onSubmit={handleFormSubmit}>
             <Dialog.Header>
-              <Dialog.Title>
-                {isEditing ? 'Edit Group' : 'New Group'}
-              </Dialog.Title>
+              <Dialog.Title>{isEditing ? 'Edit group' : 'New group'}</Dialog.Title>
               <Dialog.Description>
                 {isEditing
                   ? 'Update the category group details.'
-                  : 'Create a new category group to organize your categories.'}
+                  : 'Create a group to organize related categories.'}
               </Dialog.Description>
             </Dialog.Header>
 
             <Dialog.Body className={css({ display: 'flex', flexDir: 'column', gap: '4' })}>
-              {/* Name */}
-              <div className={css({ display: 'flex', flexDir: 'column', gap: '1.5' })}>
-                <label
-                  htmlFor="group-name"
-                  className={css({ fontSize: 'sm', fontWeight: 'medium' })}
-                >
+              <div className={fieldClass}>
+                <label htmlFor="group-name" className={labelClass}>
                   Name *
                 </label>
                 <Input
                   id="group-name"
-                  placeholder="e.g., MAISON, AUTO, NOURRITURE"
+                  placeholder="e.g., Housing, Transportation, Food"
                   {...register('name')}
                 />
-                {errors.name && (
-                  <p className={css({ fontSize: 'sm', color: 'red.500' })}>
-                    {errors.name.message}
-                  </p>
-                )}
+                {errors.name && <p className={errorClass}>{errors.name.message}</p>}
               </div>
 
-              {/* Icon */}
-              <div className={css({ display: 'flex', flexDir: 'column', gap: '1.5' })}>
-                <label
-                  htmlFor="group-icon"
-                  className={css({ fontSize: 'sm', fontWeight: 'medium' })}
-                >
+              <div className={fieldClass}>
+                <label htmlFor="group-icon" className={labelClass}>
                   Icon
                 </label>
                 <Input
                   id="group-icon"
-                  placeholder="e.g., Home, Car, ShoppingCart"
+                  placeholder="e.g., 🏠  🚗  🛒"
                   {...register('icon')}
                 />
               </div>
 
-              {/* Color */}
-              <div className={css({ display: 'flex', flexDir: 'column', gap: '1.5' })}>
-                <label
-                  htmlFor="group-color"
-                  className={css({ fontSize: 'sm', fontWeight: 'medium' })}
-                >
+              <div className={fieldClass}>
+                <label htmlFor="group-color" className={labelClass}>
                   Color
                 </label>
                 <div className={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
                   <Input
-                    id="group-color"
+                    id="group-color-swatch"
                     type="color"
-                    className={css({ w: '12', h: '10', p: '1', cursor: 'pointer' })}
+                    className={css({ w: '10', h: '9', p: '1', cursor: 'pointer', flex: 'none' })}
                     {...register('color')}
                   />
                   <Input
+                    id="group-color"
                     placeholder="#6366f1"
                     className={css({ flex: '1' })}
                     {...register('color')}
@@ -155,20 +125,14 @@ export function GroupFormDialog({
               </div>
             </Dialog.Body>
 
-            <Dialog.Footer className={css({ display: 'flex', gap: '3', justifyContent: 'flex-end' })}>
+            <Dialog.Footer>
               <Dialog.CloseTrigger asChild>
                 <Button variant="outline" type="button" disabled={isSubmitting}>
                   Cancel
                 </Button>
               </Dialog.CloseTrigger>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting
-                  ? isEditing
-                    ? 'Updating...'
-                    : 'Creating...'
-                  : isEditing
-                    ? 'Update Group'
-                    : 'Create Group'}
+              <Button type="submit" loading={isSubmitting}>
+                {isEditing ? 'Save changes' : 'Create group'}
               </Button>
             </Dialog.Footer>
           </form>

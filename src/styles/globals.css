@@ -1,10 +1,61 @@
 @layer reset, base, tokens, recipes, utilities;
 
+/* Base resets and typography */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
+  font-family: "DM Sans", system-ui, -apple-system, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: var(--colors-bg-canvas);
+  color: var(--colors-fg-default);
+}
+
+/* Numbers and financial figures use mono */
+.mono,
+[data-mono],
+.tabular-nums {
+  font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Focus visible styles */
+:focus-visible {
+  outline: 2px solid var(--colors-teal-default);
+  outline-offset: 2px;
+}
+
+/* Remove default link styles */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--colors-border-muted);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--colors-border-default);
 }

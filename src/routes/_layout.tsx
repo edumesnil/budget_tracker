@@ -3,7 +3,15 @@ import { useAuth } from '@/hooks/use-auth'
 import { useTheme } from '@/hooks/use-theme'
 import { css } from '../../styled-system/css'
 import { Spinner } from '@/components/ui/spinner'
-import { LayoutDashboard, ArrowLeftRight, PiggyBank, Tags, Sun, Moon, LogOut } from 'lucide-react'
+import {
+  LayoutDashboard,
+  ArrowLeftRight,
+  PiggyBank,
+  Tags,
+  Sun,
+  Moon,
+  LogOut,
+} from 'lucide-react'
 
 const NAV_ITEMS = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -18,7 +26,6 @@ export function DashboardLayout() {
   const isDark = theme === 'dark'
   const location = useLocation()
 
-  // Show loading spinner while checking auth
   if (isLoading) {
     return (
       <div
@@ -27,28 +34,25 @@ export function DashboardLayout() {
           alignItems: 'center',
           justifyContent: 'center',
           height: '100vh',
-          bg: 'bg',
+          bg: 'bg.canvas',
         })}
       >
         <Spinner
           className={css({
             width: '8',
             height: '8',
-            color: 'accent.default',
+            color: 'teal.default',
           })}
         />
       </div>
     )
   }
 
-  // Auth guard: redirect to login if not authenticated
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 
-  const handleSignOut = async () => {
-    await signOut()
-  }
+  const initial = user.email?.charAt(0).toUpperCase() ?? 'U'
 
   return (
     <div
@@ -58,41 +62,50 @@ export function DashboardLayout() {
         overflow: 'hidden',
       })}
     >
-      {/* Sidebar */}
+      {/* Sidebar — always dark, tool-panel feel */}
       <aside
         className={css({
           display: 'flex',
           flexDirection: 'column',
-          width: '60',
-          minWidth: '60',
+          width: '56',
+          minWidth: '56',
           height: '100vh',
-          bg: { base: 'gray.900', _dark: 'gray.950' },
-          color: 'white',
+          bg: 'sidebar.bg',
           borderRight: '1px solid',
-          borderColor: { base: 'gray.800', _dark: 'gray.800' },
+          borderColor: 'sidebar.border',
           flexShrink: 0,
         })}
       >
-        {/* Logo */}
+        {/* Wordmark */}
         <div
           className={css({
             display: 'flex',
             alignItems: 'center',
-            gap: '3',
-            px: '6',
-            py: '5',
+            gap: '2.5',
+            px: '5',
+            py: '4',
             borderBottom: '1px solid',
-            borderColor: 'gray.800',
+            borderColor: 'sidebar.border',
           })}
         >
+          <div
+            className={css({
+              width: '6',
+              height: '6',
+              rounded: 'sm',
+              bg: 'teal.9',
+              flexShrink: 0,
+            })}
+          />
           <span
             className={css({
-              fontSize: 'lg',
-              fontWeight: 'bold',
+              fontSize: 'sm',
+              fontWeight: '600',
               letterSpacing: 'tight',
+              color: 'sidebar.fg',
             })}
           >
-            Budget Tracker
+            Budget
           </span>
         </div>
 
@@ -100,11 +113,12 @@ export function DashboardLayout() {
         <nav
           className={css({
             flex: 1,
-            py: '4',
-            px: '3',
+            py: '3',
+            px: '2',
             display: 'flex',
             flexDirection: 'column',
-            gap: '1',
+            gap: '0.5',
+            overflowY: 'auto',
           })}
         >
           {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
@@ -115,103 +129,104 @@ export function DashboardLayout() {
                 css({
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '3',
+                  gap: '2.5',
                   px: '3',
-                  py: '2.5',
+                  py: '2',
                   borderRadius: 'md',
                   fontSize: 'sm',
-                  fontWeight: 'medium',
-                  transition: 'colors',
-                  transitionDuration: '150ms',
-                  color: isActive ? 'white' : 'gray.400',
-                  bg: isActive ? 'gray.800' : 'transparent',
+                  fontWeight: isActive ? '500' : '400',
+                  transition: 'background 150ms ease, color 150ms ease',
+                  color: isActive ? 'sidebar.fg' : 'sidebar.fg.muted',
+                  bg: isActive ? 'sidebar.active' : 'transparent',
                   textDecoration: 'none',
                   _hover: {
-                    bg: 'gray.800',
-                    color: 'white',
+                    bg: 'sidebar.hover',
+                    color: 'sidebar.fg',
                   },
                 })
               }
             >
-              <Icon size={20} />
+              <Icon size={16} strokeWidth={checkActive(to, location.pathname) ? 2 : 1.5} />
               <span>{label}</span>
             </NavLink>
           ))}
         </nav>
 
-        {/* User section at bottom */}
+        {/* User section */}
         <div
           className={css({
             borderTop: '1px solid',
-            borderColor: 'gray.800',
-            p: '4',
+            borderColor: 'sidebar.border',
+            p: '3',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1',
           })}
         >
           <div
             className={css({
               display: 'flex',
               alignItems: 'center',
-              gap: '3',
-              mb: '3',
+              gap: '2.5',
+              px: '2',
+              py: '1.5',
             })}
           >
             <div
               className={css({
-                width: '8',
-                height: '8',
+                width: '7',
+                height: '7',
                 borderRadius: 'full',
-                bg: 'gray.700',
+                bg: 'teal.dark.4',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: 'sm',
-                fontWeight: 'bold',
+                fontSize: 'xs',
+                fontWeight: '600',
+                color: 'teal.dark.11',
                 flexShrink: 0,
               })}
             >
-              {user.email?.charAt(0).toUpperCase() ?? 'U'}
+              {initial}
             </div>
-            <div
+            <p
               className={css({
+                fontSize: 'xs',
+                color: 'sidebar.fg.muted',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
                 flex: 1,
-                minWidth: 0,
               })}
             >
-              <p
-                className={css({
-                  fontSize: 'sm',
-                  fontWeight: 'medium',
-                  truncate: true,
-                })}
-              >
-                {user.email}
-              </p>
-            </div>
+              {user.email}
+            </p>
           </div>
+
           <button
-            onClick={handleSignOut}
+            onClick={() => signOut()}
             className={css({
               display: 'flex',
               alignItems: 'center',
-              gap: '2',
+              gap: '2.5',
               width: 'full',
               px: '3',
               py: '2',
               borderRadius: 'md',
               fontSize: 'sm',
-              color: 'gray.400',
+              color: 'sidebar.fg.muted',
               cursor: 'pointer',
               bg: 'transparent',
               border: 'none',
+              textAlign: 'left',
               _hover: {
-                bg: 'gray.800',
-                color: 'white',
+                bg: 'sidebar.hover',
+                color: 'sidebar.fg',
               },
-              transition: 'colors',
-              transitionDuration: '150ms',
+              transition: 'background 150ms ease, color 150ms ease',
             })}
           >
-            <LogOut size={18} />
+            <LogOut size={14} />
             <span>Sign out</span>
           </button>
         </div>
@@ -224,6 +239,7 @@ export function DashboardLayout() {
           flexDirection: 'column',
           flex: 1,
           overflow: 'hidden',
+          bg: 'bg.canvas',
         })}
       >
         {/* Topbar */}
@@ -232,11 +248,11 @@ export function DashboardLayout() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'flex-end',
-            height: '14',
+            height: '12',
             px: '6',
             borderBottom: '1px solid',
-            borderColor: 'border',
-            bg: 'bg',
+            borderColor: 'border.subtle',
+            bg: 'bg.canvas',
             flexShrink: 0,
           })}
         >
@@ -247,22 +263,21 @@ export function DashboardLayout() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: '9',
-              height: '9',
+              width: '8',
+              height: '8',
               borderRadius: 'md',
               border: 'none',
               bg: 'transparent',
-              color: 'fg.muted',
+              color: 'fg.subtle',
               cursor: 'pointer',
               _hover: {
-                bg: { base: 'gray.100', _dark: 'gray.800' },
-                color: 'fg',
+                bg: 'bg.subtle',
+                color: 'fg.default',
               },
-              transition: 'colors',
-              transitionDuration: '150ms',
+              transition: 'background 150ms ease, color 150ms ease',
             })}
           >
-            {isDark ? <Sun size={18} /> : <Moon size={18} />}
+            {isDark ? <Sun size={15} /> : <Moon size={15} />}
           </button>
         </header>
 
@@ -271,8 +286,8 @@ export function DashboardLayout() {
           className={css({
             flex: 1,
             overflow: 'auto',
-            bg: 'bg',
-            color: 'fg',
+            bg: 'bg.canvas',
+            color: 'fg.default',
           })}
         >
           <div
@@ -288,4 +303,10 @@ export function DashboardLayout() {
       </div>
     </div>
   )
+}
+
+// Helper to derive active state for icon stroke outside NavLink callback scope
+function checkActive(to: string, pathname: string): boolean {
+  if (to === '/dashboard') return pathname === '/dashboard'
+  return pathname.startsWith(to)
 }

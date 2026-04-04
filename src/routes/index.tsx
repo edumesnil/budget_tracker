@@ -14,14 +14,14 @@ export default function IndexPage() {
           alignItems: 'center',
           justifyContent: 'center',
           height: '100vh',
-          bg: 'bg',
+          bg: 'bg.canvas',
         })}
       >
         <Spinner
           className={css({
             width: '8',
             height: '8',
-            color: 'accent.default',
+            color: 'teal.default',
           })}
         />
       </div>

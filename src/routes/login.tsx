@@ -18,7 +18,6 @@ export default function LoginPage() {
     e.preventDefault()
     setIsSubmitting(true)
     setError(null)
-
     try {
       const { error: signInError } = await signIn(email, password)
       if (signInError) {
@@ -40,130 +39,128 @@ export default function LoginPage() {
         alignItems: 'center',
         justifyContent: 'center',
         minHeight: '100vh',
-        bg: 'bg',
+        bg: 'bg.canvas',
         px: '4',
       })}
     >
-      <Card.Root
+      <div
         className={css({
           width: 'full',
-          maxWidth: 'md',
+          maxWidth: '400px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8',
         })}
       >
-        <Card.Header>
-          <Card.Title className={css({ fontSize: '2xl' })}>
-            Login
-          </Card.Title>
-          <Card.Description>
-            Enter your credentials to access your account
-          </Card.Description>
-        </Card.Header>
-        <Card.Body>
-          <form
-            onSubmit={handleSubmit}
+        {/* Header */}
+        <div className={css({ textAlign: 'center' })}>
+          <div
             className={css({
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '4',
+              width: '10',
+              height: '10',
+              rounded: 'lg',
+              bg: 'teal.9',
+              mx: 'auto',
+              mb: '5',
+            })}
+          />
+          <h1
+            className={css({
+              fontSize: '2xl',
+              fontWeight: '600',
+              color: 'fg.default',
+              letterSpacing: 'tight',
+              mb: '1',
             })}
           >
-            <div
-              className={css({
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '1.5',
-              })}
-            >
-              <label
-                htmlFor="email"
-                className={css({
-                  fontSize: 'sm',
-                  fontWeight: 'medium',
-                  color: 'fg',
-                })}
-              >
-                Email
-              </label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="name@example.com"
-                value={email}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-
-            <div
-              className={css({
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '1.5',
-              })}
-            >
-              <label
-                htmlFor="password"
-                className={css({
-                  fontSize: 'sm',
-                  fontWeight: 'medium',
-                  color: 'fg',
-                })}
-              >
-                Password
-              </label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-
-            {error && (
-              <p
-                className={css({
-                  fontSize: 'sm',
-                  color: 'red.500',
-                })}
-              >
-                {error}
-              </p>
-            )}
-
-            <Button
-              type="submit"
-              width="full"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'Signing in...' : 'Sign In'}
-            </Button>
-          </form>
-        </Card.Body>
-        <Card.Footer
-          className={css({
-            justifyContent: 'center',
-          })}
-        >
-          <p
-            className={css({
-              fontSize: 'sm',
-              color: 'fg.muted',
-            })}
-          >
-            Don't have an account?{' '}
-            <Link
-              to="/register"
-              className={css({
-                color: 'accent.default',
-                _hover: { textDecoration: 'underline' },
-              })}
-            >
-              Register
-            </Link>
+            Sign in
+          </h1>
+          <p className={css({ fontSize: 'sm', color: 'fg.muted' })}>
+            Access your budget tracker
           </p>
-        </Card.Footer>
-      </Card.Root>
+        </div>
+
+        {/* Card */}
+        <Card.Root>
+          <Card.Body className={css({ pt: '6' })}>
+            <form
+              onSubmit={handleSubmit}
+              className={css({ display: 'flex', flexDirection: 'column', gap: '4' })}
+            >
+              <div className={css({ display: 'flex', flexDirection: 'column', gap: '1.5' })}>
+                <label
+                  htmlFor="email"
+                  className={css({ fontSize: 'sm', fontWeight: '500', color: 'fg.default' })}
+                >
+                  Email
+                </label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="name@example.com"
+                  value={email}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                />
+              </div>
+
+              <div className={css({ display: 'flex', flexDirection: 'column', gap: '1.5' })}>
+                <label
+                  htmlFor="password"
+                  className={css({ fontSize: 'sm', fontWeight: '500', color: 'fg.default' })}
+                >
+                  Password
+                </label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                />
+              </div>
+
+              {error && (
+                <p
+                  className={css({
+                    fontSize: 'sm',
+                    color: 'fg.error',
+                    bg: 'red.light.3',
+                    px: '3',
+                    py: '2',
+                    rounded: 'md',
+                  })}
+                >
+                  {error}
+                </p>
+              )}
+
+              <Button type="submit" width="full" loading={isSubmitting} loadingText="Signing in...">
+                Sign in
+              </Button>
+            </form>
+          </Card.Body>
+          <Card.Footer
+            className={css({ justifyContent: 'center', borderTop: '1px solid', borderColor: 'border.subtle' })}
+          >
+            <p className={css({ fontSize: 'sm', color: 'fg.muted' })}>
+              No account?{' '}
+              <Link
+                to="/register"
+                className={css({
+                  color: 'teal.default',
+                  fontWeight: '500',
+                  _hover: { textDecoration: 'underline' },
+                })}
+              >
+                Register
+              </Link>
+            </p>
+          </Card.Footer>
+        </Card.Root>
+      </div>
     </div>
   )
 }
