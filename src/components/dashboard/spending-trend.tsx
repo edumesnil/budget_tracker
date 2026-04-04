@@ -12,6 +12,7 @@ import {
 import { css } from '../../../styled-system/css'
 import { formatCurrency } from '@/lib/utils'
 import type { Transaction } from '@/types/database'
+import * as Card from '@/components/ui/card'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -64,25 +65,16 @@ function CustomTooltip({ active, payload, label }: {
   if (!active || !payload?.length) return null
 
   return (
-    <div
-      className={css({
-        borderWidth: '1px',
-        borderColor: 'border.default',
-        rounded: 'md',
-        bg: 'bg.default',
-        px: '3',
-        py: '2',
-        shadow: 'sm',
-        fontSize: 'xs',
-      })}
-    >
-      <p className={css({ fontWeight: '600', color: 'fg.default', mb: '1' })}>{label}</p>
-      {payload.map((p) => (
-        <p key={p.name} className={css({ color: 'fg.muted', fontFamily: 'mono' })} style={{ color: p.color }}>
-          {p.name}: {formatCurrency(p.value)}
-        </p>
-      ))}
-    </div>
+    <Card.Root>
+      <Card.Body className={css({ px: '3', py: '2', fontSize: 'xs' })}>
+        <p className={css({ fontWeight: '600', color: 'fg.default', mb: '1' })}>{label}</p>
+        {payload.map((p) => (
+          <p key={p.name} className={css({ color: 'fg.muted', fontFamily: 'mono' })} style={{ color: p.color }}>
+            {p.name}: {formatCurrency(p.value)}
+          </p>
+        ))}
+      </Card.Body>
+    </Card.Root>
   )
 }
 

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Toaster, toaster } from '@/components/ui/toast'
 import { formatCurrency, getCurrentPeriod } from '@/lib/utils'
 import type { Transaction } from '@/types/database'
+import * as Card from '@/components/ui/card'
 
 // ---------------------------------------------------------------------------
 // Month label helper
@@ -221,109 +222,88 @@ export default function TransactionsPage() {
           })}
         >
           {/* Income */}
-          <div
-            className={css({
-              px: '4',
-              py: '3',
-              borderWidth: '1px',
-              borderColor: 'border.default',
-              rounded: 'lg',
-              bg: 'bg.default',
-            })}
-          >
-            <p
-              className={css({
-                fontSize: 'xs',
-                fontWeight: '600',
-                color: 'fg.muted',
-                letterSpacing: 'wide',
-                textTransform: 'uppercase',
-                mb: '1',
-              })}
-            >
-              Income
-            </p>
-            <p
-              className={css({
-                fontSize: 'lg',
-                fontWeight: '600',
-                fontFamily: 'mono',
-                color: 'income',
-              })}
-            >
-              +{formatCurrency(totals.totalIncome)}
-            </p>
-          </div>
+          <Card.Root>
+            <Card.Body>
+              <p
+                className={css({
+                  fontSize: 'xs',
+                  fontWeight: '600',
+                  color: 'fg.muted',
+                  letterSpacing: 'wide',
+                  textTransform: 'uppercase',
+                  mb: '1',
+                })}
+              >
+                Income
+              </p>
+              <p
+                className={css({
+                  fontSize: 'lg',
+                  fontWeight: '600',
+                  fontFamily: 'mono',
+                  color: 'income',
+                })}
+              >
+                +{formatCurrency(totals.totalIncome)}
+              </p>
+            </Card.Body>
+          </Card.Root>
 
           {/* Expenses */}
-          <div
-            className={css({
-              px: '4',
-              py: '3',
-              borderWidth: '1px',
-              borderColor: 'border.default',
-              rounded: 'lg',
-              bg: 'bg.default',
-            })}
-          >
-            <p
-              className={css({
-                fontSize: 'xs',
-                fontWeight: '600',
-                color: 'fg.muted',
-                letterSpacing: 'wide',
-                textTransform: 'uppercase',
-                mb: '1',
-              })}
-            >
-              Expenses
-            </p>
-            <p
-              className={css({
-                fontSize: 'lg',
-                fontWeight: '600',
-                fontFamily: 'mono',
-                color: 'expense',
-              })}
-            >
-              −{formatCurrency(totals.totalExpenses)}
-            </p>
-          </div>
+          <Card.Root>
+            <Card.Body>
+              <p
+                className={css({
+                  fontSize: 'xs',
+                  fontWeight: '600',
+                  color: 'fg.muted',
+                  letterSpacing: 'wide',
+                  textTransform: 'uppercase',
+                  mb: '1',
+                })}
+              >
+                Expenses
+              </p>
+              <p
+                className={css({
+                  fontSize: 'lg',
+                  fontWeight: '600',
+                  fontFamily: 'mono',
+                  color: 'expense',
+                })}
+              >
+                −{formatCurrency(totals.totalExpenses)}
+              </p>
+            </Card.Body>
+          </Card.Root>
 
           {/* Net */}
-          <div
-            className={css({
-              px: '4',
-              py: '3',
-              borderWidth: '1px',
-              borderColor: 'border.default',
-              rounded: 'lg',
-              bg: 'bg.default',
-            })}
-          >
-            <p
-              className={css({
-                fontSize: 'xs',
-                fontWeight: '600',
-                color: 'fg.muted',
-                letterSpacing: 'wide',
-                textTransform: 'uppercase',
-                mb: '1',
-              })}
-            >
-              Net
-            </p>
-            <p
-              className={css({
-                fontSize: 'lg',
-                fontWeight: '600',
-                fontFamily: 'mono',
-                color: netPositive ? 'income' : 'expense',
-              })}
-            >
-              {netPositive ? '+' : '−'}{formatCurrency(Math.abs(net))}
-            </p>
-          </div>
+          <Card.Root>
+            <Card.Body>
+              <p
+                className={css({
+                  fontSize: 'xs',
+                  fontWeight: '600',
+                  color: 'fg.muted',
+                  letterSpacing: 'wide',
+                  textTransform: 'uppercase',
+                  mb: '1',
+                })}
+              >
+                Net
+              </p>
+              <p
+                className={css({
+                  fontSize: 'lg',
+                  fontWeight: '600',
+                  fontFamily: 'mono',
+                  color: netPositive ? 'income' : 'expense',
+                })}
+              >
+                {netPositive ? '+' : '−'}{formatCurrency(Math.abs(net))}
+              </p>
+            </Card.Body>
+          </Card.Root>
         </div>
       )}
 
