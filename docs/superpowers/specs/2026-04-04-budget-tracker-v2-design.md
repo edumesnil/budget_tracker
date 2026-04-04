@@ -448,6 +448,7 @@ After importing a statement, the dashboard switches to review mode:
 - **Transactions** — filterable list, manual quick-add form, and the import review UI
 - **Categories** — manage groups and categories
 - **Import** — upload bank statements (PDF/CSV), AI-categorized review, batch confirm
+- **Year overview** — secondary analytical view showing the full year of budget vs actual data. Not a raw spreadsheet table — designed as a digestible summary. Could be a heatmap of over/under budget by category/month, sparklines per category showing monthly progression, or collapsible group sections with yearly totals. Exact presentation to be explored during prototyping. The data is there (budgets + transactions by month); this is a visualization challenge, not a data challenge.
 
 ## Import Pipeline Design
 
