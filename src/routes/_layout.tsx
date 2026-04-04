@@ -62,17 +62,15 @@ export function DashboardLayout() {
         overflow: 'hidden',
       })}
     >
-      {/* Sidebar — always dark, tool-panel feel */}
+      {/* Sidebar — always dark, hardcoded colors */}
       <aside
+        style={{ backgroundColor: '#111113', borderRight: '1px solid #272a2d' }}
         className={css({
           display: 'flex',
           flexDirection: 'column',
           width: '56',
           minWidth: '56',
           height: '100vh',
-          bg: 'sidebar.bg',
-          borderRight: '1px solid',
-          borderColor: 'sidebar.border',
           flexShrink: 0,
         })}
       >
@@ -85,7 +83,7 @@ export function DashboardLayout() {
             px: '5',
             py: '4',
             borderBottom: '1px solid',
-            borderColor: 'sidebar.border',
+            borderColor: '#272a2d',
           })}
         >
           <div
@@ -102,7 +100,7 @@ export function DashboardLayout() {
               fontSize: 'sm',
               fontWeight: '600',
               letterSpacing: 'tight',
-              color: 'sidebar.fg',
+              color: '#edeef0',
             })}
           >
             Budget
@@ -136,12 +134,12 @@ export function DashboardLayout() {
                   fontSize: 'sm',
                   fontWeight: isActive ? '500' : '400',
                   transition: 'background 150ms ease, color 150ms ease',
-                  color: isActive ? 'sidebar.fg' : 'sidebar.fg.muted',
-                  bg: isActive ? 'sidebar.active' : 'transparent',
+                  color: isActive ? '#edeef0' : '#777b84',
+                  bg: isActive ? '#272a2d' : 'transparent',
                   textDecoration: 'none',
                   _hover: {
-                    bg: 'sidebar.hover',
-                    color: 'sidebar.fg',
+                    bg: '#212225',
+                    color: '#edeef0',
                   },
                 })
               }
@@ -156,7 +154,7 @@ export function DashboardLayout() {
         <div
           className={css({
             borderTop: '1px solid',
-            borderColor: 'sidebar.border',
+            borderColor: '#272a2d',
             p: '3',
             display: 'flex',
             flexDirection: 'column',
@@ -192,7 +190,7 @@ export function DashboardLayout() {
             <p
               className={css({
                 fontSize: 'xs',
-                color: 'sidebar.fg.muted',
+                color: '#777b84',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
@@ -214,14 +212,14 @@ export function DashboardLayout() {
               py: '2',
               borderRadius: 'md',
               fontSize: 'sm',
-              color: 'sidebar.fg.muted',
+              color: '#777b84',
               cursor: 'pointer',
               bg: 'transparent',
               border: 'none',
               textAlign: 'left',
               _hover: {
-                bg: 'sidebar.hover',
-                color: 'sidebar.fg',
+                bg: '#212225',
+                color: '#edeef0',
               },
               transition: 'background 150ms ease, color 150ms ease',
             })}
