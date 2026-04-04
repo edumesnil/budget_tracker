@@ -2,7 +2,8 @@ import { useEffect, useMemo } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { createListCollection } from '@ark-ui/react/select'
+import { createListCollection } from '@ark-ui/react/collection'
+import { Portal } from '@ark-ui/react/portal'
 import { css } from '../../../styled-system/css'
 import * as Dialog from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -130,9 +131,10 @@ export function BudgetFormDialog({
 
   return (
     <Dialog.Root open={open} onOpenChange={(d: { open: boolean }) => onOpenChange(d.open)}>
-      <Dialog.Backdrop />
-      <Dialog.Positioner>
-        <Dialog.Content className={css({ maxW: 'md', w: 'full' })}>
+      <Portal>
+        <Dialog.Backdrop />
+        <Dialog.Positioner>
+          <Dialog.Content className={css({ maxW: 'md', w: 'full' })}>
           <form onSubmit={handleFormSubmit}>
             <Dialog.Header>
               <Dialog.Title>
@@ -164,9 +166,8 @@ export function BudgetFormDialog({
                       <Select.Control>
                         <Select.Trigger>
                           <Select.ValueText placeholder="Select a category" />
-                        <Select.Indicator />
+                          <Select.Indicator />
                         </Select.Trigger>
-                        <Select.Indicator />
                       </Select.Control>
                       <Select.Positioner>
                         <Select.Content
@@ -275,8 +276,9 @@ export function BudgetFormDialog({
               </Button>
             </Dialog.Footer>
           </form>
-        </Dialog.Content>
-      </Dialog.Positioner>
+          </Dialog.Content>
+        </Dialog.Positioner>
+      </Portal>
     </Dialog.Root>
   )
 }
