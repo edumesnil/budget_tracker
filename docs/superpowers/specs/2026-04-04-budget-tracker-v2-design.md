@@ -481,22 +481,73 @@ The import review screen is optimized for speed, not for forms. Keyboard-driven:
 
 If the user quick-added transactions during the month, the import should detect potential duplicates (same amount + similar date + same category) and let the user confirm or dismiss matches.
 
-## LLM Adapter (Future)
+## AI Usage Policy
 
-Placeholder interface only — not built until the import feature is built:
+**Principle: deterministic where possible, AI where necessary.** Financial data needs predictability. Use computed logic and templates for alerts, trends, summaries, and recurring detection. AI is used only for categorizing unknown merchants during import.
+
+### What the AI sees (and doesn't see)
+
+The AI never sees the bank statement document, account numbers, balances, names, or amounts. It receives only:
+- A list of merchant description strings, PII-stripped (e.g., `["METRO PLUS #1234", "SHELL STN 4521"]`)
+- The user's current category list (the ONLY valid classification targets)
+
+### AI guardrails
+
+The categorization is a **constrained classification task**, not open-ended generation:
+- The LLM receives the user's exact category list as the only valid options
+- It must pick from that list or return `UNCATEGORIZED` — never invent new categories
+- Each suggestion includes a confidence score (high/medium/low)
+- High-confidence matches are pre-accepted in the review UI (user can override)
+- Low-confidence and `UNCATEGORIZED` items are highlighted for manual review
+- The user resolves unknowns during batch review — they'll recognize the transaction from the amount, date, and partial description
+
+No web search in the initial implementation. If the AI can't categorize, it says so honestly and the user handles it. Web search can be added later as an optional tool if there's a pattern of unrecognizable merchants.
+
+### PII sanitization pipeline
+
+```
+Raw bank data (CSV/PDF) → local parse → structured rows →
+  Sanitizer strips: account numbers, cardholder names, balances,
+  addresses, any pattern matching PII (SIN, phone, email) →
+    Clean merchant descriptions only → LLM categorization →
+      Results + user corrections → merchant_mappings table
+```
+
+The sanitizer runs locally before any data reaches the LLM adapter, regardless of whether the LLM is local (Ollama) or cloud (Claude/OpenAI). This makes the privacy guarantee architecture-level, not configuration-level.
+
+### AI touchpoints summary
+
+| Use case | Method | Data exposure |
+|---|---|---|
+| PDF text extraction | pdf.js (local) | Nothing |
+| CSV parsing | Local parser | Nothing |
+| Known merchant lookup | Mapping table | Nothing |
+| Unknown merchant categorization | LLM via adapter | Merchant names only, PII-stripped |
+| Budget alerts | Computed logic + templates | Nothing |
+| Trends / summaries | Computed logic | Nothing |
+| Recurring detection | Pattern matching | Nothing |
+| Duplicate detection | Amount + date scoring | Nothing |
+
+### LLM Adapter
 
 ```typescript
 // lib/ai.ts
 export interface AIProvider {
   categorize(
     descriptions: string[],
-    existingCategories: string[]
-  ): Promise<Map<string, string>>  // description → category name
+    categories: { id: string; name: string; group: string }[]
+  ): Promise<Array<{
+    description: string
+    category_id: string | null    // null = UNCATEGORIZED
+    confidence: 'high' | 'medium' | 'low'
+  }>>
 }
 
-// Default implementation will use Ollama on localhost:11434
-// Swappable to Claude, OpenAI, or any provider with the same interface
+// Default: Ollama on localhost:11434
+// Swappable to Claude, OpenAI, or any provider implementing this interface
 ```
+
+Implementation will use the `ai-engineer` skill to ensure proper prompt engineering, structured output handling, and guardrail enforcement.
 
 ## Park UI Components to Install
 
