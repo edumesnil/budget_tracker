@@ -59,7 +59,7 @@ export default function LoginPage() {
               width: '10',
               height: '10',
               rounded: 'lg',
-              bg: 'teal.9',
+              bg: 'colorPalette.9',
               mx: 'auto',
               mb: '5',
             })}
@@ -126,11 +126,13 @@ export default function LoginPage() {
                 <p
                   className={css({
                     fontSize: 'sm',
-                    color: 'fg.error',
-                    bg: 'red.light.3',
+                    color: 'fg.default',
+                    bg: 'bg.muted',
                     px: '3',
                     py: '2',
                     rounded: 'md',
+                    borderWidth: '1px',
+                    borderColor: 'border.default',
                   })}
                 >
                   {error}
@@ -150,7 +152,7 @@ export default function LoginPage() {
               <Link
                 to="/register"
                 className={css({
-                  color: 'teal.default',
+                  color: 'colorPalette.11',
                   fontWeight: '500',
                   _hover: { textDecoration: 'underline' },
                 })}

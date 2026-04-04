@@ -162,8 +162,11 @@ function PreImportView({
             <span className={css({ fontSize: 'xs', color: 'fg.muted' })}>
               Projected net:{' '}
               <span
-                className={css({ fontFamily: 'mono', fontWeight: '600' })}
-                style={{ color: budgetTotals.projectedNet >= 0 ? 'hsl(174, 60%, 35%)' : 'hsl(3, 72%, 54%)' }}
+                className={css({
+                  fontFamily: 'mono',
+                  fontWeight: '600',
+                  color: budgetTotals.projectedNet >= 0 ? 'income' : 'expense',
+                })}
               >
                 {budgetTotals.projectedNet >= 0 ? '+' : '−'}
                 {formatCurrency(Math.abs(budgetTotals.projectedNet))}
@@ -209,8 +212,12 @@ function PreImportView({
                     </span>
                   </div>
                   <span
-                    className={css({ fontSize: 'sm', fontWeight: '600', fontFamily: 'mono' })}
-                    style={{ color: isIncomeGroup ? 'hsl(174, 60%, 35%)' : 'var(--colors-fg-default)' }}
+                    className={css({
+                      fontSize: 'sm',
+                      fontWeight: '600',
+                      fontFamily: 'mono',
+                      color: isIncomeGroup ? 'income' : 'fg.default',
+                    })}
                   >
                     {isIncomeGroup ? '+' : ''}{formatCurrency(displayAmount)}
                   </span>
@@ -286,8 +293,8 @@ function PostImportView({
             fontFamily: 'mono',
             letterSpacing: 'tight',
             lineHeight: '1',
+            color: surplus ? 'income' : 'expense',
           })}
-          style={{ color: surplus ? 'hsl(174, 60%, 35%)' : 'hsl(3, 72%, 54%)' }}
         >
           {surplus ? '+' : '−'}{formatCurrency(Math.abs(net))}
         </p>
