@@ -20,7 +20,7 @@ import type { GroupWithCategories } from "@/hooks/use-categories";
 
 const schema = z.object({
   category_id: z.string().uuid("Category is required"),
-  amount: z.number().positive("Amount must be positive"),
+  amount: z.coerce.number().positive("Amount must be positive"),
   is_recurring: z.boolean(),
 });
 
@@ -78,7 +78,7 @@ export function BudgetFormDialog({
     if (open) {
       reset({
         category_id: budget?.category_id ?? "",
-        amount: budget ? Number(budget.amount) : ("" as unknown as number),
+        amount: budget ? Number(budget.amount) : undefined,
         is_recurring: budget?.is_recurring ?? false,
       });
     }

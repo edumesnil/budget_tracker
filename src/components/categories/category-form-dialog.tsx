@@ -52,6 +52,8 @@ export function CategoryFormDialog({
     handleSubmit,
     reset,
     control,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<CategoryFormValues>({
     resolver: zodResolver(categorySchema),
@@ -75,8 +77,8 @@ export function CategoryFormDialog({
       name: data.name,
       type: data.type,
       group_id: data.group_id,
-      icon: data.icon || undefined,
-      color: data.color || undefined,
+      icon: data.icon || null,
+      color: data.color || null,
     });
   });
 
@@ -186,7 +188,10 @@ export function CategoryFormDialog({
                     <Input
                       type="color"
                       className={css({ w: "10", h: "9", p: "1", cursor: "pointer", flex: "none" })}
-                      {...register("color")}
+                      value={watch("color") || "#6366f1"}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        setValue("color", e.target.value, { shouldValidate: true })
+                      }
                     />
                     <Input
                       placeholder="#6366f1"
