@@ -29,7 +29,7 @@ const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
 const schema = z.object({
   account_name: z.string().min(1, "Account name is required"),
   account_type: z.enum(["CELI", "REER", "REEE", "EMERGENCY", "OTHER"]),
-  balance: z.number({ error: "Balance is required" }).min(0, "Balance must be 0 or more"),
+  balance: z.coerce.number({ error: "Balance is required" }).min(0, "Balance must be 0 or more"),
   snapshot_date: z.string().min(1, "Date is required"),
 });
 
@@ -78,7 +78,7 @@ export function SnapshotFormDialog({
     defaultValues: {
       account_name: "",
       account_type: "CELI",
-      balance: "" as unknown as number,
+      balance: undefined,
       snapshot_date: today(),
     },
   });
@@ -88,7 +88,7 @@ export function SnapshotFormDialog({
       reset({
         account_name: "",
         account_type: "CELI",
-        balance: "" as unknown as number,
+        balance: undefined,
         snapshot_date: today(),
       });
     }

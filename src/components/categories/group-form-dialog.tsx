@@ -39,6 +39,8 @@ export function GroupFormDialog({
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<GroupFormValues>({
     resolver: zodResolver(groupSchema),
@@ -58,8 +60,8 @@ export function GroupFormDialog({
   const handleFormSubmit = handleSubmit(async (data) => {
     await onSubmit({
       name: data.name,
-      icon: data.icon || undefined,
-      color: data.color || undefined,
+      icon: data.icon || null,
+      color: data.color || null,
     });
   });
 
@@ -97,7 +99,10 @@ export function GroupFormDialog({
                     <Input
                       type="color"
                       className={css({ w: "10", h: "9", p: "1", cursor: "pointer", flex: "none" })}
-                      {...register("color")}
+                      value={watch("color") || "#6366f1"}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        setValue("color", e.target.value, { shouldValidate: true })
+                      }
                     />
                     <Input
                       placeholder="#6366f1"

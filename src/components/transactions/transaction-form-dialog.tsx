@@ -19,7 +19,7 @@ import type { GroupWithCategories } from "@/hooks/use-categories";
 // ---------------------------------------------------------------------------
 
 const schema = z.object({
-  amount: z.number().positive("Amount must be positive"),
+  amount: z.coerce.number().positive("Amount must be positive"),
   date: z.string().min(1, "Date is required"),
   description: z.string().optional(),
   notes: z.string().optional(),
@@ -77,7 +77,7 @@ export function TransactionFormDialog({
   useEffect(() => {
     if (open) {
       reset({
-        amount: transaction ? Number(transaction.amount) : ("" as unknown as number),
+        amount: transaction ? Number(transaction.amount) : undefined,
         date: transaction?.date ?? new Date().toISOString().split("T")[0],
         description: transaction?.description ?? "",
         notes: transaction?.notes ?? "",
