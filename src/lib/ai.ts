@@ -27,6 +27,7 @@ export interface AIProvider {
     descriptions: string[],
     categories: CategoryOption[],
     existingMappings?: MerchantMapping[],
+    types?: Array<"INCOME" | "EXPENSE">,
   ): Promise<CategorizationResult[]>;
 }
 
@@ -83,6 +84,7 @@ function buildPrompt(
   descriptions: string[],
   categories: CategoryOption[],
   mappings: MerchantMapping[],
+  types?: Array<"INCOME" | "EXPENSE">,
 ): BuiltPrompt {
   // Assign short numeric IDs to categories for reliable round-tripping
   const idMap = new Map<number, string>(); // numericId → real UUID
@@ -125,7 +127,17 @@ function buildPrompt(
     }
   }
 
-  const merchantList = descriptions.map((d, i) => `${i + 1}. "${d}"`).join("\n");
+  const merchantList = descriptions
+    .map((d, i) => {
+      const typeLabel = types?.[i] === "INCOME" ? " [INCOME]" : "";
+      return `${i + 1}. "${d}"${typeLabel}`;
+    })
+    .join("\n");
+
+  const hasIncome = types?.some((t) => t === "INCOME");
+  const typeInstruction = hasIncome
+    ? "\n- Transactions marked [INCOME] are deposits/credits \u2014 assign them to INCOME categories, not expense categories"
+    : "";
 
   // System message: concise to minimize per-batch token overhead
   const system = `Categorize bank transaction merchants for a Canadian household budget.
@@ -135,7 +147,7 @@ Display name rules: strip codes/refs/prefixes (*, #, SQ*, AMZN, NBX*), keep merc
 
 Categorization rules:
 - Use category_id 0 + suggested_category if no good fit (don't force bad matches)
-- Be precise: dentist ≠ optometrist ≠ physiotherapist
+- Be precise: dentist ≠ optometrist ≠ physiotherapist${typeInstruction}
 
 Respond with JSON: {"results": [{"index": 1, "name": "Clean Name", "category_id": 3, "confidence": "high"}]}
 When category_id is 0, add "suggested_category": "New Category Name".
@@ -363,10 +375,11 @@ export class OllamaProvider implements AIProvider {
     descriptions: string[],
     categories: CategoryOption[],
     existingMappings: MerchantMapping[] = [],
+    types?: Array<"INCOME" | "EXPENSE">,
   ): Promise<CategorizationResult[]> {
     if (descriptions.length === 0) return [];
 
-    const { prompt, idMap } = buildPrompt(descriptions, categories, existingMappings);
+    const { prompt, idMap } = buildPrompt(descriptions, categories, existingMappings, types);
 
     const res = await fetchWithRetry(`${this.baseUrl}/api/generate`, {
       method: "POST",
@@ -408,10 +421,11 @@ export class GeminiProvider implements AIProvider {
     descriptions: string[],
     categories: CategoryOption[],
     existingMappings: MerchantMapping[] = [],
+    types?: Array<"INCOME" | "EXPENSE">,
   ): Promise<CategorizationResult[]> {
     if (descriptions.length === 0) return [];
 
-    const { system, user, idMap } = buildPrompt(descriptions, categories, existingMappings);
+    const { system, user, idMap } = buildPrompt(descriptions, categories, existingMappings, types);
 
     const res = await fetchWithRetry(
       `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`,
@@ -461,10 +475,11 @@ export class GroqProvider implements AIProvider {
     descriptions: string[],
     categories: CategoryOption[],
     existingMappings: MerchantMapping[] = [],
+    types?: Array<"INCOME" | "EXPENSE">,
   ): Promise<CategorizationResult[]> {
     if (descriptions.length === 0) return [];
 
-    const { system, user, idMap } = buildPrompt(descriptions, categories, existingMappings);
+    const { system, user, idMap } = buildPrompt(descriptions, categories, existingMappings, types);
 
     const res = await fetchWithRetry(
       "https://api.groq.com/openai/v1/chat/completions",

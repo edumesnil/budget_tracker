@@ -377,7 +377,10 @@ function deduplicateTransactions(txs: ParsedTransaction[]): ParsedTransaction[] 
   const result: ParsedTransaction[] = [];
 
   for (const tx of txs) {
-    const normDesc = tx.description.toUpperCase().replace(/\s{2,}/g, " ").trim();
+    const normDesc = tx.description
+      .toUpperCase()
+      .replace(/\s{2,}/g, " ")
+      .trim();
     const key = `${tx.date}|${tx.amount}|${tx.type}|${normDesc}`;
     if (seen.has(key)) continue;
     seen.add(key);
