@@ -25,6 +25,7 @@
 ### Task 1: Git Setup — Stash, Branch, Clean Workspace
 
 **Files:**
+
 - Modify: workspace (removing v1 source files)
 
 - [ ] **Step 1:** Stash all current uncommitted changes
@@ -76,6 +77,7 @@ Preserve: docs/, Budget.xlsx, supabase backup, CLAUDE.md, .claude/"
 ### Task 2: Scaffold Vite+ React Project
 
 **Files:**
+
 - Create: `package.json`, `vite.config.ts`, `tsconfig.json`, `index.html`, `src/main.tsx`, `src/App.tsx`, `.gitignore`
 
 - [ ] **Step 1:** Scaffold the project
@@ -158,6 +160,7 @@ git commit -m "feat: scaffold Vite+ React TypeScript project"
 ### Task 3: Install and Configure Panda CSS
 
 **Files:**
+
 - Modify: `package.json`
 - Create: `panda.config.ts`
 - Create: `postcss.config.cjs`
@@ -174,17 +177,17 @@ npx panda init -p --jsx-framework react
 - [ ] **Step 2:** Write `panda.config.ts` with design tokens
 
 ```typescript
-import { defineConfig } from '@pandacss/dev'
+import { defineConfig } from "@pandacss/dev";
 
 export default defineConfig({
-  jsxFramework: 'react',
+  jsxFramework: "react",
   preflight: true,
-  include: ['./src/**/*.{js,jsx,ts,tsx}'],
+  include: ["./src/**/*.{js,jsx,ts,tsx}"],
   exclude: [],
 
   conditions: {
-    dark: '.dark &',
-    light: '.light &',
+    dark: ".dark &",
+    light: ".light &",
   },
 
   theme: {
@@ -192,56 +195,58 @@ export default defineConfig({
       tokens: {
         colors: {
           income: {
-            DEFAULT: { value: 'hsl(174, 60%, 35%)' },
-            light: { value: 'hsl(174, 60%, 45%)' },
-            dark: { value: 'hsl(174, 60%, 40%)' },
-            muted: { value: 'hsl(174, 60%, 35% / 0.1)' },
+            DEFAULT: { value: "hsl(174, 60%, 35%)" },
+            light: { value: "hsl(174, 60%, 45%)" },
+            dark: { value: "hsl(174, 60%, 40%)" },
+            muted: { value: "hsl(174, 60%, 35% / 0.1)" },
           },
           expense: {
-            DEFAULT: { value: 'hsl(355, 70%, 55%)' },
-            light: { value: 'hsl(355, 80%, 60%)' },
-            dark: { value: 'hsl(355, 70%, 60%)' },
-            muted: { value: 'hsl(355, 70%, 55% / 0.1)' },
+            DEFAULT: { value: "hsl(355, 70%, 55%)" },
+            light: { value: "hsl(355, 80%, 60%)" },
+            dark: { value: "hsl(355, 70%, 60%)" },
+            muted: { value: "hsl(355, 70%, 55% / 0.1)" },
           },
           chart: {
-            1: { value: 'hsl(174, 60%, 35%)' },
-            2: { value: 'hsl(355, 80%, 60%)' },
-            3: { value: 'hsl(90, 70%, 75%)' },
-            4: { value: 'hsl(90, 70%, 65%)' },
+            1: { value: "hsl(174, 60%, 35%)" },
+            2: { value: "hsl(355, 80%, 60%)" },
+            3: { value: "hsl(90, 70%, 75%)" },
+            4: { value: "hsl(90, 70%, 65%)" },
           },
         },
         fonts: {
-          body: { value: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' },
+          body: {
+            value: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          },
           mono: { value: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace' },
         },
       },
       semanticTokens: {
         colors: {
           bg: {
-            DEFAULT: { value: { base: 'hsl(60, 10%, 98%)', _dark: 'hsl(196, 30%, 10%)' } },
-            card: { value: { base: 'hsl(0, 0%, 100%)', _dark: 'hsl(196, 25%, 15%)' } },
-            muted: { value: { base: 'hsl(196, 15%, 92%)', _dark: 'hsl(196, 20%, 20%)' } },
-            sidebar: { value: { base: 'hsl(196, 30%, 15%)', _dark: 'hsl(196, 30%, 12%)' } },
+            DEFAULT: { value: { base: "hsl(60, 10%, 98%)", _dark: "hsl(196, 30%, 10%)" } },
+            card: { value: { base: "hsl(0, 0%, 100%)", _dark: "hsl(196, 25%, 15%)" } },
+            muted: { value: { base: "hsl(196, 15%, 92%)", _dark: "hsl(196, 20%, 20%)" } },
+            sidebar: { value: { base: "hsl(196, 30%, 15%)", _dark: "hsl(196, 30%, 12%)" } },
           },
           fg: {
-            DEFAULT: { value: { base: 'hsl(196, 30%, 15%)', _dark: 'hsl(90, 15%, 90%)' } },
-            muted: { value: { base: 'hsl(196, 15%, 40%)', _dark: 'hsl(90, 15%, 70%)' } },
-            sidebar: { value: { base: 'hsl(90, 30%, 90%)', _dark: 'hsl(90, 15%, 90%)' } },
+            DEFAULT: { value: { base: "hsl(196, 30%, 15%)", _dark: "hsl(90, 15%, 90%)" } },
+            muted: { value: { base: "hsl(196, 15%, 40%)", _dark: "hsl(90, 15%, 70%)" } },
+            sidebar: { value: { base: "hsl(90, 30%, 90%)", _dark: "hsl(90, 15%, 90%)" } },
           },
           border: {
-            DEFAULT: { value: { base: 'hsl(174, 10%, 85%)', _dark: 'hsl(196, 20%, 25%)' } },
-            ring: { value: { base: 'hsl(174, 60%, 35%)', _dark: 'hsl(174, 60%, 40%)' } },
+            DEFAULT: { value: { base: "hsl(174, 10%, 85%)", _dark: "hsl(196, 20%, 25%)" } },
+            ring: { value: { base: "hsl(174, 60%, 35%)", _dark: "hsl(174, 60%, 40%)" } },
           },
-          income: { value: { base: 'hsl(174, 60%, 35%)', _dark: 'hsl(174, 60%, 40%)' } },
-          expense: { value: { base: 'hsl(355, 80%, 60%)', _dark: 'hsl(355, 70%, 60%)' } },
-          destructive: { value: { base: 'hsl(0, 84%, 60%)', _dark: 'hsl(0, 63%, 50%)' } },
+          income: { value: { base: "hsl(174, 60%, 35%)", _dark: "hsl(174, 60%, 40%)" } },
+          expense: { value: { base: "hsl(355, 80%, 60%)", _dark: "hsl(355, 70%, 60%)" } },
+          destructive: { value: { base: "hsl(0, 84%, 60%)", _dark: "hsl(0, 63%, 50%)" } },
         },
       },
     },
   },
 
-  outdir: 'styled-system',
-})
+  outdir: "styled-system",
+});
 ```
 
 - [ ] **Step 3:** Verify `postcss.config.cjs` exists (created by `panda init`)
@@ -251,9 +256,9 @@ If missing, create:
 ```javascript
 module.exports = {
   plugins: {
-    '@pandacss/dev/postcss': {},
+    "@pandacss/dev/postcss": {},
   },
-}
+};
 ```
 
 - [ ] **Step 4:** Update `tsconfig.json` with path aliases
@@ -288,19 +293,19 @@ module.exports = {
 - [ ] **Step 5:** Update `vite.config.ts` with aliases
 
 ```typescript
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import path from 'path'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import path from "path";
 
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
-      'styled-system': path.resolve(__dirname, './styled-system'),
+      "@": path.resolve(__dirname, "./src"),
+      "styled-system": path.resolve(__dirname, "./styled-system"),
     },
   },
-})
+});
 ```
 
 - [ ] **Step 6:** Run codegen and verify
@@ -326,6 +331,7 @@ Financial colors: income (teal), expense (red)."
 ### Task 4: Install and Configure Park UI
 
 **Files:**
+
 - Modify: `package.json`
 - Modify: `panda.config.ts` (add preset)
 - Create: `src/components/ui/` (Park UI components)
@@ -344,7 +350,7 @@ When prompted: React, Panda CSS, `./src/components/ui`
 Add to the top of the config:
 
 ```typescript
-import { createPreset } from '@park-ui/panda-preset'
+import { createPreset } from "@park-ui/panda-preset";
 ```
 
 Add `presets` array to the config:
@@ -392,6 +398,7 @@ git commit -m "feat: install Park UI component library
 ### Task 5: Create globals.css and Dark Mode
 
 **Files:**
+
 - Create: `src/styles/globals.css`
 - Create: `src/hooks/use-theme.ts`
 - Modify: `src/main.tsx`
@@ -415,53 +422,53 @@ body {
 - [ ] **Step 2:** Create `src/hooks/use-theme.ts`
 
 ```typescript
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from "react";
 
-type Theme = 'light' | 'dark'
-const KEY = 'budget-tracker-theme'
+type Theme = "light" | "dark";
+const KEY = "budget-tracker-theme";
 
 function getInitial(): Theme {
-  if (typeof window === 'undefined') return 'light'
-  const s = localStorage.getItem(KEY)
-  if (s === 'light' || s === 'dark') return s
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  if (typeof window === "undefined") return "light";
+  const s = localStorage.getItem(KEY);
+  if (s === "light" || s === "dark") return s;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
 export function useTheme() {
-  const [theme, set] = useState<Theme>(getInitial)
+  const [theme, set] = useState<Theme>(getInitial);
 
   useEffect(() => {
-    const root = document.documentElement
-    root.classList.toggle('dark', theme === 'dark')
-    root.classList.toggle('light', theme === 'light')
-  }, [theme])
+    const root = document.documentElement;
+    root.classList.toggle("dark", theme === "dark");
+    root.classList.toggle("light", theme === "light");
+  }, [theme]);
 
   const setTheme = useCallback((t: Theme) => {
-    localStorage.setItem(KEY, t)
-    set(t)
-  }, [])
+    localStorage.setItem(KEY, t);
+    set(t);
+  }, []);
 
   const toggle = useCallback(() => {
-    setTheme(theme === 'dark' ? 'light' : 'dark')
-  }, [theme, setTheme])
+    setTheme(theme === "dark" ? "light" : "dark");
+  }, [theme, setTheme]);
 
-  return { theme, setTheme, toggle }
+  return { theme, setTheme, toggle };
 }
 ```
 
 - [ ] **Step 3:** Update `src/main.tsx`
 
 ```tsx
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './styles/globals.css'
-import App from './App'
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import "./styles/globals.css";
+import App from "./App";
 
-createRoot(document.getElementById('root')!).render(
+createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <App />
   </StrictMode>,
-)
+);
 ```
 
 Remove `src/App.css` and `src/index.css` if they exist.
@@ -477,10 +484,10 @@ Remove `src/App.css` and `src/index.css` if they exist.
     <title>Budget Tracker</title>
     <script>
       (function () {
-        var t = localStorage.getItem('budget-tracker-theme')
-        if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-        document.documentElement.classList.add(t)
-      })()
+        var t = localStorage.getItem("budget-tracker-theme");
+        if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.classList.add(t);
+      })();
     </script>
   </head>
   <body>
@@ -505,49 +512,55 @@ Flash prevention script in index.html."
 ### Task 6: Verification Page
 
 **Files:**
+
 - Modify: `src/App.tsx`
 
 - [ ] **Step 1:** Write verification App.tsx
 
 ```tsx
-import { css } from 'styled-system/css'
-import { Button } from './components/ui/button'
-import { useTheme } from './hooks/use-theme'
+import { css } from "styled-system/css";
+import { Button } from "./components/ui/button";
+import { useTheme } from "./hooks/use-theme";
 
 function App() {
-  const { theme, toggle } = useTheme()
+  const { theme, toggle } = useTheme();
 
   return (
-    <div className={css({
-      minH: '100vh', display: 'flex', flexDir: 'column',
-      alignItems: 'center', justifyContent: 'center', gap: '6', p: '8',
-    })}>
-      <h1 className={css({ fontSize: '3xl', fontWeight: 'bold' })}>
-        Budget Tracker v2
-      </h1>
-      <p className={css({ color: 'fg.muted', fontSize: 'lg' })}>
+    <div
+      className={css({
+        minH: "100vh",
+        display: "flex",
+        flexDir: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "6",
+        p: "8",
+      })}
+    >
+      <h1 className={css({ fontSize: "3xl", fontWeight: "bold" })}>Budget Tracker v2</h1>
+      <p className={css({ color: "fg.muted", fontSize: "lg" })}>
         Panda CSS + Park UI + Vite+ working.
       </p>
-      <div className={css({ display: 'flex', gap: '4' })}>
+      <div className={css({ display: "flex", gap: "4" })}>
         <Button variant="solid" onClick={toggle}>
           Toggle Theme ({theme})
         </Button>
         <Button variant="outline">Outline</Button>
         <Button variant="ghost">Ghost</Button>
       </div>
-      <div className={css({ display: 'flex', gap: '4', mt: '4' })}>
-        <span className={css({ color: 'income', fontWeight: 'semibold', fontSize: 'xl' })}>
+      <div className={css({ display: "flex", gap: "4", mt: "4" })}>
+        <span className={css({ color: "income", fontWeight: "semibold", fontSize: "xl" })}>
           +$1,250.00
         </span>
-        <span className={css({ color: 'expense', fontWeight: 'semibold', fontSize: 'xl' })}>
+        <span className={css({ color: "expense", fontWeight: "semibold", fontSize: "xl" })}>
           -$890.50
         </span>
       </div>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
 ```
 
 - [ ] **Step 2:** Run dev server and verify manually
@@ -557,6 +570,7 @@ npm run dev
 ```
 
 Checklist:
+
 1. Page renders with heading
 2. Park UI buttons render (solid, outline, ghost)
 3. Income amount shows teal, expense shows red

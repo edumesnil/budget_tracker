@@ -1,1 +1,1 @@
-export { recipes, slotRecipes } from './recipes'
+export { recipes, slotRecipes } from "./recipes";

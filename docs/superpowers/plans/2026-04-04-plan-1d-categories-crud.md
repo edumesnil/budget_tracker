@@ -15,13 +15,13 @@
 
 ## Files to Create
 
-| # | File | Purpose |
-|---|------|---------|
-| 1 | `src/hooks/use-categories.ts` | React Query hook: queries + mutations for groups and categories |
-| 2 | `src/routes/categories.tsx` | Categories page route |
-| 3 | `src/components/categories/group-form-dialog.tsx` | Dialog for create/edit category group |
-| 4 | `src/components/categories/category-form-dialog.tsx` | Dialog for create/edit category |
-| 5 | `src/components/categories/category-list.tsx` | Renders groups with nested categories |
+| #   | File                                                 | Purpose                                                         |
+| --- | ---------------------------------------------------- | --------------------------------------------------------------- |
+| 1   | `src/hooks/use-categories.ts`                        | React Query hook: queries + mutations for groups and categories |
+| 2   | `src/routes/categories.tsx`                          | Categories page route                                           |
+| 3   | `src/components/categories/group-form-dialog.tsx`    | Dialog for create/edit category group                           |
+| 4   | `src/components/categories/category-form-dialog.tsx` | Dialog for create/edit category                                 |
+| 5   | `src/components/categories/category-list.tsx`        | Renders groups with nested categories                           |
 
 ## Dependencies (must exist before this plan)
 
@@ -43,50 +43,50 @@ Single hook that manages both category groups and categories. Returns query data
 ### Complete Code
 
 ```typescript
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useMemo } from 'react'
-import { supabase } from '@/lib/supabase'
-import type { CategoryGroup, Category } from '@/types/database'
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { supabase } from "@/lib/supabase";
+import type { CategoryGroup, Category } from "@/types/database";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 type GroupInput = {
-  name: string
-  icon?: string | null
-  color?: string | null
-  sort_order?: number
-}
+  name: string;
+  icon?: string | null;
+  color?: string | null;
+  sort_order?: number;
+};
 
 type CategoryInput = {
-  name: string
-  type: 'INCOME' | 'EXPENSE'
-  group_id: string | null
-  icon?: string | null
-  color?: string | null
-}
+  name: string;
+  type: "INCOME" | "EXPENSE";
+  group_id: string | null;
+  icon?: string | null;
+  color?: string | null;
+};
 
 // The shape returned by the joined query — groups with nested categories
 export type GroupWithCategories = CategoryGroup & {
-  categories: Category[]
-}
+  categories: Category[];
+};
 
 // ---------------------------------------------------------------------------
 // Query keys
 // ---------------------------------------------------------------------------
 
 export const categoryKeys = {
-  all: ['categories'] as const,
-  groups: () => [...categoryKeys.all, 'groups'] as const,
-}
+  all: ["categories"] as const,
+  groups: () => [...categoryKeys.all, "groups"] as const,
+};
 
 // ---------------------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------------------
 
 export function useCategories() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   // -------------------------------------------------------------------------
   // Query: fetch groups with nested categories
@@ -97,70 +97,66 @@ export function useCategories() {
     queryFn: async (): Promise<GroupWithCategories[]> => {
       // Fetch groups ordered by sort_order
       const { data: groups, error: groupsError } = await supabase
-        .from('category_groups')
-        .select('*')
-        .order('sort_order', { ascending: true })
+        .from("category_groups")
+        .select("*")
+        .order("sort_order", { ascending: true });
 
-      if (groupsError) throw groupsError
+      if (groupsError) throw groupsError;
 
       // Fetch all categories
       const { data: categories, error: categoriesError } = await supabase
-        .from('categories')
-        .select('*')
-        .order('name', { ascending: true })
+        .from("categories")
+        .select("*")
+        .order("name", { ascending: true });
 
-      if (categoriesError) throw categoriesError
+      if (categoriesError) throw categoriesError;
 
       // Nest categories under their groups
-      const groupsWithCategories: GroupWithCategories[] = (groups ?? []).map(
-        (group) => ({
-          ...group,
-          categories: (categories ?? []).filter(
-            (cat) => cat.group_id === group.id,
-          ),
-        }),
-      )
+      const groupsWithCategories: GroupWithCategories[] = (groups ?? []).map((group) => ({
+        ...group,
+        categories: (categories ?? []).filter((cat) => cat.group_id === group.id),
+      }));
 
       // Collect ungrouped categories (group_id is null)
-      const ungrouped = (categories ?? []).filter((cat) => cat.group_id === null)
+      const ungrouped = (categories ?? []).filter((cat) => cat.group_id === null);
 
       // If there are ungrouped categories, add a virtual "Ungrouped" section
       if (ungrouped.length > 0) {
         groupsWithCategories.push({
-          id: '__ungrouped__',
-          user_id: '',
-          name: 'Ungrouped',
+          id: "__ungrouped__",
+          user_id: "",
+          name: "Ungrouped",
           icon: null,
           color: null,
           sort_order: 999999,
-          created_at: '',
+          created_at: "",
           categories: ungrouped,
-        })
+        });
       }
 
-      return groupsWithCategories
+      return groupsWithCategories;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes — categories rarely change
-  })
+  });
 
   // -------------------------------------------------------------------------
   // Derived data
   // -------------------------------------------------------------------------
 
   const allCategories = useMemo(() => {
-    if (!query.data) return []
-    return query.data.flatMap((group) => group.categories)
-  }, [query.data])
+    if (!query.data) return [];
+    return query.data.flatMap((group) => group.categories);
+  }, [query.data]);
 
   // -------------------------------------------------------------------------
   // Helper: cross-entity invalidation
   // -------------------------------------------------------------------------
 
   const invalidateDependents = () => {
-    queryClient.invalidateQueries({ queryKey: ['transactions'] })
-    queryClient.invalidateQueries({ queryKey: ['budgets'] })
-    queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-  }
+    queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    queryClient.invalidateQueries({ queryKey: ["budgets"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+  };
 
   // -------------------------------------------------------------------------
   // Mutation: create group
@@ -169,7 +165,7 @@ export function useCategories() {
   const createGroup = useMutation({
     mutationFn: async (input: GroupInput) => {
       const { data, error } = await supabase
-        .from('category_groups')
+        .from("category_groups")
         .insert({
           name: input.name,
           icon: input.icon ?? null,
@@ -177,73 +173,59 @@ export function useCategories() {
           sort_order: input.sort_order ?? 0,
         })
         .select()
-        .single()
+        .single();
 
-      if (error) throw error
-      return data as CategoryGroup
+      if (error) throw error;
+      return data as CategoryGroup;
     },
     // Layer 1: cache update from mutation response
     onSuccess: (newGroup) => {
-      queryClient.setQueryData<GroupWithCategories[]>(
-        categoryKeys.groups(),
-        (old = []) => {
-          // Insert new group (with empty categories) before the virtual
-          // "Ungrouped" section if it exists
-          const newEntry: GroupWithCategories = {
-            ...newGroup,
-            categories: [],
-          }
-          const ungroupedIndex = old.findIndex(
-            (g) => g.id === '__ungrouped__',
-          )
-          if (ungroupedIndex === -1) {
-            return [...old, newEntry]
-          }
-          const copy = [...old]
-          copy.splice(ungroupedIndex, 0, newEntry)
-          return copy
-        },
-      )
+      queryClient.setQueryData<GroupWithCategories[]>(categoryKeys.groups(), (old = []) => {
+        // Insert new group (with empty categories) before the virtual
+        // "Ungrouped" section if it exists
+        const newEntry: GroupWithCategories = {
+          ...newGroup,
+          categories: [],
+        };
+        const ungroupedIndex = old.findIndex((g) => g.id === "__ungrouped__");
+        if (ungroupedIndex === -1) {
+          return [...old, newEntry];
+        }
+        const copy = [...old];
+        copy.splice(ungroupedIndex, 0, newEntry);
+        return copy;
+      });
     },
-  })
+  });
 
   // -------------------------------------------------------------------------
   // Mutation: update group
   // -------------------------------------------------------------------------
 
   const updateGroup = useMutation({
-    mutationFn: async ({
-      id,
-      ...input
-    }: GroupInput & { id: string }) => {
+    mutationFn: async ({ id, ...input }: GroupInput & { id: string }) => {
       const { data, error } = await supabase
-        .from('category_groups')
+        .from("category_groups")
         .update({
           name: input.name,
           icon: input.icon ?? null,
           color: input.color ?? null,
           sort_order: input.sort_order,
         })
-        .eq('id', id)
+        .eq("id", id)
         .select()
-        .single()
+        .single();
 
-      if (error) throw error
-      return data as CategoryGroup
+      if (error) throw error;
+      return data as CategoryGroup;
     },
     // Layer 1: cache update from mutation response
     onSuccess: (updatedGroup) => {
-      queryClient.setQueryData<GroupWithCategories[]>(
-        categoryKeys.groups(),
-        (old = []) =>
-          old.map((g) =>
-            g.id === updatedGroup.id
-              ? { ...g, ...updatedGroup }
-              : g,
-          ),
-      )
+      queryClient.setQueryData<GroupWithCategories[]>(categoryKeys.groups(), (old = []) =>
+        old.map((g) => (g.id === updatedGroup.id ? { ...g, ...updatedGroup } : g)),
+      );
     },
-  })
+  });
 
   // -------------------------------------------------------------------------
   // Mutation: delete group
@@ -252,76 +234,66 @@ export function useCategories() {
   const deleteGroup = useMutation({
     // Layer 2: optimistic delete
     onMutate: async (id: string) => {
-      await queryClient.cancelQueries({ queryKey: categoryKeys.groups() })
-      const previous = queryClient.getQueryData<GroupWithCategories[]>(
-        categoryKeys.groups(),
-      )
-      queryClient.setQueryData<GroupWithCategories[]>(
-        categoryKeys.groups(),
-        (old = []) => {
-          const deletedGroup = old.find((g) => g.id === id)
-          // Move orphaned categories to "Ungrouped"
-          const orphanedCategories = deletedGroup?.categories ?? []
-          const filtered = old.filter((g) => g.id !== id)
+      await queryClient.cancelQueries({ queryKey: categoryKeys.groups() });
+      const previous = queryClient.getQueryData<GroupWithCategories[]>(categoryKeys.groups());
+      queryClient.setQueryData<GroupWithCategories[]>(categoryKeys.groups(), (old = []) => {
+        const deletedGroup = old.find((g) => g.id === id);
+        // Move orphaned categories to "Ungrouped"
+        const orphanedCategories = deletedGroup?.categories ?? [];
+        const filtered = old.filter((g) => g.id !== id);
 
-          if (orphanedCategories.length > 0) {
-            const ungroupedIndex = filtered.findIndex(
-              (g) => g.id === '__ungrouped__',
-            )
-            if (ungroupedIndex !== -1) {
-              // Add to existing ungrouped section
-              filtered[ungroupedIndex] = {
-                ...filtered[ungroupedIndex],
-                categories: [
-                  ...filtered[ungroupedIndex].categories,
-                  ...orphanedCategories.map((c) => ({
-                    ...c,
-                    group_id: null,
-                  })),
-                ],
-              }
-            } else {
-              // Create ungrouped section
-              filtered.push({
-                id: '__ungrouped__',
-                user_id: '',
-                name: 'Ungrouped',
-                icon: null,
-                color: null,
-                sort_order: 999999,
-                created_at: '',
-                categories: orphanedCategories.map((c) => ({
+        if (orphanedCategories.length > 0) {
+          const ungroupedIndex = filtered.findIndex((g) => g.id === "__ungrouped__");
+          if (ungroupedIndex !== -1) {
+            // Add to existing ungrouped section
+            filtered[ungroupedIndex] = {
+              ...filtered[ungroupedIndex],
+              categories: [
+                ...filtered[ungroupedIndex].categories,
+                ...orphanedCategories.map((c) => ({
                   ...c,
                   group_id: null,
                 })),
-              })
-            }
+              ],
+            };
+          } else {
+            // Create ungrouped section
+            filtered.push({
+              id: "__ungrouped__",
+              user_id: "",
+              name: "Ungrouped",
+              icon: null,
+              color: null,
+              sort_order: 999999,
+              created_at: "",
+              categories: orphanedCategories.map((c) => ({
+                ...c,
+                group_id: null,
+              })),
+            });
           }
+        }
 
-          return filtered
-        },
-      )
-      return { previous }
+        return filtered;
+      });
+      return { previous };
     },
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('category_groups')
-        .delete()
-        .eq('id', id)
+      const { error } = await supabase.from("category_groups").delete().eq("id", id);
 
-      if (error) throw error
+      if (error) throw error;
     },
     onError: (_err, _id, context) => {
       // Rollback on error
       if (context?.previous) {
-        queryClient.setQueryData(categoryKeys.groups(), context.previous)
+        queryClient.setQueryData(categoryKeys.groups(), context.previous);
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: categoryKeys.groups() })
-      invalidateDependents()
+      queryClient.invalidateQueries({ queryKey: categoryKeys.groups() });
+      invalidateDependents();
     },
-  })
+  });
 
   // -------------------------------------------------------------------------
   // Mutation: create category
@@ -330,7 +302,7 @@ export function useCategories() {
   const createCategory = useMutation({
     mutationFn: async (input: CategoryInput) => {
       const { data, error } = await supabase
-        .from('categories')
+        .from("categories")
         .insert({
           name: input.name,
           type: input.type,
@@ -339,55 +311,44 @@ export function useCategories() {
           color: input.color ?? null,
         })
         .select()
-        .single()
+        .single();
 
-      if (error) throw error
-      return data as Category
+      if (error) throw error;
+      return data as Category;
     },
     // Layer 1: cache update from mutation response
     onSuccess: (newCategory) => {
-      queryClient.setQueryData<GroupWithCategories[]>(
-        categoryKeys.groups(),
-        (old = []) =>
-          old.map((group) => {
-            // Add to the matching group
-            if (
-              newCategory.group_id &&
-              group.id === newCategory.group_id
-            ) {
-              return {
-                ...group,
-                categories: [...group.categories, newCategory],
-              }
-            }
-            // Or add to "Ungrouped" if no group_id
-            if (
-              !newCategory.group_id &&
-              group.id === '__ungrouped__'
-            ) {
-              return {
-                ...group,
-                categories: [...group.categories, newCategory],
-              }
-            }
-            return group
-          }),
-      )
-      invalidateDependents()
+      queryClient.setQueryData<GroupWithCategories[]>(categoryKeys.groups(), (old = []) =>
+        old.map((group) => {
+          // Add to the matching group
+          if (newCategory.group_id && group.id === newCategory.group_id) {
+            return {
+              ...group,
+              categories: [...group.categories, newCategory],
+            };
+          }
+          // Or add to "Ungrouped" if no group_id
+          if (!newCategory.group_id && group.id === "__ungrouped__") {
+            return {
+              ...group,
+              categories: [...group.categories, newCategory],
+            };
+          }
+          return group;
+        }),
+      );
+      invalidateDependents();
     },
-  })
+  });
 
   // -------------------------------------------------------------------------
   // Mutation: update category
   // -------------------------------------------------------------------------
 
   const updateCategory = useMutation({
-    mutationFn: async ({
-      id,
-      ...input
-    }: CategoryInput & { id: string }) => {
+    mutationFn: async ({ id, ...input }: CategoryInput & { id: string }) => {
       const { data, error } = await supabase
-        .from('categories')
+        .from("categories")
         .update({
           name: input.name,
           type: input.type,
@@ -395,44 +356,38 @@ export function useCategories() {
           icon: input.icon ?? null,
           color: input.color ?? null,
         })
-        .eq('id', id)
+        .eq("id", id)
         .select()
-        .single()
+        .single();
 
-      if (error) throw error
-      return data as Category
+      if (error) throw error;
+      return data as Category;
     },
     // Layer 1: cache update from mutation response
     onSuccess: (updatedCategory) => {
-      queryClient.setQueryData<GroupWithCategories[]>(
-        categoryKeys.groups(),
-        (old = []) => {
-          return old.map((group) => {
-            // Remove the category from its old group (if it was here)
-            const withoutOld = group.categories.filter(
-              (c) => c.id !== updatedCategory.id,
-            )
+      queryClient.setQueryData<GroupWithCategories[]>(categoryKeys.groups(), (old = []) => {
+        return old.map((group) => {
+          // Remove the category from its old group (if it was here)
+          const withoutOld = group.categories.filter((c) => c.id !== updatedCategory.id);
 
-            // Determine the target group for the updated category
-            const targetGroupId =
-              updatedCategory.group_id ?? '__ungrouped__'
+          // Determine the target group for the updated category
+          const targetGroupId = updatedCategory.group_id ?? "__ungrouped__";
 
-            if (group.id === targetGroupId) {
-              // Add the updated category to its (possibly new) group
-              return {
-                ...group,
-                categories: [...withoutOld, updatedCategory],
-              }
-            }
+          if (group.id === targetGroupId) {
+            // Add the updated category to its (possibly new) group
+            return {
+              ...group,
+              categories: [...withoutOld, updatedCategory],
+            };
+          }
 
-            // For all other groups, just remove the old entry if present
-            return { ...group, categories: withoutOld }
-          })
-        },
-      )
-      invalidateDependents()
+          // For all other groups, just remove the old entry if present
+          return { ...group, categories: withoutOld };
+        });
+      });
+      invalidateDependents();
     },
-  })
+  });
 
   // -------------------------------------------------------------------------
   // Mutation: delete category
@@ -441,38 +396,31 @@ export function useCategories() {
   const deleteCategory = useMutation({
     // Layer 2: optimistic delete
     onMutate: async (id: string) => {
-      await queryClient.cancelQueries({ queryKey: categoryKeys.groups() })
-      const previous = queryClient.getQueryData<GroupWithCategories[]>(
-        categoryKeys.groups(),
-      )
-      queryClient.setQueryData<GroupWithCategories[]>(
-        categoryKeys.groups(),
-        (old = []) =>
-          old.map((group) => ({
-            ...group,
-            categories: group.categories.filter((c) => c.id !== id),
-          })),
-      )
-      return { previous }
+      await queryClient.cancelQueries({ queryKey: categoryKeys.groups() });
+      const previous = queryClient.getQueryData<GroupWithCategories[]>(categoryKeys.groups());
+      queryClient.setQueryData<GroupWithCategories[]>(categoryKeys.groups(), (old = []) =>
+        old.map((group) => ({
+          ...group,
+          categories: group.categories.filter((c) => c.id !== id),
+        })),
+      );
+      return { previous };
     },
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('categories')
-        .delete()
-        .eq('id', id)
+      const { error } = await supabase.from("categories").delete().eq("id", id);
 
-      if (error) throw error
+      if (error) throw error;
     },
     onError: (_err, _id, context) => {
       if (context?.previous) {
-        queryClient.setQueryData(categoryKeys.groups(), context.previous)
+        queryClient.setQueryData(categoryKeys.groups(), context.previous);
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: categoryKeys.groups() })
-      invalidateDependents()
+      queryClient.invalidateQueries({ queryKey: categoryKeys.groups() });
+      invalidateDependents();
     },
-  })
+  });
 
   // -------------------------------------------------------------------------
   // Return value
@@ -489,7 +437,7 @@ export function useCategories() {
     createCategory,
     updateCategory,
     deleteCategory,
-  }
+  };
 }
 ```
 
@@ -520,15 +468,15 @@ The categories page. Orchestrates state for dialogs and connects the hook to the
 ### Complete Code
 
 ```tsx
-import { useState } from 'react'
-import { css } from '../../styled-system/css'
-import { useCategories, type GroupWithCategories } from '@/hooks/use-categories'
-import { CategoryList } from '@/components/categories/category-list'
-import { GroupFormDialog } from '@/components/categories/group-form-dialog'
-import { CategoryFormDialog } from '@/components/categories/category-form-dialog'
-import { Button } from '@/components/ui/button'
-import { Toaster, toaster } from '@/components/ui/toast'
-import type { CategoryGroup, Category } from '@/types/database'
+import { useState } from "react";
+import { css } from "../../styled-system/css";
+import { useCategories, type GroupWithCategories } from "@/hooks/use-categories";
+import { CategoryList } from "@/components/categories/category-list";
+import { GroupFormDialog } from "@/components/categories/group-form-dialog";
+import { CategoryFormDialog } from "@/components/categories/category-form-dialog";
+import { Button } from "@/components/ui/button";
+import { Toaster, toaster } from "@/components/ui/toast";
+import type { CategoryGroup, Category } from "@/types/database";
 
 export default function CategoriesPage() {
   const {
@@ -540,154 +488,148 @@ export default function CategoriesPage() {
     createCategory,
     updateCategory,
     deleteCategory,
-  } = useCategories()
+  } = useCategories();
 
   // Dialog state
-  const [groupDialogOpen, setGroupDialogOpen] = useState(false)
-  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false)
-  const [editingGroup, setEditingGroup] = useState<CategoryGroup | null>(null)
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null)
-  const [targetGroupId, setTargetGroupId] = useState<string | null>(null)
+  const [groupDialogOpen, setGroupDialogOpen] = useState(false);
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
+  const [editingGroup, setEditingGroup] = useState<CategoryGroup | null>(null);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [targetGroupId, setTargetGroupId] = useState<string | null>(null);
 
   // ---- Group actions ----
 
   const handleAddGroup = () => {
-    setEditingGroup(null)
-    setGroupDialogOpen(true)
-  }
+    setEditingGroup(null);
+    setGroupDialogOpen(true);
+  };
 
   const handleEditGroup = (group: CategoryGroup) => {
-    setEditingGroup(group)
-    setGroupDialogOpen(true)
-  }
+    setEditingGroup(group);
+    setGroupDialogOpen(true);
+  };
 
   const handleDeleteGroup = async (groupId: string) => {
     try {
-      await deleteGroup.mutateAsync(groupId)
+      await deleteGroup.mutateAsync(groupId);
       toaster.success({
-        title: 'Group deleted',
-        description: 'Category group has been removed.',
-      })
+        title: "Group deleted",
+        description: "Category group has been removed.",
+      });
     } catch {
       toaster.error({
-        title: 'Error',
-        description: 'Failed to delete group. Please try again.',
-      })
+        title: "Error",
+        description: "Failed to delete group. Please try again.",
+      });
     }
-  }
+  };
 
-  const handleGroupSubmit = async (data: {
-    name: string
-    icon?: string
-    color?: string
-  }) => {
+  const handleGroupSubmit = async (data: { name: string; icon?: string; color?: string }) => {
     try {
       if (editingGroup) {
-        await updateGroup.mutateAsync({ id: editingGroup.id, ...data })
+        await updateGroup.mutateAsync({ id: editingGroup.id, ...data });
         toaster.success({
-          title: 'Group updated',
+          title: "Group updated",
           description: `"${data.name}" has been updated.`,
-        })
+        });
       } else {
-        await createGroup.mutateAsync(data)
+        await createGroup.mutateAsync(data);
         toaster.success({
-          title: 'Group created',
+          title: "Group created",
           description: `"${data.name}" has been added.`,
-        })
+        });
       }
-      setGroupDialogOpen(false)
+      setGroupDialogOpen(false);
     } catch {
       toaster.error({
-        title: 'Error',
-        description: `Failed to ${editingGroup ? 'update' : 'create'} group.`,
-      })
+        title: "Error",
+        description: `Failed to ${editingGroup ? "update" : "create"} group.`,
+      });
     }
-  }
+  };
 
   // ---- Category actions ----
 
   const handleAddCategory = (groupId: string | null) => {
-    setEditingCategory(null)
-    setTargetGroupId(groupId === '__ungrouped__' ? null : groupId)
-    setCategoryDialogOpen(true)
-  }
+    setEditingCategory(null);
+    setTargetGroupId(groupId === "__ungrouped__" ? null : groupId);
+    setCategoryDialogOpen(true);
+  };
 
   const handleEditCategory = (category: Category) => {
-    setEditingCategory(category)
-    setTargetGroupId(category.group_id)
-    setCategoryDialogOpen(true)
-  }
+    setEditingCategory(category);
+    setTargetGroupId(category.group_id);
+    setCategoryDialogOpen(true);
+  };
 
   const handleDeleteCategory = async (categoryId: string) => {
     try {
-      await deleteCategory.mutateAsync(categoryId)
+      await deleteCategory.mutateAsync(categoryId);
       toaster.success({
-        title: 'Category deleted',
-        description: 'Category has been removed.',
-      })
+        title: "Category deleted",
+        description: "Category has been removed.",
+      });
     } catch {
       toaster.error({
-        title: 'Error',
-        description: 'Failed to delete category. Please try again.',
-      })
+        title: "Error",
+        description: "Failed to delete category. Please try again.",
+      });
     }
-  }
+  };
 
   const handleCategorySubmit = async (data: {
-    name: string
-    type: 'INCOME' | 'EXPENSE'
-    group_id: string | null
-    icon?: string
-    color?: string
+    name: string;
+    type: "INCOME" | "EXPENSE";
+    group_id: string | null;
+    icon?: string;
+    color?: string;
   }) => {
     try {
       if (editingCategory) {
-        await updateCategory.mutateAsync({ id: editingCategory.id, ...data })
+        await updateCategory.mutateAsync({ id: editingCategory.id, ...data });
         toaster.success({
-          title: 'Category updated',
+          title: "Category updated",
           description: `"${data.name}" has been updated.`,
-        })
+        });
       } else {
-        await createCategory.mutateAsync(data)
+        await createCategory.mutateAsync(data);
         toaster.success({
-          title: 'Category created',
+          title: "Category created",
           description: `"${data.name}" has been added.`,
-        })
+        });
       }
-      setCategoryDialogOpen(false)
+      setCategoryDialogOpen(false);
     } catch {
       toaster.error({
-        title: 'Error',
-        description: `Failed to ${editingCategory ? 'update' : 'create'} category.`,
-      })
+        title: "Error",
+        description: `Failed to ${editingCategory ? "update" : "create"} category.`,
+      });
     }
-  }
+  };
 
   // ---- Render ----
 
   if (isLoading) {
     return (
-      <div className={css({ p: '6', textAlign: 'center', color: 'fg.muted' })}>
+      <div className={css({ p: "6", textAlign: "center", color: "fg.muted" })}>
         Loading categories...
       </div>
-    )
+    );
   }
 
   return (
-    <div className={css({ display: 'flex', flexDir: 'column', gap: '6', p: '6' })}>
+    <div className={css({ display: "flex", flexDir: "column", gap: "6", p: "6" })}>
       {/* Page header */}
       <div
         className={css({
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
         })}
       >
         <div>
-          <h1 className={css({ fontSize: '2xl', fontWeight: 'bold' })}>
-            Categories
-          </h1>
-          <p className={css({ color: 'fg.muted', mt: '1' })}>
+          <h1 className={css({ fontSize: "2xl", fontWeight: "bold" })}>Categories</h1>
+          <p className={css({ color: "fg.muted", mt: "1" })}>
             Manage category groups and categories for tracking income and expenses.
           </p>
         </div>
@@ -698,20 +640,18 @@ export default function CategoriesPage() {
       {groups.length === 0 ? (
         <div
           className={css({
-            textAlign: 'center',
-            py: '12',
-            color: 'fg.muted',
+            textAlign: "center",
+            py: "12",
+            color: "fg.muted",
           })}
         >
-          <p className={css({ fontSize: 'lg', fontWeight: 'medium' })}>
-            No category groups yet
-          </p>
-          <p className={css({ mt: '2' })}>
+          <p className={css({ fontSize: "lg", fontWeight: "medium" })}>No category groups yet</p>
+          <p className={css({ mt: "2" })}>
             Create your first group to start organizing categories.
           </p>
         </div>
       ) : (
-        <div className={css({ display: 'flex', flexDir: 'column', gap: '4' })}>
+        <div className={css({ display: "flex", flexDir: "column", gap: "4" })}>
           {groups.map((group) => (
             <CategoryList
               key={group.id}
@@ -739,7 +679,7 @@ export default function CategoriesPage() {
         open={categoryDialogOpen}
         onOpenChange={setCategoryDialogOpen}
         category={editingCategory}
-        groups={groups.filter((g) => g.id !== '__ungrouped__')}
+        groups={groups.filter((g) => g.id !== "__ungrouped__")}
         defaultGroupId={targetGroupId}
         onSubmit={handleCategorySubmit}
         isSubmitting={createCategory.isPending || updateCategory.isPending}
@@ -747,7 +687,7 @@ export default function CategoriesPage() {
 
       <Toaster />
     </div>
-  )
+  );
 }
 ```
 
@@ -772,38 +712,38 @@ Dialog for creating or editing a category group. Uses react-hook-form with Zod v
 ### Complete Code
 
 ```tsx
-import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { css } from '../../../styled-system/css'
-import { Dialog } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import type { CategoryGroup } from '@/types/database'
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { css } from "../../../styled-system/css";
+import { Dialog } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import type { CategoryGroup } from "@/types/database";
 
 // ---------------------------------------------------------------------------
 // Schema
 // ---------------------------------------------------------------------------
 
 const groupSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
+  name: z.string().min(1, "Name is required"),
   icon: z.string().optional(),
   color: z.string().optional(),
-})
+});
 
-type GroupFormValues = z.infer<typeof groupSchema>
+type GroupFormValues = z.infer<typeof groupSchema>;
 
 // ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------
 
 interface GroupFormDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  group: CategoryGroup | null
-  onSubmit: (data: GroupFormValues) => Promise<void>
-  isSubmitting: boolean
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  group: CategoryGroup | null;
+  onSubmit: (data: GroupFormValues) => Promise<void>;
+  isSubmitting: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -817,7 +757,7 @@ export function GroupFormDialog({
   onSubmit,
   isSubmitting,
 }: GroupFormDialogProps) {
-  const isEditing = group !== null
+  const isEditing = group !== null;
 
   const {
     register,
@@ -827,109 +767,107 @@ export function GroupFormDialog({
   } = useForm<GroupFormValues>({
     resolver: zodResolver(groupSchema),
     defaultValues: {
-      name: '',
-      icon: '',
-      color: '',
+      name: "",
+      icon: "",
+      color: "",
     },
-  })
+  });
 
   // Reset form when dialog opens or group changes
   useEffect(() => {
     if (open) {
       reset({
-        name: group?.name ?? '',
-        icon: group?.icon ?? '',
-        color: group?.color ?? '',
-      })
+        name: group?.name ?? "",
+        icon: group?.icon ?? "",
+        color: group?.color ?? "",
+      });
     }
-  }, [open, group, reset])
+  }, [open, group, reset]);
 
   const handleFormSubmit = handleSubmit(async (data) => {
     await onSubmit({
       name: data.name,
       icon: data.icon || undefined,
       color: data.color || undefined,
-    })
-  })
+    });
+  });
 
   return (
     <Dialog.Root open={open} onOpenChange={(details) => onOpenChange(details.open)}>
       <Dialog.Backdrop />
       <Dialog.Positioner>
-        <Dialog.Content className={css({ maxW: 'md', w: 'full' })}>
+        <Dialog.Content className={css({ maxW: "md", w: "full" })}>
           <form onSubmit={handleFormSubmit}>
             <Dialog.Header>
-              <Dialog.Title>
-                {isEditing ? 'Edit Group' : 'New Group'}
-              </Dialog.Title>
+              <Dialog.Title>{isEditing ? "Edit Group" : "New Group"}</Dialog.Title>
               <Dialog.Description>
                 {isEditing
-                  ? 'Update the category group details.'
-                  : 'Create a new category group to organize your categories.'}
+                  ? "Update the category group details."
+                  : "Create a new category group to organize your categories."}
               </Dialog.Description>
             </Dialog.Header>
 
-            <Dialog.Body className={css({ display: 'flex', flexDir: 'column', gap: '4' })}>
+            <Dialog.Body className={css({ display: "flex", flexDir: "column", gap: "4" })}>
               {/* Name */}
-              <div className={css({ display: 'flex', flexDir: 'column', gap: '1.5' })}>
+              <div className={css({ display: "flex", flexDir: "column", gap: "1.5" })}>
                 <label
                   htmlFor="group-name"
-                  className={css({ fontSize: 'sm', fontWeight: 'medium' })}
+                  className={css({ fontSize: "sm", fontWeight: "medium" })}
                 >
                   Name *
                 </label>
                 <Input
                   id="group-name"
                   placeholder="e.g., MAISON, AUTO, NOURRITURE"
-                  {...register('name')}
+                  {...register("name")}
                 />
                 {errors.name && (
-                  <p className={css({ fontSize: 'sm', color: 'red.500' })}>
-                    {errors.name.message}
-                  </p>
+                  <p className={css({ fontSize: "sm", color: "red.500" })}>{errors.name.message}</p>
                 )}
               </div>
 
               {/* Icon */}
-              <div className={css({ display: 'flex', flexDir: 'column', gap: '1.5' })}>
+              <div className={css({ display: "flex", flexDir: "column", gap: "1.5" })}>
                 <label
                   htmlFor="group-icon"
-                  className={css({ fontSize: 'sm', fontWeight: 'medium' })}
+                  className={css({ fontSize: "sm", fontWeight: "medium" })}
                 >
                   Icon
                 </label>
                 <Input
                   id="group-icon"
                   placeholder="e.g., Home, Car, ShoppingCart"
-                  {...register('icon')}
+                  {...register("icon")}
                 />
               </div>
 
               {/* Color */}
-              <div className={css({ display: 'flex', flexDir: 'column', gap: '1.5' })}>
+              <div className={css({ display: "flex", flexDir: "column", gap: "1.5" })}>
                 <label
                   htmlFor="group-color"
-                  className={css({ fontSize: 'sm', fontWeight: 'medium' })}
+                  className={css({ fontSize: "sm", fontWeight: "medium" })}
                 >
                   Color
                 </label>
-                <div className={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+                <div className={css({ display: "flex", alignItems: "center", gap: "2" })}>
                   <Input
                     id="group-color"
                     type="color"
-                    className={css({ w: '12', h: '10', p: '1', cursor: 'pointer' })}
-                    {...register('color')}
+                    className={css({ w: "12", h: "10", p: "1", cursor: "pointer" })}
+                    {...register("color")}
                   />
                   <Input
                     placeholder="#6366f1"
-                    className={css({ flex: '1' })}
-                    {...register('color')}
+                    className={css({ flex: "1" })}
+                    {...register("color")}
                   />
                 </div>
               </div>
             </Dialog.Body>
 
-            <Dialog.Footer className={css({ display: 'flex', gap: '3', justifyContent: 'flex-end' })}>
+            <Dialog.Footer
+              className={css({ display: "flex", gap: "3", justifyContent: "flex-end" })}
+            >
               <Dialog.CloseTrigger asChild>
                 <Button variant="outline" type="button" disabled={isSubmitting}>
                   Cancel
@@ -938,18 +876,18 @@ export function GroupFormDialog({
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting
                   ? isEditing
-                    ? 'Updating...'
-                    : 'Creating...'
+                    ? "Updating..."
+                    : "Creating..."
                   : isEditing
-                    ? 'Update Group'
-                    : 'Create Group'}
+                    ? "Update Group"
+                    : "Create Group"}
               </Button>
             </Dialog.Footer>
           </form>
         </Dialog.Content>
       </Dialog.Positioner>
     </Dialog.Root>
-  )
+  );
 }
 ```
 
@@ -974,45 +912,45 @@ Dialog for creating or editing a category. Fields: name, type (INCOME/EXPENSE), 
 ### Complete Code
 
 ```tsx
-import { useEffect } from 'react'
-import { useForm, Controller } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { css } from '../../../styled-system/css'
-import { Dialog } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { RadioGroup } from '@/components/ui/radio-group'
-import { Select } from '@/components/ui/select'
-import type { Category } from '@/types/database'
-import type { GroupWithCategories } from '@/hooks/use-categories'
+import { useEffect } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { css } from "../../../styled-system/css";
+import { Dialog } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { RadioGroup } from "@/components/ui/radio-group";
+import { Select } from "@/components/ui/select";
+import type { Category } from "@/types/database";
+import type { GroupWithCategories } from "@/hooks/use-categories";
 
 // ---------------------------------------------------------------------------
 // Schema
 // ---------------------------------------------------------------------------
 
 const categorySchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  type: z.enum(['INCOME', 'EXPENSE']),
+  name: z.string().min(1, "Name is required"),
+  type: z.enum(["INCOME", "EXPENSE"]),
   group_id: z.string().uuid().nullable(),
   icon: z.string().optional(),
   color: z.string().optional(),
-})
+});
 
-type CategoryFormValues = z.infer<typeof categorySchema>
+type CategoryFormValues = z.infer<typeof categorySchema>;
 
 // ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------
 
 interface CategoryFormDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  category: Category | null
-  groups: GroupWithCategories[]
-  defaultGroupId: string | null
-  onSubmit: (data: CategoryFormValues) => Promise<void>
-  isSubmitting: boolean
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  category: Category | null;
+  groups: GroupWithCategories[];
+  defaultGroupId: string | null;
+  onSubmit: (data: CategoryFormValues) => Promise<void>;
+  isSubmitting: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -1028,7 +966,7 @@ export function CategoryFormDialog({
   onSubmit,
   isSubmitting,
 }: CategoryFormDialogProps) {
-  const isEditing = category !== null
+  const isEditing = category !== null;
 
   const {
     register,
@@ -1039,26 +977,26 @@ export function CategoryFormDialog({
   } = useForm<CategoryFormValues>({
     resolver: zodResolver(categorySchema),
     defaultValues: {
-      name: '',
-      type: 'EXPENSE',
+      name: "",
+      type: "EXPENSE",
       group_id: null,
-      icon: '',
-      color: '',
+      icon: "",
+      color: "",
     },
-  })
+  });
 
   // Reset form when dialog opens or category changes
   useEffect(() => {
     if (open) {
       reset({
-        name: category?.name ?? '',
-        type: category?.type ?? 'EXPENSE',
+        name: category?.name ?? "",
+        type: category?.type ?? "EXPENSE",
         group_id: category?.group_id ?? defaultGroupId ?? null,
-        icon: category?.icon ?? '',
-        color: category?.color ?? '',
-      })
+        icon: category?.icon ?? "",
+        color: category?.color ?? "",
+      });
     }
-  }, [open, category, defaultGroupId, reset])
+  }, [open, category, defaultGroupId, reset]);
 
   const handleFormSubmit = handleSubmit(async (data) => {
     await onSubmit({
@@ -1067,58 +1005,52 @@ export function CategoryFormDialog({
       group_id: data.group_id,
       icon: data.icon || undefined,
       color: data.color || undefined,
-    })
-  })
+    });
+  });
 
   // Build group options for select
   const groupOptions = [
-    { label: 'No group', value: '__none__' },
+    { label: "No group", value: "__none__" },
     ...groups.map((g) => ({ label: g.name, value: g.id })),
-  ]
+  ];
 
   return (
     <Dialog.Root open={open} onOpenChange={(details) => onOpenChange(details.open)}>
       <Dialog.Backdrop />
       <Dialog.Positioner>
-        <Dialog.Content className={css({ maxW: 'md', w: 'full' })}>
+        <Dialog.Content className={css({ maxW: "md", w: "full" })}>
           <form onSubmit={handleFormSubmit}>
             <Dialog.Header>
-              <Dialog.Title>
-                {isEditing ? 'Edit Category' : 'New Category'}
-              </Dialog.Title>
+              <Dialog.Title>{isEditing ? "Edit Category" : "New Category"}</Dialog.Title>
               <Dialog.Description>
                 {isEditing
-                  ? 'Update the category details.'
-                  : 'Create a new category for tracking income or expenses.'}
+                  ? "Update the category details."
+                  : "Create a new category for tracking income or expenses."}
               </Dialog.Description>
             </Dialog.Header>
 
-            <Dialog.Body className={css({ display: 'flex', flexDir: 'column', gap: '4' })}>
+            <Dialog.Body className={css({ display: "flex", flexDir: "column", gap: "4" })}>
               {/* Name */}
-              <div className={css({ display: 'flex', flexDir: 'column', gap: '1.5' })}>
+              <div className={css({ display: "flex", flexDir: "column", gap: "1.5" })}>
                 <label
                   htmlFor="category-name"
-                  className={css({ fontSize: 'sm', fontWeight: 'medium' })}
+                  className={css({ fontSize: "sm", fontWeight: "medium" })}
                 >
                   Name *
                 </label>
                 <Input
                   id="category-name"
                   placeholder="e.g., Hypothèque, Épicerie, Spotify"
-                  {...register('name')}
+                  {...register("name")}
                 />
                 {errors.name && (
-                  <p className={css({ fontSize: 'sm', color: 'red.500' })}>
-                    {errors.name.message}
-                  </p>
+                  <p className={css({ fontSize: "sm", color: "red.500" })}>{errors.name.message}</p>
                 )}
               </div>
 
               {/* Type (INCOME / EXPENSE) */}
-              <div className={css({ display: 'flex', flexDir: 'column', gap: '1.5' })}>
-                <label className={css({ fontSize: 'sm', fontWeight: 'medium' })}>
-                  Type *
-                </label>
+              <div className={css({ display: "flex", flexDir: "column", gap: "1.5" })}>
+                <label className={css({ fontSize: "sm", fontWeight: "medium" })}>Type *</label>
                 <Controller
                   name="type"
                   control={control}
@@ -1126,7 +1058,7 @@ export function CategoryFormDialog({
                     <RadioGroup.Root
                       value={field.value}
                       onValueChange={(details) => field.onChange(details.value)}
-                      className={css({ display: 'flex', gap: '4' })}
+                      className={css({ display: "flex", gap: "4" })}
                     >
                       <RadioGroup.Item value="EXPENSE">
                         <RadioGroup.ItemControl />
@@ -1142,29 +1074,23 @@ export function CategoryFormDialog({
                   )}
                 />
                 {errors.type && (
-                  <p className={css({ fontSize: 'sm', color: 'red.500' })}>
-                    {errors.type.message}
-                  </p>
+                  <p className={css({ fontSize: "sm", color: "red.500" })}>{errors.type.message}</p>
                 )}
               </div>
 
               {/* Group select */}
-              <div className={css({ display: 'flex', flexDir: 'column', gap: '1.5' })}>
-                <label className={css({ fontSize: 'sm', fontWeight: 'medium' })}>
-                  Group
-                </label>
+              <div className={css({ display: "flex", flexDir: "column", gap: "1.5" })}>
+                <label className={css({ fontSize: "sm", fontWeight: "medium" })}>Group</label>
                 <Controller
                   name="group_id"
                   control={control}
                   render={({ field }) => (
                     <Select.Root
                       items={groupOptions}
-                      value={field.value ? [field.value] : ['__none__']}
+                      value={field.value ? [field.value] : ["__none__"]}
                       onValueChange={(details) => {
-                        const selected = details.value[0]
-                        field.onChange(
-                          selected === '__none__' ? null : selected,
-                        )
+                        const selected = details.value[0];
+                        field.onChange(selected === "__none__" ? null : selected);
                       }}
                     >
                       <Select.Control>
@@ -1188,46 +1114,48 @@ export function CategoryFormDialog({
               </div>
 
               {/* Icon */}
-              <div className={css({ display: 'flex', flexDir: 'column', gap: '1.5' })}>
+              <div className={css({ display: "flex", flexDir: "column", gap: "1.5" })}>
                 <label
                   htmlFor="category-icon"
-                  className={css({ fontSize: 'sm', fontWeight: 'medium' })}
+                  className={css({ fontSize: "sm", fontWeight: "medium" })}
                 >
                   Icon
                 </label>
                 <Input
                   id="category-icon"
                   placeholder="e.g., Home, ShoppingCart, Music"
-                  {...register('icon')}
+                  {...register("icon")}
                 />
               </div>
 
               {/* Color */}
-              <div className={css({ display: 'flex', flexDir: 'column', gap: '1.5' })}>
+              <div className={css({ display: "flex", flexDir: "column", gap: "1.5" })}>
                 <label
                   htmlFor="category-color"
-                  className={css({ fontSize: 'sm', fontWeight: 'medium' })}
+                  className={css({ fontSize: "sm", fontWeight: "medium" })}
                 >
                   Color
                 </label>
-                <div className={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+                <div className={css({ display: "flex", alignItems: "center", gap: "2" })}>
                   <Input
                     id="category-color-picker"
                     type="color"
-                    className={css({ w: '12', h: '10', p: '1', cursor: 'pointer' })}
-                    {...register('color')}
+                    className={css({ w: "12", h: "10", p: "1", cursor: "pointer" })}
+                    {...register("color")}
                   />
                   <Input
                     id="category-color"
                     placeholder="#6366f1"
-                    className={css({ flex: '1' })}
-                    {...register('color')}
+                    className={css({ flex: "1" })}
+                    {...register("color")}
                   />
                 </div>
               </div>
             </Dialog.Body>
 
-            <Dialog.Footer className={css({ display: 'flex', gap: '3', justifyContent: 'flex-end' })}>
+            <Dialog.Footer
+              className={css({ display: "flex", gap: "3", justifyContent: "flex-end" })}
+            >
               <Dialog.CloseTrigger asChild>
                 <Button variant="outline" type="button" disabled={isSubmitting}>
                   Cancel
@@ -1236,18 +1164,18 @@ export function CategoryFormDialog({
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting
                   ? isEditing
-                    ? 'Updating...'
-                    : 'Creating...'
+                    ? "Updating..."
+                    : "Creating..."
                   : isEditing
-                    ? 'Update Category'
-                    : 'Create Category'}
+                    ? "Update Category"
+                    : "Create Category"}
               </Button>
             </Dialog.Footer>
           </form>
         </Dialog.Content>
       </Dialog.Positioner>
     </Dialog.Root>
-  )
+  );
 }
 ```
 
@@ -1274,52 +1202,52 @@ Renders a single category group as a collapsible card with its nested categories
 ### Complete Code
 
 ```tsx
-import { useState } from 'react'
-import { css } from '../../../styled-system/css'
-import { Button } from '@/components/ui/button'
-import type { CategoryGroup, Category } from '@/types/database'
-import type { GroupWithCategories } from '@/hooks/use-categories'
+import { useState } from "react";
+import { css } from "../../../styled-system/css";
+import { Button } from "@/components/ui/button";
+import type { CategoryGroup, Category } from "@/types/database";
+import type { GroupWithCategories } from "@/hooks/use-categories";
 
 // ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------
 
 interface CategoryListProps {
-  group: GroupWithCategories
-  onEditGroup: (group: CategoryGroup) => void
-  onDeleteGroup: (groupId: string) => void
-  onAddCategory: (groupId: string | null) => void
-  onEditCategory: (category: Category) => void
-  onDeleteCategory: (categoryId: string) => void
+  group: GroupWithCategories;
+  onEditGroup: (group: CategoryGroup) => void;
+  onDeleteGroup: (groupId: string) => void;
+  onAddCategory: (groupId: string | null) => void;
+  onEditCategory: (category: Category) => void;
+  onDeleteCategory: (categoryId: string) => void;
 }
 
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
 
-function TypeBadge({ type }: { type: 'INCOME' | 'EXPENSE' }) {
-  const isIncome = type === 'INCOME'
+function TypeBadge({ type }: { type: "INCOME" | "EXPENSE" }) {
+  const isIncome = type === "INCOME";
   return (
     <span
       className={css({
-        display: 'inline-flex',
-        alignItems: 'center',
-        px: '2',
-        py: '0.5',
-        rounded: 'full',
-        fontSize: 'xs',
-        fontWeight: 'medium',
-        bg: isIncome ? 'green.100' : 'red.100',
-        color: isIncome ? 'green.800' : 'red.800',
+        display: "inline-flex",
+        alignItems: "center",
+        px: "2",
+        py: "0.5",
+        rounded: "full",
+        fontSize: "xs",
+        fontWeight: "medium",
+        bg: isIncome ? "green.100" : "red.100",
+        color: isIncome ? "green.800" : "red.800",
         _dark: {
-          bg: isIncome ? 'green.900/30' : 'red.900/30',
-          color: isIncome ? 'green.300' : 'red.300',
+          bg: isIncome ? "green.900/30" : "red.900/30",
+          color: isIncome ? "green.300" : "red.300",
         },
       })}
     >
       {type}
     </span>
-  )
+  );
 }
 
 function CategoryRow({
@@ -1327,64 +1255,58 @@ function CategoryRow({
   onEdit,
   onDelete,
 }: {
-  category: Category
-  onEdit: () => void
-  onDelete: () => void
+  category: Category;
+  onEdit: () => void;
+  onDelete: () => void;
 }) {
   return (
     <div
       className={css({
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        py: '2.5',
-        px: '4',
-        borderBottomWidth: '1px',
-        borderColor: 'border.muted',
-        _last: { borderBottomWidth: '0' },
-        _hover: { bg: 'bg.muted' },
-        transition: 'colors',
-        transitionDuration: '150ms',
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        py: "2.5",
+        px: "4",
+        borderBottomWidth: "1px",
+        borderColor: "border.muted",
+        _last: { borderBottomWidth: "0" },
+        _hover: { bg: "bg.muted" },
+        transition: "colors",
+        transitionDuration: "150ms",
       })}
     >
       {/* Left: icon + name */}
-      <div className={css({ display: 'flex', alignItems: 'center', gap: '3', flex: '1' })}>
+      <div className={css({ display: "flex", alignItems: "center", gap: "3", flex: "1" })}>
         {category.icon && (
           <span
             className={css({
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              w: '8',
-              h: '8',
-              rounded: 'md',
-              fontSize: 'sm',
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              w: "8",
+              h: "8",
+              rounded: "md",
+              fontSize: "sm",
             })}
             style={{
-              backgroundColor: category.color
-                ? `${category.color}15`
-                : undefined,
+              backgroundColor: category.color ? `${category.color}15` : undefined,
               color: category.color ?? undefined,
             }}
           >
             {category.icon}
           </span>
         )}
-        <span className={css({ fontWeight: 'medium' })}>{category.name}</span>
+        <span className={css({ fontWeight: "medium" })}>{category.name}</span>
       </div>
 
       {/* Center: type badge */}
-      <div className={css({ mx: '4' })}>
+      <div className={css({ mx: "4" })}>
         <TypeBadge type={category.type} />
       </div>
 
       {/* Right: actions */}
-      <div className={css({ display: 'flex', gap: '1' })}>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onEdit}
-        >
+      <div className={css({ display: "flex", gap: "1" })}>
+        <Button variant="ghost" size="sm" onClick={onEdit}>
           Edit
         </Button>
         <Button
@@ -1392,16 +1314,16 @@ function CategoryRow({
           size="sm"
           onClick={onDelete}
           className={css({
-            color: 'red.500',
-            _hover: { color: 'red.700', bg: 'red.50' },
-            _dark: { _hover: { bg: 'red.900/20' } },
+            color: "red.500",
+            _hover: { color: "red.700", bg: "red.50" },
+            _dark: { _hover: { bg: "red.900/20" } },
           })}
         >
           Delete
         </Button>
       </div>
     </div>
-  )
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -1416,96 +1338,80 @@ export function CategoryList({
   onEditCategory,
   onDeleteCategory,
 }: CategoryListProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  const isVirtualUngrouped = group.id === '__ungrouped__'
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const isVirtualUngrouped = group.id === "__ungrouped__";
 
   return (
     <div
       className={css({
-        borderWidth: '1px',
-        borderColor: 'border.default',
-        rounded: 'lg',
-        overflow: 'hidden',
-        bg: 'bg.default',
+        borderWidth: "1px",
+        borderColor: "border.default",
+        rounded: "lg",
+        overflow: "hidden",
+        bg: "bg.default",
       })}
     >
       {/* Group header */}
       <div
         className={css({
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          px: '4',
-          py: '3',
-          bg: 'bg.subtle',
-          borderBottomWidth: isCollapsed ? '0' : '1px',
-          borderColor: 'border.default',
-          cursor: 'pointer',
-          userSelect: 'none',
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          px: "4",
+          py: "3",
+          bg: "bg.subtle",
+          borderBottomWidth: isCollapsed ? "0" : "1px",
+          borderColor: "border.default",
+          cursor: "pointer",
+          userSelect: "none",
         })}
         onClick={() => setIsCollapsed(!isCollapsed)}
       >
         {/* Left: collapse indicator + name + count */}
-        <div className={css({ display: 'flex', alignItems: 'center', gap: '3' })}>
+        <div className={css({ display: "flex", alignItems: "center", gap: "3" })}>
           <span
             className={css({
-              fontSize: 'sm',
-              color: 'fg.muted',
-              transition: 'transform',
-              transitionDuration: '200ms',
-              transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+              fontSize: "sm",
+              color: "fg.muted",
+              transition: "transform",
+              transitionDuration: "200ms",
+              transform: isCollapsed ? "rotate(-90deg)" : "rotate(0deg)",
             })}
           >
             ▼
           </span>
 
           {group.icon && (
-            <span
-              className={css({ fontSize: 'lg' })}
-              style={{ color: group.color ?? undefined }}
-            >
+            <span className={css({ fontSize: "lg" })} style={{ color: group.color ?? undefined }}>
               {group.icon}
             </span>
           )}
 
-          <span className={css({ fontWeight: 'semibold', fontSize: 'md' })}>
-            {group.name}
-          </span>
+          <span className={css({ fontWeight: "semibold", fontSize: "md" })}>{group.name}</span>
 
           <span
             className={css({
-              fontSize: 'sm',
-              color: 'fg.muted',
-              bg: 'bg.muted',
-              px: '2',
-              py: '0.5',
-              rounded: 'full',
+              fontSize: "sm",
+              color: "fg.muted",
+              bg: "bg.muted",
+              px: "2",
+              py: "0.5",
+              rounded: "full",
             })}
           >
-            {group.categories.length} {group.categories.length === 1 ? 'category' : 'categories'}
+            {group.categories.length} {group.categories.length === 1 ? "category" : "categories"}
           </span>
         </div>
 
         {/* Right: group actions */}
-        <div
-          className={css({ display: 'flex', gap: '1' })}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onAddCategory(group.id)}
-          >
+        <div className={css({ display: "flex", gap: "1" })} onClick={(e) => e.stopPropagation()}>
+          <Button variant="ghost" size="sm" onClick={() => onAddCategory(group.id)}>
             + Add
           </Button>
 
           {!isVirtualUngrouped && (
             <>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onEditGroup(group)}
-              >
+              <Button variant="ghost" size="sm" onClick={() => onEditGroup(group)}>
                 Edit
               </Button>
               <Button
@@ -1513,9 +1419,9 @@ export function CategoryList({
                 size="sm"
                 onClick={() => onDeleteGroup(group.id)}
                 className={css({
-                  color: 'red.500',
-                  _hover: { color: 'red.700', bg: 'red.50' },
-                  _dark: { _hover: { bg: 'red.900/20' } },
+                  color: "red.500",
+                  _hover: { color: "red.700", bg: "red.50" },
+                  _dark: { _hover: { bg: "red.900/20" } },
                 })}
               >
                 Delete
@@ -1531,21 +1437,21 @@ export function CategoryList({
           {group.categories.length === 0 ? (
             <div
               className={css({
-                py: '6',
-                textAlign: 'center',
-                color: 'fg.muted',
-                fontSize: 'sm',
+                py: "6",
+                textAlign: "center",
+                color: "fg.muted",
+                fontSize: "sm",
               })}
             >
-              No categories in this group.{' '}
+              No categories in this group.{" "}
               <button
                 type="button"
                 onClick={() => onAddCategory(group.id)}
                 className={css({
-                  color: 'accent.default',
-                  textDecoration: 'underline',
-                  cursor: 'pointer',
-                  _hover: { color: 'accent.emphasized' },
+                  color: "accent.default",
+                  textDecoration: "underline",
+                  cursor: "pointer",
+                  _hover: { color: "accent.emphasized" },
                 })}
               >
                 Add one
@@ -1564,7 +1470,7 @@ export function CategoryList({
         </div>
       )}
     </div>
-  )
+  );
 }
 ```
 
@@ -1603,6 +1509,7 @@ This is expected to already be scaffolded by Plan 1C (auth + routing). If not, t
 After implementation, verify each of these behaviors:
 
 ### Group CRUD
+
 - [ ] Click "Add Group" opens the group form dialog with empty fields
 - [ ] Fill in name, click "Create Group" — group appears in the list instantly (no page reload)
 - [ ] Click "Edit" on a group — dialog opens with pre-filled values
@@ -1611,6 +1518,7 @@ After implementation, verify each of these behaviors:
 - [ ] If delete fails (network error), the group reappears (rollback)
 
 ### Category CRUD
+
 - [ ] Click "+ Add" on a group — category form opens with that group pre-selected
 - [ ] Fill in name, select type, click "Create Category" — category appears under the correct group instantly
 - [ ] Click "Edit" on a category — dialog opens with pre-filled values including current group
@@ -1619,16 +1527,19 @@ After implementation, verify each of these behaviors:
 - [ ] If delete fails, the category reappears (rollback)
 
 ### Cache Behavior
+
 - [ ] After creating a category, navigate to another page and back — category is still there (cached)
 - [ ] Cache does not refetch within 5 minutes unless a mutation occurs
 - [ ] After category mutation, transaction/budget/dashboard queries are invalidated (check React Query devtools)
 
 ### Toast Notifications
+
 - [ ] Success toast on create, update, delete
 - [ ] Error toast if server returns an error
 - [ ] No duplicate toasts
 
 ### Edge Cases
+
 - [ ] Creating a category with no group (group_id = null) — appears in "Ungrouped" section
 - [ ] Deleting the last group — only "Ungrouped" section remains
 - [ ] Empty state shown when no groups exist at all
