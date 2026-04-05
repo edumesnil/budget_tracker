@@ -13,7 +13,8 @@ import { CategoryFormDialog } from "@/components/categories/category-form-dialog
 import { Button } from "@/components/ui/button";
 import * as Card from "@/components/ui/card";
 import * as Progress from "@/components/ui/progress";
-import { Toaster, toaster } from "@/components/ui/toast";
+import { Toaster } from "@/components/ui/toast";
+import { toaster } from "@/lib/toaster";
 import { CheckCircle, AlertTriangle, Trash2 } from "lucide-react";
 
 export default function ImportPage() {
