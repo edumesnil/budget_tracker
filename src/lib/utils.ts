@@ -13,11 +13,14 @@ export function formatCurrency(amount: number): string {
  * Format a date string (ISO or yyyy-mm-dd) for display.
  */
 export function formatDate(date: string): string {
+  // Parse as local time to avoid UTC→local timezone shift
+  // "2026-02-19" with new Date() is UTC midnight, which rolls back a day in EST/EDT
+  const [y, m, d] = date.split("-").map(Number);
   return new Intl.DateTimeFormat("fr-CA", {
     year: "numeric",
     month: "long",
     day: "numeric",
-  }).format(new Date(date));
+  }).format(new Date(y, m - 1, d));
 }
 
 /**

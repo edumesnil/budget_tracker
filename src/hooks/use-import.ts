@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { sanitize } from "@/lib/sanitizer";
-import { getAIProvider } from "@/lib/ai";
+import { getAIProvider, cleanFallback } from "@/lib/ai";
 import { parsePdf } from "@/lib/parsers/pdf";
 import { getHeaders, parseCsv, detectColumns } from "@/lib/parsers/csv";
 import type { ParsedTransaction, CsvColumnMap } from "@/lib/parsers/types";
@@ -25,6 +25,7 @@ export interface ReviewItem {
   id: string; // local ID for tracking
   date: string;
   description: string; // original (unsanitized) for display
+  displayName: string; // clean, human-readable name
   sanitizedDescription: string;
   amount: number;
   type: "INCOME" | "EXPENSE";
@@ -145,6 +146,7 @@ export function useImport(
         id: `import-${i}`,
         date: tx.date,
         description: tx.description,
+        displayName: cleanFallback(tx.description),
         sanitizedDescription: sanitized,
         amount: tx.amount,
         type: tx.type,
@@ -178,6 +180,7 @@ export function useImport(
           const idx = unknowns[j].index;
           reviewItems[idx].category_id = r.category_id;
           reviewItems[idx].confidence = r.confidence;
+          reviewItems[idx].displayName = r.displayName;
         }
       } catch (err) {
         // LLM failed — leave unknowns as uncategorized, let user handle in review
@@ -199,6 +202,9 @@ export function useImport(
         item.status = "accepted";
       }
     }
+
+    // Sort by date ascending
+    reviewItems.sort((a, b) => a.date.localeCompare(b.date));
 
     setProgress(100);
     setItems(reviewItems);
@@ -322,7 +328,8 @@ export function useImport(
         const rows = batch.map((item) => ({
           amount: item.amount,
           date: item.date,
-          description: item.description,
+          description: item.displayName,
+          notes: item.description, // keep raw bank description as notes
           category_id: item.category_id!,
           is_recurring: false,
         }));

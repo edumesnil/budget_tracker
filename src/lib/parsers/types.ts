@@ -14,7 +14,7 @@ export interface ParsedTransaction {
 export interface ParseResult {
   transactions: ParsedTransaction[];
   /** Source format for display */
-  source: "desjardins-pdf" | "csv";
+  source: string;
   /** Any warnings (e.g., skipped rows, ambiguous amounts) */
   warnings: string[];
 }
