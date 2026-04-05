@@ -1,5 +1,15 @@
 # CLAUDE.md
 
+## MANDATORY: Read Before Writing
+
+**Before implementing ANY behavior** — read the framework/library source code first. Not docs. Not guesses. The actual source.
+
+1. Check what the component already does: read the `.js` files in `node_modules/@ark-ui/react/dist/components/<name>/`
+2. Check what the state machine provides: read `node_modules/@zag-js/<name>/dist/` — look at `.connect.mjs` for available props/handlers and `.machine.mjs` for built-in states/events
+3. Only then decide if custom code is needed. If the framework already handles it (hover pause, timers, focus management), use it — don't reimplement.
+
+The stack is Park UI (recipes) → Ark UI (React) → zag-js (state machines). Behavior lives in zag-js. Components live in Ark UI. Styling lives in Park UI recipes + Panda CSS.
+
 ## Commands
 
 ```bash
