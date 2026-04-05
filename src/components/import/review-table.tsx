@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, X, AlertTriangle, Sparkles, Database, HelpCircle, Plus } from "lucide-react";
 import { css } from "../../../styled-system/css";
+import { Badge } from "@/components/ui/badge";
 import * as Card from "@/components/ui/card";
 import * as Table from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -31,32 +32,27 @@ interface ReviewTableProps {
 
 function ConfidenceBadge({ confidence }: { confidence: ReviewItem["confidence"] }) {
   const config = {
-    known: { icon: Database, label: "Known", color: "fg.default", bg: "colorPalette.3" },
+    known: { icon: Database, label: "Known", color: "teal.11", bg: "teal.a3" },
     high: { icon: Sparkles, label: "High", color: "income", bg: "income.muted" },
-    medium: { icon: Sparkles, label: "Medium", color: "fg.muted", bg: "bg.subtle" },
+    medium: { icon: Sparkles, label: "Medium", color: "gray.11", bg: "gray.a3" },
     low: { icon: HelpCircle, label: "Low", color: "expense", bg: "expense.muted" },
   };
   const c = config[confidence];
   const Icon = c.icon;
 
   return (
-    <span
+    <Badge
+      size="sm"
+      variant="subtle"
       className={css({
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "1",
-        px: "1.5",
-        py: "0.5",
-        rounded: "sm",
-        fontSize: "xs",
-        fontWeight: "500",
         color: c.color,
         bg: c.bg,
+        borderColor: "transparent",
       })}
     >
       <Icon size={12} />
       {c.label}
-    </span>
+    </Badge>
   );
 }
 
@@ -80,23 +76,18 @@ function AiStatusCell({ item }: { item: ReviewItem }) {
 
   if (item.aiStatus === "analyzing") {
     return (
-      <span
+      <Badge
+        size="sm"
+        variant="subtle"
         className={css({
-          display: "inline-flex",
-          alignItems: "center",
-          gap: "1",
-          px: "1.5",
-          py: "0.5",
-          rounded: "sm",
-          fontSize: "xs",
-          fontWeight: "500",
           color: "blue.11",
           bg: "blue.3",
+          borderColor: "transparent",
         })}
       >
         <Spinner size="xs" />
         Analyzing
-      </span>
+      </Badge>
     );
   }
 
@@ -129,10 +120,10 @@ function CategoryContent({
           rounded: "sm",
           fontSize: "xs",
           fontWeight: "500",
-          color: "colorPalette.fg",
-          bg: "colorPalette.3",
+          color: "teal.11",
+          bg: "teal.a3",
           cursor: "pointer",
-          _hover: { bg: "colorPalette.4" },
+          _hover: { bg: "teal.a4" },
         })}
       >
         <Plus size={11} />
@@ -277,8 +268,8 @@ function CategoryPicker({
                   py: "1.5",
                   rounded: "md",
                   fontSize: "sm",
-                  color: cat.id === item.category_id ? "colorPalette.11" : "fg.default",
-                  bg: cat.id === item.category_id ? "colorPalette.3" : "transparent",
+                  color: cat.id === item.category_id ? "teal.11" : "fg.default",
+                  bg: cat.id === item.category_id ? "teal.a3" : "transparent",
                   fontWeight: cat.id === item.category_id ? "500" : "400",
                   cursor: "pointer",
                   border: "none",
@@ -326,14 +317,14 @@ function CategoryPicker({
           py: "2",
           fontSize: "sm",
           fontWeight: "500",
-          color: "colorPalette.11",
+          color: "teal.11",
           bg: "transparent",
           cursor: "pointer",
           border: "none",
           borderTopWidth: "1px",
           borderColor: "border.subtle",
           textAlign: "left",
-          _hover: { bg: "colorPalette.2" },
+          _hover: { bg: "teal.a2" },
         })}
       >
         <Plus size={14} />
@@ -404,7 +395,7 @@ const AnimatedRow = memo(function AnimatedRow({
     prevDisplayName.current = item.displayName;
   }, [item.displayName]);
 
-  const rowBg = isActive ? "var(--colors-color-palette-2)" : "transparent";
+  const rowBg = isActive ? "var(--colors-teal-a2)" : "transparent";
 
   return (
     <tr
@@ -422,7 +413,7 @@ const AnimatedRow = memo(function AnimatedRow({
         transition: "opacity 200ms",
         _hover: { bg: "gray.a2" },
         ...(item.aiStatus === "analyzing" && {
-          boxShadow: "inset 3px 0 0 0 var(--colors-color-palette-8)",
+          boxShadow: "inset 3px 0 0 0 var(--colors-teal-8)",
         }),
         ...(flashActive && {
           animation: "flash-row 400ms ease-out",
@@ -430,7 +421,7 @@ const AnimatedRow = memo(function AnimatedRow({
       })}
       style={{
         backgroundColor: rowBg,
-        ["--flash-bg" as string]: "var(--colors-color-palette-3)",
+        ["--flash-bg" as string]: "var(--colors-teal-a3)",
       }}
     >
       {/* Status icon */}
@@ -695,7 +686,7 @@ export function ReviewTable({
               alignItems: "center",
               gap: "2",
               fontSize: "sm",
-              color: "colorPalette.fg",
+              color: "teal.11",
               whiteSpace: "nowrap",
               animation: "fade-in 200ms ease-out",
             })}
@@ -719,7 +710,7 @@ export function ReviewTable({
                   display: "block",
                   h: "full",
                   rounded: "full",
-                  bg: "colorPalette.9",
+                  bg: "teal.9",
                   transition: "width 300ms ease-out",
                 })}
                 style={{ width: `${(aiDone / aiTotal) * 100}%` }}
