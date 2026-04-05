@@ -1,16 +1,17 @@
-import { BrowserRouter, Routes, Route } from 'react-router'
-import { QueryClientProvider } from '@tanstack/react-query'
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-import { queryClient } from '@/lib/query-client'
-import { AuthProvider } from '@/hooks/use-auth'
-import { DashboardLayout } from '@/routes/_layout'
-import IndexPage from '@/routes/index'
-import LoginPage from '@/routes/login'
-import RegisterPage from '@/routes/register'
-import DashboardPage from '@/routes/dashboard'
-import TransactionsPage from '@/routes/transactions'
-import BudgetsPage from '@/routes/budgets'
-import CategoriesPage from '@/routes/categories'
+import { BrowserRouter, Routes, Route } from "react-router";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { queryClient } from "@/lib/query-client";
+import { AuthProvider } from "@/hooks/use-auth";
+import { DashboardLayout } from "@/routes/_layout";
+import IndexPage from "@/routes/index";
+import LoginPage from "@/routes/login";
+import RegisterPage from "@/routes/register";
+import DashboardPage from "@/routes/dashboard";
+import TransactionsPage from "@/routes/transactions";
+import BudgetsPage from "@/routes/budgets";
+import CategoriesPage from "@/routes/categories";
+import ImportPage from "@/routes/import";
 
 export default function App() {
   return (
@@ -28,11 +29,12 @@ export default function App() {
               <Route path="transactions" element={<TransactionsPage />} />
               <Route path="budgets" element={<BudgetsPage />} />
               <Route path="categories" element={<CategoriesPage />} />
+              <Route path="import" element={<ImportPage />} />
             </Route>
           </Routes>
         </BrowserRouter>
       </AuthProvider>
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
-  )
+  );
 }
