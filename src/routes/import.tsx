@@ -222,7 +222,21 @@ export default function ImportPage() {
         defaultGroupId={catPrefill.groupId ?? null}
         defaultName={catPrefill.name}
         onSubmit={async (data) => {
-          await createCategory.mutateAsync(data);
+          const created = await createCategory.mutateAsync(data);
+          // Assign the new category to all review items whose suggestedCategory
+          // matches the prefill name that opened this dialog
+          const prefillLower = catPrefill.name?.toLowerCase();
+          if (prefillLower) {
+            for (const item of items) {
+              if (item.suggestedCategory?.toLowerCase() === prefillLower && !item.category_id) {
+                updateItem(item.id, {
+                  category_id: created.id,
+                  confidence: "high",
+                  suggestedCategory: undefined,
+                });
+              }
+            }
+          }
           setCatDialogOpen(false);
           toaster.success({ title: `Category "${data.name}" created` });
         }}
