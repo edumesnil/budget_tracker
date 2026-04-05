@@ -1,6 +1,7 @@
 import { css } from "../../../styled-system/css";
 import * as Table from "@/components/ui/table";
 import * as Card from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { MerchantMapping } from "@/types/database";
 
@@ -22,22 +23,17 @@ function CategoryCell({ mapping }: { mapping: MerchantMapping }) {
     <div className={css({ display: "flex", alignItems: "center", gap: "2" })}>
       {cat.icon && <span>{cat.icon}</span>}
       <span>{cat.name}</span>
-      <span
+      <Badge
+        size="sm"
+        variant="subtle"
         className={css({
-          display: "inline-flex",
-          alignItems: "center",
-          px: "1.5",
-          py: "0.5",
-          rounded: "sm",
-          fontSize: "xs",
-          fontWeight: "500",
-          letterSpacing: "wide",
           color: isIncome ? "income" : "expense",
           bg: isIncome ? "income.muted" : "expense.muted",
+          borderColor: "transparent",
         })}
       >
         {cat.type}
-      </span>
+      </Badge>
     </div>
   );
 }

@@ -1,5 +1,13 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, X, AlertTriangle, Sparkles, Database, HelpCircle, Plus } from "lucide-react";
+import {
+  Check,
+  X,
+  AlertTriangle,
+  Sparkles,
+  Database,
+  HelpCircle,
+  Plus,
+} from "lucide-react";
 import { css } from "../../../styled-system/css";
 import { Badge } from "@/components/ui/badge";
 import * as Card from "@/components/ui/card";
@@ -677,7 +685,6 @@ export function ReviewTable({
             {dupeCount} possible duplicates
           </span>
         )}
-
         {/* AI categorization progress */}
         {isAiRunning && (
           <span
