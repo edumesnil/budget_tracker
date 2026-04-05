@@ -364,6 +364,30 @@ const genericParser: BankParser = {
 const PARSERS: BankParser[] = [desjardinsCC, desjardinsChequing, genericParser];
 
 // ---------------------------------------------------------------------------
+// Post-parse deduplication
+// ---------------------------------------------------------------------------
+
+/**
+ * Remove duplicate transactions within a single parse result.
+ * Two transactions are considered duplicates when they share the same
+ * date, amount, type, AND normalized description.
+ */
+function deduplicateTransactions(txs: ParsedTransaction[]): ParsedTransaction[] {
+  const seen = new Set<string>();
+  const result: ParsedTransaction[] = [];
+
+  for (const tx of txs) {
+    const normDesc = tx.description.toUpperCase().replace(/\s{2,}/g, " ").trim();
+    const key = `${tx.date}|${tx.amount}|${tx.type}|${normDesc}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(tx);
+  }
+
+  return result;
+}
+
+// ---------------------------------------------------------------------------
 // Main entry point
 // ---------------------------------------------------------------------------
 
@@ -385,8 +409,13 @@ export async function parsePdf(file: File): Promise<ParseResult> {
       console.log(`[pdf-parser] Detected: ${parser.name}`);
       const result = parser.parse(lines, fullText);
       if (result.transactions.length > 0) {
-        console.log(`[pdf-parser] ${parser.name}: ${result.transactions.length} transactions`);
-        return { ...result, source: "desjardins-pdf" };
+        const deduped = deduplicateTransactions(result.transactions);
+        const removed = result.transactions.length - deduped.length;
+        if (removed > 0) {
+          console.log(`[pdf-parser] Dedup: removed ${removed} duplicate(s)`);
+        }
+        console.log(`[pdf-parser] ${parser.name}: ${deduped.length} transactions`);
+        return { transactions: deduped, warnings: result.warnings, source: "desjardins-pdf" };
       }
       console.log(`[pdf-parser] ${parser.name} detected but found 0 transactions, trying others`);
     }
@@ -407,6 +436,13 @@ export async function parsePdf(file: File): Promise<ParseResult> {
       bestParser = parser.name;
     }
   }
+
+  const deduped = deduplicateTransactions(best.transactions);
+  const removed = best.transactions.length - deduped.length;
+  if (removed > 0) {
+    console.log(`[pdf-parser] Dedup: removed ${removed} duplicate(s)`);
+  }
+  best.transactions = deduped;
 
   console.log(`[pdf-parser] Best: ${bestParser} with ${best.transactions.length} transactions`);
 
