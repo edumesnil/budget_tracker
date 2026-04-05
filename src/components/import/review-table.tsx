@@ -1,6 +1,16 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, X, AlertTriangle, Sparkles, Database, HelpCircle, Plus } from "lucide-react";
+import {
+  ArrowLeftRight,
+  Check,
+  X,
+  AlertTriangle,
+  Sparkles,
+  Database,
+  HelpCircle,
+  Plus,
+} from "lucide-react";
 import { css } from "../../../styled-system/css";
+import { Badge } from "@/components/ui/badge";
 import * as Card from "@/components/ui/card";
 import * as Table from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -40,23 +50,18 @@ function ConfidenceBadge({ confidence }: { confidence: ReviewItem["confidence"] 
   const Icon = c.icon;
 
   return (
-    <span
+    <Badge
+      size="sm"
+      variant="subtle"
       className={css({
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "1",
-        px: "1.5",
-        py: "0.5",
-        rounded: "sm",
-        fontSize: "xs",
-        fontWeight: "500",
         color: c.color,
         bg: c.bg,
+        borderColor: "transparent",
       })}
     >
       <Icon size={12} />
       {c.label}
-    </span>
+    </Badge>
   );
 }
 
@@ -80,23 +85,18 @@ function AiStatusCell({ item }: { item: ReviewItem }) {
 
   if (item.aiStatus === "analyzing") {
     return (
-      <span
+      <Badge
+        size="sm"
+        variant="subtle"
         className={css({
-          display: "inline-flex",
-          alignItems: "center",
-          gap: "1",
-          px: "1.5",
-          py: "0.5",
-          rounded: "sm",
-          fontSize: "xs",
-          fontWeight: "500",
           color: "blue.11",
           bg: "blue.3",
+          borderColor: "transparent",
         })}
       >
         <Spinner size="xs" />
         Analyzing
-      </span>
+      </Badge>
     );
   }
 
@@ -463,6 +463,31 @@ const AnimatedRow = memo(function AnimatedRow({
           <p className={css({ fontSize: "xs", color: "fg.muted", mt: "0.5" })}>
             {item.description}
           </p>
+          {item.transferType && (
+            <div
+              className={css({
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "1",
+                mt: "0.5",
+                px: "1.5",
+                py: "0.5",
+                rounded: "sm",
+                fontSize: "xs",
+                fontWeight: "500",
+                color: item.transferType === "internal" ? "gray.11" : "income",
+                bg: item.transferType === "internal" ? "gray.a3" : "income.muted",
+              })}
+            >
+              <ArrowLeftRight size={11} />
+              {item.transferType === "internal" ? "Transfer" : "External income"}
+              {item.transferParty && (
+                <span className={css({ color: "fg.muted", fontWeight: "400" })}>
+                  {item.transferType === "internal" ? "to" : "from"} {item.transferParty}
+                </span>
+              )}
+            </div>
+          )}
           {item.duplicate && (
             <div
               className={css({
@@ -575,6 +600,7 @@ export function ReviewTable({
   const skipped = items.filter((i) => i.status === "skipped").length;
   const pending = items.filter((i) => i.status === "pending").length;
   const dupeCount = items.filter((i) => i.duplicate).length;
+  const transferCount = items.filter((i) => i.transferType === "internal").length;
 
   // AI progress
   const aiDone = items.filter((i) => i.aiStatus === "done" || i.aiStatus === "skipped").length;
@@ -631,6 +657,17 @@ export function ReviewTable({
           e.preventDefault();
           onUpdateItem(item.id, { status: "pending" });
           break;
+        case "t":
+        case "T":
+          e.preventDefault();
+          // Toggle transfer status: internal → null, null/external → internal
+          if (item.transferType === "internal") {
+            onUpdateItem(item.id, { transferType: null, status: "pending" });
+          } else {
+            onUpdateItem(item.id, { transferType: "internal", status: "skipped" });
+          }
+          setActiveIdx((i) => Math.min(i + 1, items.length - 1));
+          break;
       }
     },
     [activeIdx, items, editingIdx, onUpdateItem],
@@ -684,6 +721,12 @@ export function ReviewTable({
         {dupeCount > 0 && (
           <span className={css({ fontSize: "sm", color: "expense" })}>
             {dupeCount} possible duplicates
+          </span>
+        )}
+        {transferCount > 0 && (
+          <span className={css({ display: "inline-flex", alignItems: "center", gap: "1", fontSize: "sm", color: "fg.muted" })}>
+            <ArrowLeftRight size={14} />
+            {transferCount} transfers skipped
           </span>
         )}
 
