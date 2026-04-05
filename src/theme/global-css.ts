@@ -13,5 +13,9 @@ export const globalCss = {
       background: "canvas",
       color: "fg.default",
     },
+    "@keyframes toast-countdown": {
+      from: { width: "100%" },
+      to: { width: "0%" },
+    },
   },
 };

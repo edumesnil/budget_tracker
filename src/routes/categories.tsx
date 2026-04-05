@@ -1,24 +1,22 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { css } from "../../styled-system/css";
-import { useCategories } from "@/hooks/use-categories";
+import { useCategories, categoryKeys } from "@/hooks/use-categories";
+import type { GroupWithCategories } from "@/hooks/use-categories";
+import { supabase } from "@/lib/supabase";
 import { CategoryList } from "@/components/categories/category-list";
 import { GroupFormDialog } from "@/components/categories/group-form-dialog";
 import { CategoryFormDialog } from "@/components/categories/category-form-dialog";
 import { Button } from "@/components/ui/button";
-import { Toaster, toaster } from "@/components/ui/toast";
+import { Toaster } from "@/components/ui/toast";
+import { toaster } from "@/lib/toaster";
 import type { CategoryGroup, Category } from "@/types/database";
 
 export default function CategoriesPage() {
-  const {
-    groups,
-    isLoading,
-    createGroup,
-    updateGroup,
-    deleteGroup,
-    createCategory,
-    updateCategory,
-    deleteCategory,
-  } = useCategories();
+  const { groups, isLoading, createGroup, updateGroup, createCategory, updateCategory } =
+    useCategories();
+
+  const queryClient = useQueryClient();
 
   const [groupDialogOpen, setGroupDialogOpen] = useState(false);
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
@@ -36,26 +34,72 @@ export default function CategoriesPage() {
     setGroupDialogOpen(true);
   };
 
-  const handleDeleteGroup = async (groupId: string) => {
-    try {
-      await deleteGroup.mutateAsync(groupId);
-      toaster.success({ title: "Group deleted", description: "Category group has been removed." });
-    } catch {
-      toaster.error({ title: "Error", description: "Failed to delete group. Please try again." });
-    }
+  const handleDeleteGroup = (groupId: string) => {
+    const cacheKey = categoryKeys.groups();
+    const prev = queryClient.getQueryData<GroupWithCategories[]>(cacheKey);
+    const group = prev?.find((g) => g.id === groupId);
+    let undone = false;
+
+    // Optimistic remove
+    queryClient.setQueryData<GroupWithCategories[]>(cacheKey, (old = []) => {
+      const orphans = old.find((g) => g.id === groupId)?.categories ?? [];
+      const filtered = old.filter((g) => g.id !== groupId);
+      if (orphans.length > 0) {
+        const uIdx = filtered.findIndex((g) => g.id === "__ungrouped__");
+        if (uIdx !== -1) {
+          filtered[uIdx] = {
+            ...filtered[uIdx],
+            categories: [
+              ...filtered[uIdx].categories,
+              ...orphans.map((c) => ({ ...c, group_id: null })),
+            ],
+          };
+        } else {
+          filtered.push({
+            id: "__ungrouped__",
+            user_id: "",
+            name: "Ungrouped",
+            icon: null,
+            color: null,
+            sort_order: 999999,
+            created_at: "",
+            categories: orphans.map((c) => ({ ...c, group_id: null })),
+          });
+        }
+      }
+      return filtered;
+    });
+
+    toaster.create({
+      title: `"${group?.name}" deleted`,
+      type: "info",
+      action: {
+        label: "Undo",
+        onClick: () => {
+          undone = true;
+          queryClient.setQueryData(cacheKey, prev);
+        },
+      },
+      onStatusChange: async (d: { status: string }) => {
+        if (d.status === "unmounted" && !undone) {
+          const { error } = await supabase.from("category_groups").delete().eq("id", groupId);
+          if (error) {
+            queryClient.setQueryData(cacheKey, prev);
+            toaster.error({ title: "Delete failed" });
+          }
+        }
+      },
+    });
   };
 
   const handleGroupSubmit = async (data: { name: string; icon?: string; color?: string }) => {
     try {
       if (editingGroup) {
         await updateGroup.mutateAsync({ id: editingGroup.id, ...data });
-        toaster.success({
-          title: "Group updated",
-          description: `"${data.name}" has been updated.`,
-        });
+        toaster.success({ title: "Group updated" });
       } else {
         await createGroup.mutateAsync(data);
-        toaster.success({ title: "Group created", description: `"${data.name}" has been added.` });
+        toaster.success({ title: "Group created" });
       }
       setGroupDialogOpen(false);
     } catch {
@@ -78,16 +122,36 @@ export default function CategoriesPage() {
     setCategoryDialogOpen(true);
   };
 
-  const handleDeleteCategory = async (categoryId: string) => {
-    try {
-      await deleteCategory.mutateAsync(categoryId);
-      toaster.success({ title: "Category deleted", description: "Category has been removed." });
-    } catch {
-      toaster.error({
-        title: "Error",
-        description: "Failed to delete category. Please try again.",
-      });
-    }
+  const handleDeleteCategory = (categoryId: string) => {
+    const cacheKey = categoryKeys.groups();
+    const prev = queryClient.getQueryData<GroupWithCategories[]>(cacheKey);
+    const cat = prev?.flatMap((g) => g.categories).find((c) => c.id === categoryId);
+    let undone = false;
+
+    queryClient.setQueryData<GroupWithCategories[]>(cacheKey, (old = []) =>
+      old.map((g) => ({ ...g, categories: g.categories.filter((c) => c.id !== categoryId) })),
+    );
+
+    toaster.create({
+      title: `"${cat?.name}" deleted`,
+      type: "info",
+      action: {
+        label: "Undo",
+        onClick: () => {
+          undone = true;
+          queryClient.setQueryData(cacheKey, prev);
+        },
+      },
+      onStatusChange: async (d: { status: string }) => {
+        if (d.status === "unmounted" && !undone) {
+          const { error } = await supabase.from("categories").delete().eq("id", categoryId);
+          if (error) {
+            queryClient.setQueryData(cacheKey, prev);
+            toaster.error({ title: "Delete failed" });
+          }
+        }
+      },
+    });
   };
 
   const handleCategorySubmit = async (data: {
@@ -100,16 +164,10 @@ export default function CategoriesPage() {
     try {
       if (editingCategory) {
         await updateCategory.mutateAsync({ id: editingCategory.id, ...data });
-        toaster.success({
-          title: "Category updated",
-          description: `"${data.name}" has been updated.`,
-        });
+        toaster.success({ title: "Category updated" });
       } else {
         await createCategory.mutateAsync(data);
-        toaster.success({
-          title: "Category created",
-          description: `"${data.name}" has been added.`,
-        });
+        toaster.success({ title: "Category created" });
       }
       setCategoryDialogOpen(false);
     } catch {
@@ -130,7 +188,6 @@ export default function CategoriesPage() {
 
   return (
     <div className={css({ display: "flex", flexDir: "column", gap: "6" })}>
-      {/* Page header */}
       <div
         className={css({
           display: "flex",
@@ -159,15 +216,8 @@ export default function CategoriesPage() {
         </Button>
       </div>
 
-      {/* Groups */}
       {groups.length === 0 ? (
-        <div
-          className={css({
-            textAlign: "center",
-            py: "16",
-            color: "fg.muted",
-          })}
-        >
+        <div className={css({ textAlign: "center", py: "16", color: "fg.muted" })}>
           <p className={css({ fontWeight: "500", mb: "1" })}>No category groups yet</p>
           <p className={css({ fontSize: "sm" })}>Create a group to start organizing categories.</p>
         </div>
