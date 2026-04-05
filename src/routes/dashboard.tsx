@@ -9,6 +9,7 @@ import { BudgetHealthCards } from '@/components/dashboard/budget-health-cards'
 import { SpendingTrend } from '@/components/dashboard/spending-trend'
 import { SnapshotWidget } from '@/components/dashboard/snapshot-widget'
 import { formatCurrency, getCurrentPeriod } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import * as Card from '@/components/ui/card'
 
 // ---------------------------------------------------------------------------
@@ -46,8 +47,6 @@ function MonthSelector({
     w: '8',
     h: '8',
     borderRadius: 'md',
-    border: '1px solid',
-    borderColor: 'border.default',
     bg: 'bg.default',
     color: 'fg.muted',
     cursor: 'pointer',
@@ -102,7 +101,7 @@ function PreImportView({
     <div className={css({ display: 'flex', flexDir: 'column', gap: '6' })}>
       {/* Status banner */}
       <Card.Root>
-        <Card.Body>
+        <Card.Body className={css({ pt: '6' })}>
           <div
             className={css({
               display: 'flex',
@@ -120,31 +119,12 @@ function PreImportView({
                 Upload a statement when ready, or add transactions manually.
               </p>
             </div>
-            <Link
-              to="/transactions"
-              className={css({
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '1.5',
-                px: '3',
-                py: '1.5',
-                borderRadius: 'md',
-                border: '1px solid',
-                borderColor: 'border.default',
-                bg: 'bg.default',
-                color: 'fg.default',
-                fontSize: 'xs',
-                fontWeight: '500',
-                cursor: 'pointer',
-                textDecoration: 'none',
-                minH: '11',
-                _hover: { bg: 'bg.subtle' },
-                transition: 'background 150ms ease',
-              })}
-            >
-              <Plus size={12} />
-              Add transaction
-            </Link>
+            <Button size="xs" variant="outline" asChild>
+              <Link to="/transactions">
+                <Plus size={12} />
+                Add transaction
+              </Link>
+            </Button>
           </div>
         </Card.Body>
       </Card.Root>
@@ -162,7 +142,6 @@ function PreImportView({
               Projected net:{' '}
               <span
                 className={css({
-                  fontFamily: 'mono',
                   fontWeight: '600',
                   color: budgetTotals.projectedNet >= 0 ? 'income' : 'expense',
                 })}
@@ -189,7 +168,7 @@ function PreImportView({
 
               return (
                 <Card.Root key={group.groupId}>
-                  <Card.Body>
+                  <Card.Body className={css({ pt: '6' })}>
                     <div
                       className={css({
                         display: 'flex',
@@ -209,7 +188,6 @@ function PreImportView({
                         className={css({
                           fontSize: 'sm',
                           fontWeight: '600',
-                          fontFamily: 'mono',
                           color: isIncomeGroup ? 'income' : 'fg.default',
                         })}
                       >
@@ -260,7 +238,7 @@ function PostImportView({
     <div className={css({ display: 'flex', flexDir: 'column', gap: '6' })}>
       {/* Hero: surplus / deficit */}
       <Card.Root>
-        <Card.Body>
+        <Card.Body className={css({ pt: '6' })}>
           <p
             className={css({
               fontSize: 'xs',
@@ -278,7 +256,6 @@ function PostImportView({
             className={css({
               fontSize: '4xl',
               fontWeight: '700',
-              fontFamily: 'mono',
               letterSpacing: 'tight',
               lineHeight: '1',
               color: surplus ? 'income' : 'expense',
@@ -291,7 +268,7 @@ function PostImportView({
             <div>
               <p className={css({ fontSize: 'xs', color: 'fg.muted', mb: '0.5' })}>Income</p>
               <p
-                className={css({ fontSize: 'sm', fontWeight: '600', fontFamily: 'mono', color: 'income' })}
+                className={css({ fontSize: 'sm', fontWeight: '600', color: 'income' })}
               >
                 +{formatCurrency(totalIncome)}
               </p>
@@ -299,14 +276,14 @@ function PostImportView({
             <div>
               <p className={css({ fontSize: 'xs', color: 'fg.muted', mb: '0.5' })}>Expenses</p>
               <p
-                className={css({ fontSize: 'sm', fontWeight: '600', fontFamily: 'mono', color: 'expense' })}
+                className={css({ fontSize: 'sm', fontWeight: '600', color: 'expense' })}
               >
                 −{formatCurrency(totalExpenses)}
               </p>
             </div>
             <div>
               <p className={css({ fontSize: 'xs', color: 'fg.muted', mb: '0.5' })}>Transactions</p>
-              <p className={css({ fontSize: 'sm', fontWeight: '600', fontFamily: 'mono', color: 'fg.default' })}>
+              <p className={css({ fontSize: 'sm', fontWeight: '600', color: 'fg.default' })}>
                 {transactions.length}
               </p>
             </div>

@@ -6,6 +6,7 @@ import { createListCollection } from '@ark-ui/react/collection'
 import { Portal } from '@ark-ui/react/portal'
 import { css } from '../../../styled-system/css'
 import * as Dialog from '@/components/ui/dialog'
+import * as Field from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import * as Select from '@/components/ui/select'
@@ -111,9 +112,6 @@ export function SnapshotFormDialog({
     [typeItems],
   )
 
-  const fieldClass = css({ display: 'flex', flexDir: 'column', gap: '1.5' })
-  const labelClass = css({ fontSize: 'sm', fontWeight: '500', color: 'fg.default' })
-  const errorClass = css({ fontSize: 'xs', color: 'fg.muted' })
   const datalistId = 'snapshot-account-names'
 
   return (
@@ -131,32 +129,25 @@ export function SnapshotFormDialog({
             </Dialog.Header>
 
             <Dialog.Body className={css({ display: 'flex', flexDir: 'column', gap: '4' })}>
-              {/* Account name with datalist suggestions */}
-              <div className={fieldClass}>
-                <label htmlFor="snapshot-account-name" className={labelClass}>
-                  Account name *
-                </label>
+              <Field.Root invalid={!!errors.account_name}>
+                <Field.Label>Account name *</Field.Label>
                 <datalist id={datalistId}>
                   {knownAccountNames.map((n) => (
                     <option key={n} value={n} />
                   ))}
                 </datalist>
                 <Input
-                  id="snapshot-account-name"
                   type="text"
                   list={datalistId}
                   placeholder="e.g. CELI Desjardins"
                   autoComplete="off"
                   {...register('account_name')}
                 />
-                {errors.account_name && (
-                  <p className={errorClass}>{errors.account_name.message}</p>
-                )}
-              </div>
+                <Field.ErrorText>{errors.account_name?.message}</Field.ErrorText>
+              </Field.Root>
 
-              {/* Account type */}
-              <div className={fieldClass}>
-                <label className={labelClass}>Account type *</label>
+              <Field.Root invalid={!!errors.account_type}>
+                <Field.Label>Account type *</Field.Label>
                 <Controller
                   name="account_type"
                   control={control}
@@ -187,43 +178,29 @@ export function SnapshotFormDialog({
                     </Select.Root>
                   )}
                 />
-                {errors.account_type && (
-                  <p className={errorClass}>{errors.account_type.message}</p>
-                )}
-              </div>
+                <Field.ErrorText>{errors.account_type?.message}</Field.ErrorText>
+              </Field.Root>
 
-              {/* Balance */}
-              <div className={fieldClass}>
-                <label htmlFor="snapshot-balance" className={labelClass}>
-                  Balance *
-                </label>
+              <Field.Root invalid={!!errors.balance}>
+                <Field.Label>Balance *</Field.Label>
                 <Input
-                  id="snapshot-balance"
                   type="number"
                   step="0.01"
                   min="0"
                   placeholder="0.00"
                   {...register('balance', { valueAsNumber: true })}
                 />
-                {errors.balance && (
-                  <p className={errorClass}>{errors.balance.message}</p>
-                )}
-              </div>
+                <Field.ErrorText>{errors.balance?.message}</Field.ErrorText>
+              </Field.Root>
 
-              {/* Snapshot date */}
-              <div className={fieldClass}>
-                <label htmlFor="snapshot-date" className={labelClass}>
-                  Date *
-                </label>
+              <Field.Root invalid={!!errors.snapshot_date}>
+                <Field.Label>Date *</Field.Label>
                 <Input
-                  id="snapshot-date"
                   type="date"
                   {...register('snapshot_date')}
                 />
-                {errors.snapshot_date && (
-                  <p className={errorClass}>{errors.snapshot_date.message}</p>
-                )}
-              </div>
+                <Field.ErrorText>{errors.snapshot_date?.message}</Field.ErrorText>
+              </Field.Root>
             </Dialog.Body>
 
             <Dialog.Footer>

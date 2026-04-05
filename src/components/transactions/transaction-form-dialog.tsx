@@ -6,6 +6,7 @@ import { createListCollection } from '@ark-ui/react/collection'
 import { Portal } from '@ark-ui/react/portal'
 import { css } from '../../../styled-system/css'
 import * as Dialog from '@/components/ui/dialog'
+import * as Field from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import * as Select from '@/components/ui/select'
@@ -130,10 +131,6 @@ export function TransactionFormDialog({
     return map
   }, [categoryItems])
 
-  const fieldClass = css({ display: 'flex', flexDir: 'column', gap: '1.5' })
-  const labelClass = css({ fontSize: 'sm', fontWeight: '500', color: 'fg.default' })
-  const errorClass = css({ fontSize: 'xs', color: 'fg.muted' })
-
   return (
     <Dialog.Root open={open} onOpenChange={(d: { open: boolean }) => onOpenChange(d.open)}>
       <Portal>
@@ -151,50 +148,37 @@ export function TransactionFormDialog({
             </Dialog.Header>
 
             <Dialog.Body className={css({ display: 'flex', flexDir: 'column', gap: '4' })}>
-              {/* Amount */}
-              <div className={fieldClass}>
-                <label htmlFor="tx-amount" className={labelClass}>
-                  Amount *
-                </label>
+              <Field.Root invalid={!!errors.amount}>
+                <Field.Label>Amount *</Field.Label>
                 <Input
-                  id="tx-amount"
                   type="number"
                   step="0.01"
                   min="0"
                   placeholder="0.00"
                   {...register('amount', { valueAsNumber: true })}
                 />
-                {errors.amount && <p className={errorClass}>{errors.amount.message}</p>}
-              </div>
+                <Field.ErrorText>{errors.amount?.message}</Field.ErrorText>
+              </Field.Root>
 
-              {/* Date */}
-              <div className={fieldClass}>
-                <label htmlFor="tx-date" className={labelClass}>
-                  Date *
-                </label>
+              <Field.Root invalid={!!errors.date}>
+                <Field.Label>Date *</Field.Label>
                 <Input
-                  id="tx-date"
                   type="date"
                   {...register('date')}
                 />
-                {errors.date && <p className={errorClass}>{errors.date.message}</p>}
-              </div>
+                <Field.ErrorText>{errors.date?.message}</Field.ErrorText>
+              </Field.Root>
 
-              {/* Description */}
-              <div className={fieldClass}>
-                <label htmlFor="tx-description" className={labelClass}>
-                  Description
-                </label>
+              <Field.Root>
+                <Field.Label>Description</Field.Label>
                 <Input
-                  id="tx-description"
                   placeholder="e.g., Grocery run, Netflix"
                   {...register('description')}
                 />
-              </div>
+              </Field.Root>
 
-              {/* Category */}
-              <div className={fieldClass}>
-                <label className={labelClass}>Category</label>
+              <Field.Root invalid={!!errors.category_id}>
+                <Field.Label>Category</Field.Label>
                 <Controller
                   name="category_id"
                   control={control}
@@ -217,28 +201,16 @@ export function TransactionFormDialog({
                         <Select.Content
                           className={css({ maxH: '64', overflowY: 'auto' })}
                         >
-                          {/* No category option */}
                           <Select.Item item={{ label: 'No category', value: '__none__', group: '' }}>
                             <Select.ItemText>No category</Select.ItemText>
                             <Select.ItemIndicator />
                           </Select.Item>
 
-                          {/* Grouped categories */}
                           {Array.from(groupedItems.entries())
                             .filter(([group]) => group !== '')
                             .map(([group, items]) => (
                               <Select.ItemGroup key={group}>
-                                <Select.ItemGroupLabel
-                                  className={css({
-                                    fontSize: 'xs',
-                                    fontWeight: '600',
-                                    color: 'fg.muted',
-                                    letterSpacing: 'wider',
-                                    textTransform: 'uppercase',
-                                    px: '3',
-                                    py: '1.5',
-                                  })}
-                                >
+                                <Select.ItemGroupLabel>
                                   {group}
                                 </Select.ItemGroupLabel>
                                 {items.map((item) => (
@@ -254,22 +226,16 @@ export function TransactionFormDialog({
                     </Select.Root>
                   )}
                 />
-                {errors.category_id && (
-                  <p className={errorClass}>{errors.category_id.message}</p>
-                )}
-              </div>
+                <Field.ErrorText>{errors.category_id?.message}</Field.ErrorText>
+              </Field.Root>
 
-              {/* Notes */}
-              <div className={fieldClass}>
-                <label htmlFor="tx-notes" className={labelClass}>
-                  Notes
-                </label>
+              <Field.Root>
+                <Field.Label>Notes</Field.Label>
                 <Input
-                  id="tx-notes"
                   placeholder="Optional note"
                   {...register('notes')}
                 />
-              </div>
+              </Field.Root>
 
               {/* Recurring */}
               <div className={css({ display: 'flex', alignItems: 'center', gap: '2.5' })}>

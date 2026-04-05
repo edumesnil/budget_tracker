@@ -114,8 +114,6 @@ export default function TransactionsPage() {
           justifyContent: 'space-between',
           alignItems: 'flex-start',
           pb: '2',
-          borderBottom: '1px solid',
-          borderColor: 'border.subtle',
         })}
       >
         <div>
@@ -157,8 +155,6 @@ export default function TransactionsPage() {
             w: '8',
             h: '8',
             borderRadius: 'md',
-            border: '1px solid',
-            borderColor: 'border.default',
             bg: 'bg.default',
             color: 'fg.muted',
             cursor: 'pointer',
@@ -196,8 +192,6 @@ export default function TransactionsPage() {
             w: '8',
             h: '8',
             borderRadius: 'md',
-            border: '1px solid',
-            borderColor: 'border.default',
             bg: 'bg.default',
             color: 'fg.muted',
             cursor: 'pointer',
@@ -223,7 +217,7 @@ export default function TransactionsPage() {
         >
           {/* Income */}
           <Card.Root>
-            <Card.Body>
+            <Card.Body className={css({ pt: '6' })}>
               <p
                 className={css({
                   fontSize: 'xs',
@@ -240,7 +234,7 @@ export default function TransactionsPage() {
                 className={css({
                   fontSize: 'lg',
                   fontWeight: '600',
-                  fontFamily: 'mono',
+
                   color: 'income',
                 })}
               >
@@ -251,7 +245,7 @@ export default function TransactionsPage() {
 
           {/* Expenses */}
           <Card.Root>
-            <Card.Body>
+            <Card.Body className={css({ pt: '6' })}>
               <p
                 className={css({
                   fontSize: 'xs',
@@ -268,7 +262,7 @@ export default function TransactionsPage() {
                 className={css({
                   fontSize: 'lg',
                   fontWeight: '600',
-                  fontFamily: 'mono',
+
                   color: 'expense',
                 })}
               >
@@ -279,7 +273,7 @@ export default function TransactionsPage() {
 
           {/* Net */}
           <Card.Root>
-            <Card.Body>
+            <Card.Body className={css({ pt: '6' })}>
               <p
                 className={css({
                   fontSize: 'xs',
@@ -296,7 +290,7 @@ export default function TransactionsPage() {
                 className={css({
                   fontSize: 'lg',
                   fontWeight: '600',
-                  fontFamily: 'mono',
+
                   color: netPositive ? 'income' : 'expense',
                 })}
               >

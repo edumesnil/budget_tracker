@@ -69,7 +69,7 @@ function CustomTooltip({ active, payload, label }: {
       <Card.Body className={css({ px: '3', py: '2', fontSize: 'xs' })}>
         <p className={css({ fontWeight: '600', color: 'fg.default', mb: '1' })}>{label}</p>
         {payload.map((p) => (
-          <p key={p.name} className={css({ color: 'fg.muted', fontFamily: 'mono' })} style={{ color: p.color }}>
+          <p key={p.name} className={css({ color: 'fg.muted' })} style={{ color: p.color }}>
             {p.name}: {formatCurrency(p.value)}
           </p>
         ))}

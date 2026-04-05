@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { Portal } from '@ark-ui/react/portal'
 import { css } from '../../../styled-system/css'
 import * as Dialog from '@/components/ui/dialog'
+import * as Field from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import type { CategoryGroup } from '@/types/database'
@@ -62,10 +63,6 @@ export function GroupFormDialog({
     })
   })
 
-  const fieldClass = css({ display: 'flex', flexDir: 'column', gap: '1.5' })
-  const labelClass = css({ fontSize: 'sm', fontWeight: '500', color: 'fg.default' })
-  const errorClass = css({ fontSize: 'xs', color: 'fg.muted' })
-
   return (
     <Dialog.Root open={open} onOpenChange={(d: { open: boolean }) => onOpenChange(d.open)}>
       <Portal>
@@ -83,48 +80,38 @@ export function GroupFormDialog({
             </Dialog.Header>
 
             <Dialog.Body className={css({ display: 'flex', flexDir: 'column', gap: '4' })}>
-              <div className={fieldClass}>
-                <label htmlFor="group-name" className={labelClass}>
-                  Name *
-                </label>
+              <Field.Root invalid={!!errors.name}>
+                <Field.Label>Name *</Field.Label>
                 <Input
-                  id="group-name"
                   placeholder="e.g., Housing, Transportation, Food"
                   {...register('name')}
                 />
-                {errors.name && <p className={errorClass}>{errors.name.message}</p>}
-              </div>
+                <Field.ErrorText>{errors.name?.message}</Field.ErrorText>
+              </Field.Root>
 
-              <div className={fieldClass}>
-                <label htmlFor="group-icon" className={labelClass}>
-                  Icon
-                </label>
+              <Field.Root>
+                <Field.Label>Icon</Field.Label>
                 <Input
-                  id="group-icon"
                   placeholder="e.g., 🏠  🚗  🛒"
                   {...register('icon')}
                 />
-              </div>
+              </Field.Root>
 
-              <div className={fieldClass}>
-                <label htmlFor="group-color" className={labelClass}>
-                  Color
-                </label>
+              <Field.Root>
+                <Field.Label>Color</Field.Label>
                 <div className={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
                   <Input
-                    id="group-color-swatch"
                     type="color"
                     className={css({ w: '10', h: '9', p: '1', cursor: 'pointer', flex: 'none' })}
                     {...register('color')}
                   />
                   <Input
-                    id="group-color"
                     placeholder="#6366f1"
                     className={css({ flex: '1' })}
                     {...register('color')}
                   />
                 </div>
-              </div>
+              </Field.Root>
             </Dialog.Body>
 
             <Dialog.Footer>

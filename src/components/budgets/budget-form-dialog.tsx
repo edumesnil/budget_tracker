@@ -6,6 +6,7 @@ import { createListCollection } from '@ark-ui/react/collection'
 import { Portal } from '@ark-ui/react/portal'
 import { css } from '../../../styled-system/css'
 import * as Dialog from '@/components/ui/dialog'
+import * as Field from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import * as Select from '@/components/ui/select'
@@ -125,10 +126,6 @@ export function BudgetFormDialog({
     'July', 'August', 'September', 'October', 'November', 'December',
   ]
 
-  const fieldClass = css({ display: 'flex', flexDir: 'column', gap: '1.5' })
-  const labelClass = css({ fontSize: 'sm', fontWeight: '500', color: 'fg.default' })
-  const errorClass = css({ fontSize: 'xs', color: 'fg.muted' })
-
   return (
     <Dialog.Root open={open} onOpenChange={(d: { open: boolean }) => onOpenChange(d.open)}>
       <Portal>
@@ -148,9 +145,8 @@ export function BudgetFormDialog({
             </Dialog.Header>
 
             <Dialog.Body className={css({ display: 'flex', flexDir: 'column', gap: '4' })}>
-              {/* Category */}
-              <div className={fieldClass}>
-                <label className={labelClass}>Category *</label>
+              <Field.Root invalid={!!errors.category_id}>
+                <Field.Label>Category *</Field.Label>
                 <Controller
                   name="category_id"
                   control={control}
@@ -175,17 +171,7 @@ export function BudgetFormDialog({
                         >
                           {Array.from(groupedItems.entries()).map(([grp, items]) => (
                             <Select.ItemGroup key={grp}>
-                              <Select.ItemGroupLabel
-                                className={css({
-                                  fontSize: 'xs',
-                                  fontWeight: '600',
-                                  color: 'fg.muted',
-                                  letterSpacing: 'wider',
-                                  textTransform: 'uppercase',
-                                  px: '3',
-                                  py: '1.5',
-                                })}
-                              >
+                              <Select.ItemGroupLabel>
                                 {grp}
                               </Select.ItemGroupLabel>
                               {items.map((item) => (
@@ -201,28 +187,20 @@ export function BudgetFormDialog({
                     </Select.Root>
                   )}
                 />
-                {errors.category_id && (
-                  <p className={errorClass}>{errors.category_id.message}</p>
-                )}
-              </div>
+                <Field.ErrorText>{errors.category_id?.message}</Field.ErrorText>
+              </Field.Root>
 
-              {/* Amount */}
-              <div className={fieldClass}>
-                <label htmlFor="budget-amount" className={labelClass}>
-                  Amount *
-                </label>
+              <Field.Root invalid={!!errors.amount}>
+                <Field.Label>Amount *</Field.Label>
                 <Input
-                  id="budget-amount"
                   type="number"
                   step="0.01"
                   min="0"
                   placeholder="0.00"
                   {...register('amount', { valueAsNumber: true })}
                 />
-                {errors.amount && (
-                  <p className={errorClass}>{errors.amount.message}</p>
-                )}
-              </div>
+                <Field.ErrorText>{errors.amount?.message}</Field.ErrorText>
+              </Field.Root>
 
               {/* Recurring */}
               <div className={css({ display: 'flex', alignItems: 'center', gap: '2.5' })}>

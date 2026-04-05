@@ -6,6 +6,7 @@ import { createListCollection } from '@ark-ui/react/collection'
 import { Portal } from '@ark-ui/react/portal'
 import { css } from '../../../styled-system/css'
 import * as Dialog from '@/components/ui/dialog'
+import * as Field from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import * as RadioGroup from '@/components/ui/radio-group'
@@ -90,10 +91,6 @@ export function CategoryFormDialog({
     [groupItems],
   )
 
-  const fieldClass = css({ display: 'flex', flexDir: 'column', gap: '1.5' })
-  const labelClass = css({ fontSize: 'sm', fontWeight: '500', color: 'fg.default' })
-  const errorClass = css({ fontSize: 'xs', color: 'fg.muted' })
-
   return (
     <Dialog.Root open={open} onOpenChange={(d: { open: boolean }) => onOpenChange(d.open)}>
       <Portal>
@@ -111,22 +108,17 @@ export function CategoryFormDialog({
             </Dialog.Header>
 
             <Dialog.Body className={css({ display: 'flex', flexDir: 'column', gap: '4' })}>
-              {/* Name */}
-              <div className={fieldClass}>
-                <label htmlFor="category-name" className={labelClass}>
-                  Name *
-                </label>
+              <Field.Root invalid={!!errors.name}>
+                <Field.Label>Name *</Field.Label>
                 <Input
-                  id="category-name"
                   placeholder="e.g., Rent, Groceries, Spotify"
                   {...register('name')}
                 />
-                {errors.name && <p className={errorClass}>{errors.name.message}</p>}
-              </div>
+                <Field.ErrorText>{errors.name?.message}</Field.ErrorText>
+              </Field.Root>
 
-              {/* Type */}
-              <div className={fieldClass}>
-                <label className={labelClass}>Type *</label>
+              <Field.Root invalid={!!errors.type}>
+                <Field.Label>Type *</Field.Label>
                 <Controller
                   name="type"
                   control={control}
@@ -149,12 +141,11 @@ export function CategoryFormDialog({
                     </RadioGroup.Root>
                   )}
                 />
-                {errors.type && <p className={errorClass}>{errors.type.message}</p>}
-              </div>
+                <Field.ErrorText>{errors.type?.message}</Field.ErrorText>
+              </Field.Root>
 
-              {/* Group */}
-              <div className={fieldClass}>
-                <label className={labelClass}>Group</label>
+              <Field.Root>
+                <Field.Label>Group</Field.Label>
                 <Controller
                   name="group_id"
                   control={control}
@@ -170,7 +161,7 @@ export function CategoryFormDialog({
                       <Select.Control>
                         <Select.Trigger>
                           <Select.ValueText placeholder="Select a group" />
-                        <Select.Indicator />
+                          <Select.Indicator />
                         </Select.Trigger>
                       </Select.Control>
                       <Select.Positioner>
@@ -186,40 +177,31 @@ export function CategoryFormDialog({
                     </Select.Root>
                   )}
                 />
-              </div>
+              </Field.Root>
 
-              {/* Icon */}
-              <div className={fieldClass}>
-                <label htmlFor="category-icon" className={labelClass}>
-                  Icon
-                </label>
+              <Field.Root>
+                <Field.Label>Icon</Field.Label>
                 <Input
-                  id="category-icon"
                   placeholder="e.g., 🏠  🛒  🎵"
                   {...register('icon')}
                 />
-              </div>
+              </Field.Root>
 
-              {/* Color */}
-              <div className={fieldClass}>
-                <label htmlFor="category-color" className={labelClass}>
-                  Color
-                </label>
+              <Field.Root>
+                <Field.Label>Color</Field.Label>
                 <div className={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
                   <Input
-                    id="category-color-swatch"
                     type="color"
                     className={css({ w: '10', h: '9', p: '1', cursor: 'pointer', flex: 'none' })}
                     {...register('color')}
                   />
                   <Input
-                    id="category-color"
                     placeholder="#6366f1"
                     className={css({ flex: '1' })}
                     {...register('color')}
                   />
                 </div>
-              </div>
+              </Field.Root>
             </Dialog.Body>
 
             <Dialog.Footer>
