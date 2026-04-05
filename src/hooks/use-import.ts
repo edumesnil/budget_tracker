@@ -159,7 +159,7 @@ export function useImport(
   // -------------------------------------------------------------------------
 
   async function categorizeInBackground(
-    unknowns: Array<{ indices: number[]; sanitizedDesc: string }>,
+    unknowns: Array<{ indices: number[]; sanitizedDesc: string; type: "INCOME" | "EXPENSE" }>,
   ) {
     const ai = getAIProvider();
     const totalUnique = unknowns.length;
@@ -186,7 +186,8 @@ export function useImport(
 
       try {
         const descriptions = batch.map((u) => u.sanitizedDesc);
-        const results = await ai.categorize(descriptions, categoryOptions, merchantMappings);
+        const types = batch.map((u) => u.type);
+        const results = await ai.categorize(descriptions, categoryOptions, merchantMappings, types);
 
         if (abortRef.current) return;
 
@@ -267,8 +268,8 @@ export function useImport(
     const duplicates = await findDuplicates(parsed);
 
     const reviewItems: ReviewItem[] = [];
-    // Map: sanitized description → list of indices that share it
-    const unknownsByDesc = new Map<string, number[]>();
+    // Map: "sanitizedDesc|TYPE" → list of indices + type
+    const unknownsByKey = new Map<string, { indices: number[]; type: "INCOME" | "EXPENSE" }>();
 
     // First pass: look up known merchants, then try category name matching
     for (let i = 0; i < parsed.length; i++) {
@@ -276,16 +277,22 @@ export function useImport(
       const sanitized = sanitize(tx.description);
       const descUpper = tx.description.toUpperCase();
 
-      // 1. Check merchant_mappings table
-      const mapping = merchantMappings.find((m) =>
-        descUpper.includes(m.merchant_pattern.toUpperCase()),
-      );
+      // 1. Check merchant_mappings table — verify mapped category type matches
+      const mapping = merchantMappings.find((m) => {
+        if (!descUpper.includes(m.merchant_pattern.toUpperCase())) return false;
+        const cat = categories.find((c) => c.id === m.category_id);
+        return !cat || cat.type === tx.type;
+      });
 
-      // 2. If no mapping, try direct category name match
+      // 2. If no mapping, try direct category name match (prefer same type)
       let nameMatch: { category_id: string; name: string } | null = null;
       if (!mapping) {
         for (const cat of categories) {
-          if (cat.name.length >= 3 && descUpper.includes(cat.name.toUpperCase())) {
+          if (
+            cat.type === tx.type &&
+            cat.name.length >= 3 &&
+            descUpper.includes(cat.name.toUpperCase())
+          ) {
             nameMatch = { category_id: cat.id, name: cat.name };
             break;
           }
@@ -315,12 +322,13 @@ export function useImport(
       }
 
       if (!isPreMatched) {
-        // Group by sanitized description for deduplication
-        const existing = unknownsByDesc.get(sanitized);
+        // Group by sanitized description + type for deduplication
+        const key = `${sanitized}|${tx.type}`;
+        const existing = unknownsByKey.get(key);
         if (existing) {
-          existing.push(i);
+          existing.indices.push(i);
         } else {
-          unknownsByDesc.set(sanitized, [i]);
+          unknownsByKey.set(key, { indices: [i], type: tx.type });
         }
       }
 
@@ -330,7 +338,7 @@ export function useImport(
     // Sort by date ascending
     reviewItems.sort((a, b) => a.date.localeCompare(b.date));
 
-    // After sorting, indices in unknownsByDesc point to pre-sort positions.
+    // After sorting, indices in unknownsByKey point to pre-sort positions.
     // We need to rebuild the index mapping based on sorted order.
     const oldToNew = new Map<string, number>();
     for (let newIdx = 0; newIdx < reviewItems.length; newIdx++) {
@@ -338,13 +346,18 @@ export function useImport(
     }
 
     // Build deduplicated unknowns list with post-sort indices
-    const unknowns: Array<{ indices: number[]; sanitizedDesc: string }> = [];
-    for (const [desc, oldIndices] of unknownsByDesc) {
-      const newIndices = oldIndices.map((oi) => {
+    const unknowns: Array<{
+      indices: number[];
+      sanitizedDesc: string;
+      type: "INCOME" | "EXPENSE";
+    }> = [];
+    for (const [key, entry] of unknownsByKey) {
+      const desc = key.slice(0, key.lastIndexOf("|"));
+      const newIndices = entry.indices.map((oi) => {
         const id = `import-${oi}`;
         return oldToNew.get(id)!;
       });
-      unknowns.push({ indices: newIndices, sanitizedDesc: desc });
+      unknowns.push({ indices: newIndices, sanitizedDesc: desc, type: entry.type });
     }
 
     // Sort unknowns by their first (earliest) row index so batches process top-to-bottom
