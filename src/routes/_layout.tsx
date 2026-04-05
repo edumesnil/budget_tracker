@@ -9,6 +9,7 @@ import {
   PiggyBank,
   Tags,
   FileUp,
+  Store,
   Sun,
   Moon,
   LogOut,
@@ -20,6 +21,7 @@ const NAV_ITEMS = [
   { to: "/budgets", label: "Budgets", icon: PiggyBank },
   { to: "/categories", label: "Categories", icon: Tags },
   { to: "/import", label: "Import", icon: FileUp },
+  { to: "/merchants", label: "Merchants", icon: Store },
 ] as const;
 
 export function DashboardLayout() {

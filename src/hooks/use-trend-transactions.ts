@@ -6,11 +6,11 @@ import type { Transaction } from "@/types/database";
  * Fetches all transactions for the 6-month window ending at the given month/year.
  * Used exclusively by the spending trend chart.
  */
-export function useTrendTransactions(endMonth: number, endYear: number) {
-  // Compute the start of the window: 5 months before endMonth/endYear
-  let startMonth = endMonth - 5;
+export function useTrendTransactions(endMonth: number, endYear: number, monthCount = 6) {
+  // Compute the start of the window
+  let startMonth = endMonth - (monthCount - 1);
   let startYear = endYear;
-  if (startMonth <= 0) {
+  while (startMonth <= 0) {
     startMonth += 12;
     startYear -= 1;
   }
@@ -19,7 +19,7 @@ export function useTrendTransactions(endMonth: number, endYear: number) {
   const endDate = new Date(endYear, endMonth, 0).toISOString().split("T")[0];
 
   return useQuery({
-    queryKey: ["trend-transactions", { endMonth, endYear }],
+    queryKey: ["trend-transactions", { endMonth, endYear, monthCount }],
     queryFn: async (): Promise<Transaction[]> => {
       const { data, error } = await supabase
         .from("transactions")

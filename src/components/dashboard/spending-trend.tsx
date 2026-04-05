@@ -25,12 +25,10 @@ interface MonthData {
 }
 
 interface Props {
-  /** Transactions from the last 6 months, pre-fetched by parent */
   transactions: Transaction[];
-  /** The currently-viewed month (1-12) */
   currentMonth: number;
-  /** The currently-viewed year */
   currentYear: number;
+  monthCount: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -52,19 +50,22 @@ const MONTH_ABBR = [
   "Dec",
 ];
 
-function getPrior6Months(
+function getPriorMonths(
   month: number,
   year: number,
+  count: number,
 ): Array<{ month: number; year: number; label: string }> {
   const result = [];
-  for (let i = 5; i >= 0; i--) {
+  for (let i = count - 1; i >= 0; i--) {
     let m = month - i;
     let y = year;
-    if (m <= 0) {
+    while (m <= 0) {
       m += 12;
       y -= 1;
     }
-    result.push({ month: m, year: y, label: MONTH_ABBR[m - 1] });
+    // Add year suffix when range spans multiple years
+    const label = count > 6 ? `${MONTH_ABBR[m - 1]} '${String(y).slice(2)}` : MONTH_ABBR[m - 1];
+    result.push({ month: m, year: y, label });
   }
   return result;
 }
@@ -102,10 +103,10 @@ function CustomTooltip({
 // Component
 // ---------------------------------------------------------------------------
 
-export function SpendingTrend({ transactions, currentMonth, currentYear }: Props) {
+export function SpendingTrend({ transactions, currentMonth, currentYear, monthCount }: Props) {
   const periods = useMemo(
-    () => getPrior6Months(currentMonth, currentYear),
-    [currentMonth, currentYear],
+    () => getPriorMonths(currentMonth, currentYear, monthCount),
+    [currentMonth, currentYear, monthCount],
   );
 
   const chartData = useMemo<MonthData[]>(() => {
@@ -152,7 +153,7 @@ export function SpendingTrend({ transactions, currentMonth, currentYear }: Props
   // Accessible summary: last month vs current
   const last = chartData[chartData.length - 2];
   const curr = chartData[chartData.length - 1];
-  const summaryText = `Spending trend over 6 months. Most recent month: income ${formatCurrency(curr.income)}, expenses ${formatCurrency(curr.expenses)}. Previous month: income ${formatCurrency(last.income)}, expenses ${formatCurrency(last.expenses)}.`;
+  const summaryText = `Spending trend over ${monthCount} months. Most recent month: income ${formatCurrency(curr.income)}, expenses ${formatCurrency(curr.expenses)}. Previous month: income ${formatCurrency(last.income)}, expenses ${formatCurrency(last.expenses)}.`;
 
   return (
     <div>
@@ -160,7 +161,7 @@ export function SpendingTrend({ transactions, currentMonth, currentYear }: Props
       <ResponsiveContainer width="100%" height={200}>
         <BarChart
           data={chartData}
-          barCategoryGap="30%"
+          barCategoryGap={monthCount > 6 ? "15%" : "30%"}
           barGap={2}
           margin={{ top: 4, right: 0, left: 0, bottom: 0 }}
         >

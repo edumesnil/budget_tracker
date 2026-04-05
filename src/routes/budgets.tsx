@@ -1,11 +1,14 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
 import { css } from "../../styled-system/css";
-import { useBudgets } from "@/hooks/use-budgets";
+import { useBudgets, budgetKeys } from "@/hooks/use-budgets";
 import { useCategories } from "@/hooks/use-categories";
+import { supabase } from "@/lib/supabase";
 import { BudgetFormDialog } from "@/components/budgets/budget-form-dialog";
 import { Button } from "@/components/ui/button";
-import { Toaster, toaster } from "@/components/ui/toast";
+import { Toaster } from "@/components/ui/toast";
+import { toaster } from "@/lib/toaster";
 import { formatCurrency, getCurrentPeriod } from "@/lib/utils";
 import type { BudgetWithCategory, MergedBudget } from "@/hooks/use-budgets";
 import * as Card from "@/components/ui/card";
@@ -67,16 +70,19 @@ function RecurringBadge() {
 
 function BudgetRow({
   entry,
+  carryover,
   onEdit,
   onDelete,
 }: {
   entry: MergedBudget;
+  carryover?: number;
   onEdit: () => void;
   onDelete: () => void;
 }) {
   const { budget, isRecurringFallback } = entry;
   const cat = budget.categories;
   const isIncome = cat?.type === "INCOME";
+  const showCarryover = !isIncome && carryover !== undefined && carryover !== 0;
 
   return (
     <div
@@ -124,8 +130,8 @@ function BudgetRow({
         {isRecurringFallback && <RecurringBadge />}
       </div>
 
-      {/* Center: amount */}
-      <div className={css({ mx: "4" })}>
+      {/* Center: amount + carryover annotation */}
+      <div className={css({ mx: "4", display: "flex", flexDir: "column", alignItems: "flex-end" })}>
         <span
           className={css({
             fontSize: "sm",
@@ -135,6 +141,19 @@ function BudgetRow({
         >
           {formatCurrency(Number(budget.amount))}
         </span>
+        {showCarryover && (
+          <span
+            className={css({
+              fontSize: "xs",
+              fontWeight: "500",
+              color: carryover! > 0 ? "income" : "expense",
+            })}
+          >
+            {carryover! > 0
+              ? `+${formatCurrency(carryover!)} carryover`
+              : `−${formatCurrency(Math.abs(carryover!))} over`}
+          </span>
+        )}
       </div>
 
       {/* Right: actions */}
@@ -167,9 +186,10 @@ export default function BudgetsPage() {
   const [month, setMonth] = useState(initMonth);
   const [year, setYear] = useState(initYear);
 
-  const { budgetGroups, totals, isLoading, create, update, remove } = useBudgets(month, year);
+  const { budgetGroups, totals, isLoading, create, update, carryoverMap } = useBudgets(month, year);
   const { groups } = useCategories();
 
+  const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState<BudgetWithCategory | null>(null);
 
@@ -202,13 +222,37 @@ export default function BudgetsPage() {
     setDialogOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    try {
-      await remove.mutateAsync(id);
-      toaster.success({ title: "Budget entry deleted" });
-    } catch {
-      toaster.error({ title: "Error", description: "Failed to delete budget entry." });
-    }
+  const handleDelete = (id: string) => {
+    const cacheKey = budgetKeys.month(month, year);
+    const prev = queryClient.getQueryData<BudgetWithCategory[]>(cacheKey);
+    const entry = prev?.find((b) => b.id === id);
+    const label = entry?.categories?.name ?? "Budget entry";
+    let undone = false;
+
+    queryClient.setQueryData<BudgetWithCategory[]>(cacheKey, (old = []) =>
+      old.filter((b) => b.id !== id),
+    );
+
+    toaster.create({
+      title: `"${label}" deleted`,
+      type: "info",
+      action: {
+        label: "Undo",
+        onClick: () => {
+          undone = true;
+          queryClient.setQueryData(cacheKey, prev);
+        },
+      },
+      onStatusChange: async (d: { status: string }) => {
+        if (d.status === "unmounted" && !undone) {
+          const { error } = await supabase.from("budgets").delete().eq("id", id);
+          if (error) {
+            queryClient.setQueryData(cacheKey, prev);
+            toaster.error({ title: "Delete failed" });
+          }
+        }
+      },
+    });
   };
 
   const handleSubmit = async (data: {
@@ -454,6 +498,7 @@ export default function BudgetsPage() {
             <BudgetGroupSection
               key={group.groupId}
               group={group}
+              carryoverMap={carryoverMap}
               onEdit={handleEdit}
               onDelete={handleDelete}
             />
@@ -485,10 +530,12 @@ import type { BudgetGroup } from "@/hooks/use-budgets";
 
 function BudgetGroupSection({
   group,
+  carryoverMap,
   onEdit,
   onDelete,
 }: {
   group: BudgetGroup;
+  carryoverMap: Map<string, number>;
   onEdit: (b: BudgetWithCategory) => void;
   onDelete: (id: string) => void;
 }) {
@@ -604,6 +651,7 @@ function BudgetGroupSection({
               <BudgetRow
                 key={entry.budget.id}
                 entry={entry}
+                carryover={carryoverMap.get(entry.budget.category_id)}
                 onEdit={() => onEdit(entry.budget)}
                 onDelete={() => onDelete(entry.budget.id)}
               />

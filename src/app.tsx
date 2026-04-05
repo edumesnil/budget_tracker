@@ -15,6 +15,7 @@ const TransactionsPage = lazy(() => import("@/routes/transactions"));
 const BudgetsPage = lazy(() => import("@/routes/budgets"));
 const CategoriesPage = lazy(() => import("@/routes/categories"));
 const ImportPage = lazy(() => import("@/routes/import"));
+const MerchantsPage = lazy(() => import("@/routes/merchants"));
 
 export default function App() {
   return (
@@ -33,6 +34,7 @@ export default function App() {
               <Route path="budgets" element={<BudgetsPage />} />
               <Route path="categories" element={<CategoriesPage />} />
               <Route path="import" element={<ImportPage />} />
+              <Route path="merchants" element={<MerchantsPage />} />
             </Route>
           </Routes>
         </BrowserRouter>
