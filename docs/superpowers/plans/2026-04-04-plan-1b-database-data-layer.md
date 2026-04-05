@@ -380,12 +380,12 @@ INSERT INTO budgets (id, user_id, category_id, amount, month, year, is_recurring
 
 Deterministic UUIDs make the seed reproducible and debuggable:
 
-| Entity | UUID pattern | Example |
-|--------|-------------|---------|
-| Dev user | `d0e1f2a3-b4c5-6d7e-8f9a-0b1c2d3e4f5a` | Single dev user |
-| Groups | `a1000000-...-00000000000N` | N = 1-7 for 7 groups |
-| Categories | `c1000000-...-0000000000GC` | G = group (1-7), C = category within group (1-5) |
-| Budgets | `b1000000-...-0000000000GC` | Mirrors category IDs |
+| Entity     | UUID pattern                           | Example                                          |
+| ---------- | -------------------------------------- | ------------------------------------------------ |
+| Dev user   | `d0e1f2a3-b4c5-6d7e-8f9a-0b1c2d3e4f5a` | Single dev user                                  |
+| Groups     | `a1000000-...-00000000000N`            | N = 1-7 for 7 groups                             |
+| Categories | `c1000000-...-0000000000GC`            | G = group (1-7), C = category within group (1-5) |
+| Budgets    | `b1000000-...-0000000000GC`            | Mirrors category IDs                             |
 
 ---
 
@@ -400,17 +400,20 @@ supabase db reset
 ```
 
 `supabase start` will:
+
 1. Pull Docker images (first time only)
 2. Start Postgres, Auth, Studio, etc.
 3. Apply all migrations from `supabase/migrations/`
 4. Run `supabase/seed.sql`
 
 After start, note the output values:
+
 - **API URL:** `http://127.0.0.1:54321`
 - **Anon key:** (printed by `supabase start`)
 - **Studio URL:** `http://127.0.0.1:54323`
 
 Create `.env.local` (or `.env` for Vite) with:
+
 ```
 VITE_SUPABASE_URL=http://127.0.0.1:54321
 VITE_SUPABASE_ANON_KEY=<anon key from supabase start output>
@@ -431,77 +434,77 @@ Single source of truth for all database types. These are application-level inter
 // =============================================================================
 
 export interface User {
-  id: string
-  email: string
-  created_at: string
+  id: string;
+  email: string;
+  created_at: string;
 }
 
 export interface CategoryGroup {
-  id: string
-  user_id: string
-  name: string
-  icon: string | null
-  color: string | null
-  sort_order: number
-  created_at: string
-  categories?: Category[] // joined
+  id: string;
+  user_id: string;
+  name: string;
+  icon: string | null;
+  color: string | null;
+  sort_order: number;
+  created_at: string;
+  categories?: Category[]; // joined
 }
 
 export interface Category {
-  id: string
-  user_id: string
-  group_id: string | null
-  name: string
-  type: 'INCOME' | 'EXPENSE'
-  color: string | null
-  icon: string | null
-  created_at: string
-  category_groups?: CategoryGroup // joined
+  id: string;
+  user_id: string;
+  group_id: string | null;
+  name: string;
+  type: "INCOME" | "EXPENSE";
+  color: string | null;
+  icon: string | null;
+  created_at: string;
+  category_groups?: CategoryGroup; // joined
 }
 
 export interface Transaction {
-  id: string
-  user_id: string
-  category_id: string | null
-  amount: number
-  date: string
-  description: string | null
-  notes: string | null
-  is_recurring: boolean
-  created_at: string
-  categories?: Category // joined
+  id: string;
+  user_id: string;
+  category_id: string | null;
+  amount: number;
+  date: string;
+  description: string | null;
+  notes: string | null;
+  is_recurring: boolean;
+  created_at: string;
+  categories?: Category; // joined
 }
 
 export interface Budget {
-  id: string
-  user_id: string
-  category_id: string
-  amount: number
-  month: number
-  year: number
-  is_recurring: boolean
-  created_at: string
-  categories?: Category // joined
+  id: string;
+  user_id: string;
+  category_id: string;
+  amount: number;
+  month: number;
+  year: number;
+  is_recurring: boolean;
+  created_at: string;
+  categories?: Category; // joined
 }
 
 export interface AccountSnapshot {
-  id: string
-  user_id: string
-  account_name: string
-  account_type: 'CELI' | 'REER' | 'REEE' | 'EMERGENCY' | 'OTHER'
-  balance: number
-  snapshot_date: string
-  created_at: string
+  id: string;
+  user_id: string;
+  account_name: string;
+  account_type: "CELI" | "REER" | "REEE" | "EMERGENCY" | "OTHER";
+  balance: number;
+  snapshot_date: string;
+  created_at: string;
 }
 
 export interface MerchantMapping {
-  id: string
-  user_id: string
-  merchant_pattern: string
-  category_id: string
-  confidence: number
-  created_at: string
-  categories?: Category // joined
+  id: string;
+  user_id: string;
+  merchant_pattern: string;
+  category_id: string;
+  confidence: number;
+  created_at: string;
+  categories?: Category; // joined
 }
 
 // =============================================================================
@@ -509,27 +512,33 @@ export interface MerchantMapping {
 // =============================================================================
 
 /** Fields required when creating a new record (omit id, user_id, created_at) */
-export type InsertCategoryGroup = Omit<CategoryGroup, 'id' | 'user_id' | 'created_at' | 'categories'>
-export type InsertCategory = Omit<Category, 'id' | 'user_id' | 'created_at' | 'category_groups'>
-export type InsertTransaction = Omit<Transaction, 'id' | 'user_id' | 'created_at' | 'categories'>
-export type InsertBudget = Omit<Budget, 'id' | 'user_id' | 'created_at' | 'categories'>
-export type InsertAccountSnapshot = Omit<AccountSnapshot, 'id' | 'user_id' | 'created_at'>
-export type InsertMerchantMapping = Omit<MerchantMapping, 'id' | 'user_id' | 'created_at' | 'categories'>
+export type InsertCategoryGroup = Omit<
+  CategoryGroup,
+  "id" | "user_id" | "created_at" | "categories"
+>;
+export type InsertCategory = Omit<Category, "id" | "user_id" | "created_at" | "category_groups">;
+export type InsertTransaction = Omit<Transaction, "id" | "user_id" | "created_at" | "categories">;
+export type InsertBudget = Omit<Budget, "id" | "user_id" | "created_at" | "categories">;
+export type InsertAccountSnapshot = Omit<AccountSnapshot, "id" | "user_id" | "created_at">;
+export type InsertMerchantMapping = Omit<
+  MerchantMapping,
+  "id" | "user_id" | "created_at" | "categories"
+>;
 
 /** Fields allowed when updating a record (all optional except id) */
-export type UpdateCategoryGroup = Partial<InsertCategoryGroup> & { id: string }
-export type UpdateCategory = Partial<InsertCategory> & { id: string }
-export type UpdateTransaction = Partial<InsertTransaction> & { id: string }
-export type UpdateBudget = Partial<InsertBudget> & { id: string }
-export type UpdateAccountSnapshot = Partial<InsertAccountSnapshot> & { id: string }
-export type UpdateMerchantMapping = Partial<InsertMerchantMapping> & { id: string }
+export type UpdateCategoryGroup = Partial<InsertCategoryGroup> & { id: string };
+export type UpdateCategory = Partial<InsertCategory> & { id: string };
+export type UpdateTransaction = Partial<InsertTransaction> & { id: string };
+export type UpdateBudget = Partial<InsertBudget> & { id: string };
+export type UpdateAccountSnapshot = Partial<InsertAccountSnapshot> & { id: string };
+export type UpdateMerchantMapping = Partial<InsertMerchantMapping> & { id: string };
 
 // =============================================================================
 // Category type literal
 // =============================================================================
 
-export type CategoryType = 'INCOME' | 'EXPENSE'
-export type AccountType = 'CELI' | 'REER' | 'REEE' | 'EMERGENCY' | 'OTHER'
+export type CategoryType = "INCOME" | "EXPENSE";
+export type AccountType = "CELI" | "REER" | "REEE" | "EMERGENCY" | "OTHER";
 ```
 
 ---
@@ -541,25 +550,25 @@ Create file: `src/lib/supabase.ts`
 Browser-only Supabase client. No server-side client needed (v2 is a pure SPA).
 
 ```typescript
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error(
-    'Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY environment variables. ' +
-    'Run `supabase start` and copy the values to .env'
-  )
+    "Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY environment variables. " +
+      "Run `supabase start` and copy the values to .env",
+  );
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    storageKey: 'budget-tracker-auth-storage',
+    storageKey: "budget-tracker-auth-storage",
   },
-})
+});
 ```
 
 ### Key differences from v1
@@ -578,23 +587,23 @@ Create file: `src/lib/query-client.ts`
 Per-entity staleTime configuration from the design spec.
 
 ```typescript
-import { QueryClient } from '@tanstack/react-query'
+import { QueryClient } from "@tanstack/react-query";
 
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 0,              // Default: always refetch on mount
-      gcTime: 5 * 60 * 1000,     // 5 minutes garbage collection
+      staleTime: 0, // Default: always refetch on mount
+      gcTime: 5 * 60 * 1000, // 5 minutes garbage collection
       refetchOnWindowFocus: true,
       retry: 1,
     },
     mutations: {
       onError: (error) => {
-        console.error('Mutation error:', error)
+        console.error("Mutation error:", error);
       },
     },
   },
-})
+});
 
 // =============================================================================
 // Per-entity staleTime constants
@@ -603,23 +612,23 @@ export const queryClient = new QueryClient({
 
 export const STALE_TIMES = {
   /** Categories rarely change — cache aggressively */
-  categories: 5 * 60 * 1000,   // 5 minutes
+  categories: 5 * 60 * 1000, // 5 minutes
 
   /** Transactions: always refetch, but serve cache instantly while background fetch runs */
   transactions: 0,
 
   /** Budgets: moderate cache */
-  budgets: 1 * 60 * 1000,      // 1 minute
+  budgets: 1 * 60 * 1000, // 1 minute
 
   /** Dashboard is a composite view — always fresh */
   dashboard: 0,
 
   /** Account snapshots: rarely updated */
-  snapshots: 5 * 60 * 1000,    // 5 minutes
+  snapshots: 5 * 60 * 1000, // 5 minutes
 
   /** Merchant mappings: rarely change outside of imports */
   merchantMappings: 5 * 60 * 1000, // 5 minutes
-} as const
+} as const;
 ```
 
 ### Key differences from v1
@@ -642,21 +651,21 @@ Minimal helpers. No `cn()` / `twMerge` — v2 uses Panda CSS, not Tailwind.
  * Always displays positive values — sign logic is handled by category type.
  */
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('fr-CA', {
-    style: 'currency',
-    currency: 'CAD',
-  }).format(Math.abs(amount))
+  return new Intl.NumberFormat("fr-CA", {
+    style: "currency",
+    currency: "CAD",
+  }).format(Math.abs(amount));
 }
 
 /**
  * Format a date string (ISO or yyyy-mm-dd) for display.
  */
 export function formatDate(date: string): string {
-  return new Intl.DateTimeFormat('fr-CA', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  }).format(new Date(date))
+  return new Intl.DateTimeFormat("fr-CA", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  }).format(new Date(date));
 }
 
 /**
@@ -664,23 +673,23 @@ export function formatDate(date: string): string {
  * Used for transaction date range queries.
  */
 export function getMonthRange(month: number, year: number) {
-  const start = new Date(year, month - 1, 1)
-  const end = new Date(year, month, 0) // last day of month
+  const start = new Date(year, month - 1, 1);
+  const end = new Date(year, month, 0); // last day of month
   return {
-    startDate: start.toISOString().split('T')[0],
-    endDate: end.toISOString().split('T')[0],
-  }
+    startDate: start.toISOString().split("T")[0],
+    endDate: end.toISOString().split("T")[0],
+  };
 }
 
 /**
  * Get current month and year.
  */
 export function getCurrentPeriod() {
-  const now = new Date()
+  const now = new Date();
   return {
     month: now.getMonth() + 1,
     year: now.getFullYear(),
-  }
+  };
 }
 ```
 
@@ -705,6 +714,7 @@ supabase db reset  # re-runs migrations + seed if needed
 ```
 
 Then verify via psql or Studio:
+
 - 7 tables in public schema: `users`, `category_groups`, `categories`, `transactions`, `budgets`, `account_snapshots`, `merchant_mappings`
 - RLS enabled on all 7 tables (check via Studio > Authentication > Policies)
 - 7 indexes created
@@ -740,16 +750,16 @@ No errors expected.
 
 ## Files Created/Modified Summary
 
-| File | Action | Description |
-|------|--------|-------------|
-| `supabase/config.toml` | **Modify** | Update `site_url` to port 5173, update `additional_redirect_urls` |
-| `supabase/migrations/001_initial_schema.sql` | **Create** | 7 tables + RLS (28 policies) + 7 indexes |
-| `supabase/seed.sql` | **Create** | Dev user + 7 groups + 30 categories + 30 budget entries |
-| `src/types/database.ts` | **Create** | 7 interfaces + Insert/Update utility types |
-| `src/lib/supabase.ts` | **Create** | Supabase client singleton for browser |
-| `src/lib/query-client.ts` | **Create** | React Query client + per-entity staleTime constants |
-| `src/lib/utils.ts` | **Create** | formatCurrency, formatDate, getMonthRange, getCurrentPeriod |
-| `.env` | **Create** | VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_DEV_AUTOLOGIN |
+| File                                         | Action     | Description                                                       |
+| -------------------------------------------- | ---------- | ----------------------------------------------------------------- |
+| `supabase/config.toml`                       | **Modify** | Update `site_url` to port 5173, update `additional_redirect_urls` |
+| `supabase/migrations/001_initial_schema.sql` | **Create** | 7 tables + RLS (28 policies) + 7 indexes                          |
+| `supabase/seed.sql`                          | **Create** | Dev user + 7 groups + 30 categories + 30 budget entries           |
+| `src/types/database.ts`                      | **Create** | 7 interfaces + Insert/Update utility types                        |
+| `src/lib/supabase.ts`                        | **Create** | Supabase client singleton for browser                             |
+| `src/lib/query-client.ts`                    | **Create** | React Query client + per-entity staleTime constants               |
+| `src/lib/utils.ts`                           | **Create** | formatCurrency, formatDate, getMonthRange, getCurrentPeriod       |
+| `.env`                                       | **Create** | VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_DEV_AUTOLOGIN     |
 
 ## Potential Issues
 

@@ -3,15 +3,17 @@
 ## Commands
 
 ```bash
-nvm use 22             # Required — Node 22+
-npm run dev            # Dev server (Vite)
-npm run build          # Production build
-npm run lint           # ESLint
+vp dev                 # Dev server (Vite+)
+vp build               # Production build (runs tsc -b first via script)
+vp check               # Format + lint + type checks
+vp lint .              # Oxlint only
+vp fmt                 # Oxfmt only
+vp test                # Vitest (no test files yet)
 supabase start         # Local Supabase (must be running)
 npx panda codegen --clean  # Regenerate styled-system after config changes
 ```
 
-No test framework configured.
+No test files configured yet. Node version managed via `.node-version` (22).
 
 ## Architecture
 
@@ -19,7 +21,7 @@ Vite+ SPA with React Router v7 and client-side Supabase. No SSR, no API routes. 
 
 ### Stack
 
-- **Build:** Vite+ (alpha) — Vite + Oxlint
+- **Build:** Vite+ — unified toolchain (Vite 8, Oxlint, Oxfmt, Vitest)
 - **Framework:** React 19, TypeScript
 - **Router:** React Router v7 (flat SPA routing)
 - **Styling:** Panda CSS (zero-runtime, build-time static CSS)
@@ -137,7 +139,7 @@ The table recipe provides: cell padding, font size, color, border separators (vi
   <Select.Control>
     <Select.Trigger>
       <Select.ValueText placeholder="..." />
-      <Select.Indicator />          {/* MUST be inside Trigger */}
+      <Select.Indicator /> {/* MUST be inside Trigger */}
     </Select.Trigger>
   </Select.Control>
   <Select.Positioner>
@@ -155,19 +157,20 @@ The table recipe provides: cell padding, font size, color, border separators (vi
 
 ### Forbidden patterns
 
-| Never do this | Do this instead |
-|---|---|
+| Never do this                                                                   | Do this instead                                                  |
+| ------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
 | `border: '1px solid'` / `borderBottom` / `borderWidth` / `borderColor` in css() | Use Card.Root for containers. Table recipe handles cell borders. |
-| `fontFamily: 'mono'` | Not a Park UI default. Remove. |
-| Raw `<label>` with custom CSS | `Field.Label` inside `Field.Root` |
-| Raw `<p>` for field errors | `Field.ErrorText` inside `Field.Root` |
-| Manual div with borderWidth for containers | `Card.Root` |
-| Custom className on Table.Header/Cell duplicating recipe | Let recipe handle it, only add truly custom props |
-| `border: 'none'` is OK on native buttons (removing browser default) | |
+| `fontFamily: 'mono'`                                                            | Not a Park UI default. Remove.                                   |
+| Raw `<label>` with custom CSS                                                   | `Field.Label` inside `Field.Root`                                |
+| Raw `<p>` for field errors                                                      | `Field.ErrorText` inside `Field.Root`                            |
+| Manual div with borderWidth for containers                                      | `Card.Root`                                                      |
+| Custom className on Table.Header/Cell duplicating recipe                        | Let recipe handle it, only add truly custom props                |
+| `border: 'none'` is OK on native buttons (removing browser default)             |                                                                  |
 
 ### Panda CSS globalCss token references
 
 In `src/theme/global-css.ts`, token references MUST use curly braces:
+
 ```ts
 // Correct
 '--global-color-border': '{colors.border.subtle}'

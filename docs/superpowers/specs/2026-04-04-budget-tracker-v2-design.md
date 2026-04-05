@@ -19,19 +19,19 @@ This spec defines a clean rewrite on a new branch, porting only what's worth kee
 
 ## Stack
 
-| Layer | Choice | Rationale |
-|---|---|---|
-| Build | Vite+ (alpha) | Unified toolchain: Vite + Vitest + Oxlint + Oxfmt |
-| UI Framework | React 19 | Latest stable |
-| Router | React Router v7 | Simple flat SPA routing, mature ecosystem |
-| Styling | Panda CSS | Zero-runtime CSS-in-JS, type-safe tokens, build-time static output |
-| Components | Park UI (Ark UI primitives) | Styled component library on Ark UI/Zag.js state machines |
-| Server State | TanStack React Query v5 | One hook per entity, clean implementation |
-| Forms | react-hook-form + Zod | Proven combo, keep from v1 |
-| Auth + DB | Supabase (local via CLI) | Postgres + Auth, local-only for now |
-| Charts | Recharts | Adequate for financial visualization |
-| PDF Parsing | pdf.js (future) | Client-side, no backend needed |
-| AI | Ollama (local, future) behind adapter | Swappable to any provider later |
+| Layer        | Choice                                | Rationale                                                          |
+| ------------ | ------------------------------------- | ------------------------------------------------------------------ |
+| Build        | Vite+ (alpha)                         | Unified toolchain: Vite + Vitest + Oxlint + Oxfmt                  |
+| UI Framework | React 19                              | Latest stable                                                      |
+| Router       | React Router v7                       | Simple flat SPA routing, mature ecosystem                          |
+| Styling      | Panda CSS                             | Zero-runtime CSS-in-JS, type-safe tokens, build-time static output |
+| Components   | Park UI (Ark UI primitives)           | Styled component library on Ark UI/Zag.js state machines           |
+| Server State | TanStack React Query v5               | One hook per entity, clean implementation                          |
+| Forms        | react-hook-form + Zod                 | Proven combo, keep from v1                                         |
+| Auth + DB    | Supabase (local via CLI)              | Postgres + Auth, local-only for now                                |
+| Charts       | Recharts                              | Adequate for financial visualization                               |
+| PDF Parsing  | pdf.js (future)                       | Client-side, no backend needed                                     |
+| AI           | Ollama (local, future) behind adapter | Swappable to any provider later                                    |
 
 ### Why Panda CSS over Tailwind
 
@@ -237,14 +237,14 @@ Mutations return the updated row via `.select()`. The `onSuccess` handler uses `
 
 ```typescript
 onSuccess: (data) => {
-  queryClient.setQueryData(['transactions', { month, year }], (old) =>
-    old.map(t => t.id === data.id ? data : t)
-  )
-}
+  queryClient.setQueryData(["transactions", { month, year }], (old) =>
+    old.map((t) => (t.id === data.id ? data : t)),
+  );
+};
 ```
 
 **Layer 2 — Optimistic updates (for delete and toggles):**
-Remove/toggle actions update the cache *before* the server responds, with rollback on error:
+Remove/toggle actions update the cache _before_ the server responds, with rollback on error:
 
 ```typescript
 onMutate: async (id) => {
@@ -276,12 +276,12 @@ Import batch confirmed  → invalidate: transactions, merchant_mappings, dashboa
 
 **staleTime per entity:**
 
-| Entity | staleTime | Behavior |
-|---|---|---|
-| Categories | 5 min | Rarely change, cached aggressively |
-| Transactions | 0 | Always refetch on mount, but serve cache instantly while background fetch runs |
-| Budgets | 1 min | Moderate cache |
-| Dashboard | 0 | Composite view, always fresh |
+| Entity       | staleTime | Behavior                                                                       |
+| ------------ | --------- | ------------------------------------------------------------------------------ |
+| Categories   | 5 min     | Rarely change, cached aggressively                                             |
+| Transactions | 0         | Always refetch on mount, but serve cache instantly while background fetch runs |
+| Budgets      | 1 min     | Moderate cache                                                                 |
+| Dashboard    | 0         | Composite view, always fresh                                                   |
 
 With `staleTime: 0`, navigating to a page shows cached data immediately, then silently updates in the background if anything changed. No loading spinner, no blank screen.
 
@@ -297,77 +297,77 @@ Single source of truth in `types/database.ts`:
 
 ```typescript
 export interface User {
-  id: string
-  email: string
-  created_at: string
+  id: string;
+  email: string;
+  created_at: string;
 }
 
 export interface CategoryGroup {
-  id: string
-  user_id: string
-  name: string
-  icon: string | null
-  color: string | null
-  sort_order: number
-  created_at: string
-  categories?: Category[] // joined
+  id: string;
+  user_id: string;
+  name: string;
+  icon: string | null;
+  color: string | null;
+  sort_order: number;
+  created_at: string;
+  categories?: Category[]; // joined
 }
 
 export interface Category {
-  id: string
-  user_id: string
-  group_id: string | null
-  name: string
-  type: 'INCOME' | 'EXPENSE'
-  color: string | null
-  icon: string | null
-  created_at: string
-  category_groups?: CategoryGroup // joined
+  id: string;
+  user_id: string;
+  group_id: string | null;
+  name: string;
+  type: "INCOME" | "EXPENSE";
+  color: string | null;
+  icon: string | null;
+  created_at: string;
+  category_groups?: CategoryGroup; // joined
 }
 
 export interface Transaction {
-  id: string
-  user_id: string
-  category_id: string | null
-  amount: number
-  date: string
-  description: string | null
-  notes: string | null
-  is_recurring: boolean
-  created_at: string
-  categories?: Category // joined
+  id: string;
+  user_id: string;
+  category_id: string | null;
+  amount: number;
+  date: string;
+  description: string | null;
+  notes: string | null;
+  is_recurring: boolean;
+  created_at: string;
+  categories?: Category; // joined
 }
 
 export interface Budget {
-  id: string
-  user_id: string
-  category_id: string
-  amount: number
-  month: number
-  year: number
-  is_recurring: boolean
-  created_at: string
-  categories?: Category // joined
+  id: string;
+  user_id: string;
+  category_id: string;
+  amount: number;
+  month: number;
+  year: number;
+  is_recurring: boolean;
+  created_at: string;
+  categories?: Category; // joined
 }
 
 export interface AccountSnapshot {
-  id: string
-  user_id: string
-  account_name: string
-  account_type: 'CELI' | 'REER' | 'REEE' | 'EMERGENCY' | 'OTHER'
-  balance: number
-  snapshot_date: string
-  created_at: string
+  id: string;
+  user_id: string;
+  account_name: string;
+  account_type: "CELI" | "REER" | "REEE" | "EMERGENCY" | "OTHER";
+  balance: number;
+  snapshot_date: string;
+  created_at: string;
 }
 
 export interface MerchantMapping {
-  id: string
-  user_id: string
-  merchant_pattern: string
-  category_id: string
-  confidence: number
-  created_at: string
-  categories?: Category // joined
+  id: string;
+  user_id: string;
+  merchant_pattern: string;
+  category_id: string;
+  confidence: number;
+  created_at: string;
+  categories?: Category; // joined
 }
 ```
 
@@ -382,25 +382,25 @@ export default defineConfig({
     extend: {
       tokens: {
         colors: {
-          income: { value: 'hsl(174, 60%, 35%)' },      // teal
-          expense: { value: 'hsl(355, 70%, 55%)' },      // red
+          income: { value: "hsl(174, 60%, 35%)" }, // teal
+          expense: { value: "hsl(355, 70%, 55%)" }, // red
           // ... rest of financial semantic colors
         },
       },
       semanticTokens: {
         colors: {
           bg: {
-            DEFAULT: { value: { base: '{colors.white}', _dark: 'hsl(196, 30%, 10%)' } },
+            DEFAULT: { value: { base: "{colors.white}", _dark: "hsl(196, 30%, 10%)" } },
           },
           fg: {
-            DEFAULT: { value: { base: 'hsl(196, 30%, 10%)', _dark: 'hsl(90, 30%, 90%)' } },
+            DEFAULT: { value: { base: "hsl(196, 30%, 10%)", _dark: "hsl(90, 30%, 90%)" } },
           },
           // ... light/dark mode mappings
         },
       },
     },
   },
-})
+});
 ```
 
 ## Dark Mode
@@ -475,6 +475,7 @@ CREATE TABLE merchant_mappings (
 ### 2. Batch review UX
 
 The import review screen is optimized for speed, not for forms. Keyboard-driven:
+
 - List of transactions, each with a suggested category
 - Arrow keys to navigate, Enter to accept, Tab to change category, D to skip
 - Process 50 transactions in 2 minutes
@@ -485,6 +486,7 @@ The import review screen is optimized for speed, not for forms. Keyboard-driven:
 **Primary target: Desjardins PDF statements.** TD mortgage is pulled from the Desjardins account. Wealthsimple is used for investments (manual snapshots, not statement import).
 
 Parser priority:
+
 1. **Desjardins PDF** — primary bank, most transactions
 2. **CSV generic** — fallback for any bank that exports CSV (column mapping UI if format is unknown)
 
@@ -501,12 +503,14 @@ If the user quick-added transactions during the month, the import should detect 
 ### What the AI sees (and doesn't see)
 
 The AI never sees the bank statement document, account numbers, balances, names, or amounts. It receives only:
+
 - A list of merchant description strings, PII-stripped (e.g., `["METRO PLUS #1234", "SHELL STN 4521"]`)
 - The user's current category list (the ONLY valid classification targets)
 
 ### AI guardrails
 
 The categorization is a **constrained classification task**, not open-ended generation:
+
 - The LLM receives the user's exact category list as the only valid options
 - It must pick from that list or return `UNCATEGORIZED` — never invent new categories
 - Each suggestion includes a confidence score (high/medium/low)
@@ -525,6 +529,7 @@ The LLM doesn't need tools or agent loops — it needs good context. Before each
 3. Build a single prompt: "Here are the categories with examples of merchants in each. Classify these unknowns."
 
 Example prompt context:
+
 ```
 Categories:
 - Épicerie (NOURRITURE): METRO PLUS, IGA EXTRA, MAXI, PROVIGO
@@ -550,16 +555,16 @@ The sanitizer runs locally before any data reaches the LLM adapter, regardless o
 
 ### AI touchpoints summary
 
-| Use case | Method | Data exposure |
-|---|---|---|
-| PDF text extraction | pdf.js (local) | Nothing |
-| CSV parsing | Local parser | Nothing |
-| Known merchant lookup | Mapping table | Nothing |
-| Unknown merchant categorization | LLM via adapter | Merchant names only, PII-stripped |
-| Budget alerts | Computed logic + templates | Nothing |
-| Trends / summaries | Computed logic | Nothing |
-| Recurring detection | Pattern matching | Nothing |
-| Duplicate detection | Amount + date scoring | Nothing |
+| Use case                        | Method                     | Data exposure                     |
+| ------------------------------- | -------------------------- | --------------------------------- |
+| PDF text extraction             | pdf.js (local)             | Nothing                           |
+| CSV parsing                     | Local parser               | Nothing                           |
+| Known merchant lookup           | Mapping table              | Nothing                           |
+| Unknown merchant categorization | LLM via adapter            | Merchant names only, PII-stripped |
+| Budget alerts                   | Computed logic + templates | Nothing                           |
+| Trends / summaries              | Computed logic             | Nothing                           |
+| Recurring detection             | Pattern matching           | Nothing                           |
+| Duplicate detection             | Amount + date scoring      | Nothing                           |
 
 ### LLM Adapter
 
@@ -568,12 +573,14 @@ The sanitizer runs locally before any data reaches the LLM adapter, regardless o
 export interface AIProvider {
   categorize(
     descriptions: string[],
-    categories: { id: string; name: string; group: string }[]
-  ): Promise<Array<{
-    description: string
-    category_id: string | null    // null = UNCATEGORIZED
-    confidence: 'high' | 'medium' | 'low'
-  }>>
+    categories: { id: string; name: string; group: string }[],
+  ): Promise<
+    Array<{
+      description: string;
+      category_id: string | null; // null = UNCATEGORIZED
+      confidence: "high" | "medium" | "low";
+    }>
+  >;
 }
 
 // Default: Ollama on localhost:11434
@@ -595,13 +602,13 @@ Only what's needed (installed via `npx @park-ui/cli add`):
 
 ## What Gets Ported from v1
 
-| Port | Details |
-|---|---|
-| Design tokens | HSL color system, light/dark themes, income/expense semantic colors — into Panda tokens |
-| Component logic | Form field structures, table layouts, chart configs — rewritten to fit Park UI + Panda |
-| Zod schemas | Validation rules for transaction/budget/category forms |
-| Recharts configs | Chart data transformations, color mappings |
-| React Query patterns | Query key structure, invalidation strategies from the completed migration hooks |
+| Port                 | Details                                                                                 |
+| -------------------- | --------------------------------------------------------------------------------------- |
+| Design tokens        | HSL color system, light/dark themes, income/expense semantic colors — into Panda tokens |
+| Component logic      | Form field structures, table layouts, chart configs — rewritten to fit Park UI + Panda  |
+| Zod schemas          | Validation rules for transaction/budget/category forms                                  |
+| Recharts configs     | Chart data transformations, color mappings                                              |
+| React Query patterns | Query key structure, invalidation strategies from the completed migration hooks         |
 
 ## What Gets Dropped
 
@@ -622,6 +629,7 @@ Only what's needed (installed via `npx @park-ui/cli add`):
 Import the category structure and monthly budget template from the "Mensuel" sheet in Budget.xlsx. No historical transaction data (2023-2025 sheets are incomplete summaries, not transaction-level).
 
 Seed includes:
+
 - **Category groups:** REVENU, MAISON, AUTO, FINANCE, NOURRITURE, ABONNEMENTS, AUTRE
 - **Categories:** All items from Mensuel (Hypothèque, Hydro, Ass. Maison, Gas, Épicerie, Spotify, etc.)
 - **Budget template:** Monthly budget amounts per category from the Mensuel sheet, marked as recurring

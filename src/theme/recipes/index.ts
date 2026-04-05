@@ -1,23 +1,23 @@
-import { absoluteCenter } from './absolute-center'
-import { button } from './button'
-import { group } from './group'
-import { icon } from './icon'
-import { input } from './input'
-import { spinner } from './spinner'
+import { absoluteCenter } from "./absolute-center";
+import { button } from "./button";
+import { group } from "./group";
+import { icon } from "./icon";
+import { input } from "./input";
+import { spinner } from "./spinner";
 
-import { card } from './card'
-import { checkbox } from './checkbox'
-import { dialog } from './dialog'
-import { field } from './field'
-import { popover } from './popover'
-import { progress } from './progress'
-import { radioGroup } from './radio-group'
-import { select } from './select'
-import { switchRecipe } from './switch'
-import { table } from './table'
-import { tabs } from './tabs'
-import { toast } from './toast'
-import { tooltip } from './tooltip'
+import { card } from "./card";
+import { checkbox } from "./checkbox";
+import { dialog } from "./dialog";
+import { field } from "./field";
+import { popover } from "./popover";
+import { progress } from "./progress";
+import { radioGroup } from "./radio-group";
+import { select } from "./select";
+import { switchRecipe } from "./switch";
+import { table } from "./table";
+import { tabs } from "./tabs";
+import { toast } from "./toast";
+import { tooltip } from "./tooltip";
 
 export const recipes = {
   absoluteCenter,
@@ -26,7 +26,7 @@ export const recipes = {
   icon,
   input,
   spinner,
-}
+};
 
 export const slotRecipes = {
   card,
@@ -42,4 +42,4 @@ export const slotRecipes = {
   tabs,
   toast,
   tooltip,
-}
+};

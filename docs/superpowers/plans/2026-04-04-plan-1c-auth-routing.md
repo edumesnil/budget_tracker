@@ -29,23 +29,23 @@ React Query client singleton with per-entity staleTime defaults from the design 
 
 ```typescript
 // src/lib/query-client.ts
-import { QueryClient } from '@tanstack/react-query'
+import { QueryClient } from "@tanstack/react-query";
 
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 30_000, // 30s default
-      gcTime: 300_000,   // 5 minutes
+      gcTime: 300_000, // 5 minutes
       refetchOnWindowFocus: true,
       retry: 1,
     },
     mutations: {
       onError: (error) => {
-        console.error('Mutation error:', error)
+        console.error("Mutation error:", error);
       },
     },
   },
-})
+});
 ```
 
 ---
@@ -183,64 +183,64 @@ Dark mode toggle hook. Persists preference to localStorage. Toggles `dark` class
 
 ```typescript
 // src/hooks/use-theme.ts
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from "react";
 
-type Theme = 'light' | 'dark'
+type Theme = "light" | "dark";
 
-const STORAGE_KEY = 'budget-tracker-theme'
+const STORAGE_KEY = "budget-tracker-theme";
 
 function getInitialTheme(): Theme {
-  if (typeof window === 'undefined') return 'light'
+  if (typeof window === "undefined") return "light";
 
-  const stored = localStorage.getItem(STORAGE_KEY) as Theme | null
-  if (stored === 'light' || stored === 'dark') return stored
+  const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
+  if (stored === "light" || stored === "dark") return stored;
 
   // Check system preference
-  if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-    return 'dark'
+  if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+    return "dark";
   }
 
-  return 'light'
+  return "light";
 }
 
 export function useTheme() {
-  const [theme, setThemeState] = useState<Theme>(getInitialTheme)
+  const [theme, setThemeState] = useState<Theme>(getInitialTheme);
 
   // Apply theme class to <html> on mount and change
   useEffect(() => {
-    const root = document.documentElement
-    if (theme === 'dark') {
-      root.classList.add('dark')
+    const root = document.documentElement;
+    if (theme === "dark") {
+      root.classList.add("dark");
     } else {
-      root.classList.remove('dark')
+      root.classList.remove("dark");
     }
-    localStorage.setItem(STORAGE_KEY, theme)
-  }, [theme])
+    localStorage.setItem(STORAGE_KEY, theme);
+  }, [theme]);
 
   // Listen for system preference changes
   useEffect(() => {
-    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const handler = (e: MediaQueryListEvent) => {
       // Only auto-switch if user hasn't set a preference
       if (!localStorage.getItem(STORAGE_KEY)) {
-        setThemeState(e.matches ? 'dark' : 'light')
+        setThemeState(e.matches ? "dark" : "light");
       }
-    }
-    mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
-  }, [])
+    };
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
 
   const toggleTheme = useCallback(() => {
-    setThemeState((prev) => (prev === 'dark' ? 'light' : 'dark'))
-  }, [])
+    setThemeState((prev) => (prev === "dark" ? "light" : "dark"));
+  }, []);
 
   const setTheme = useCallback((t: Theme) => {
-    setThemeState(t)
-  }, [])
+    setThemeState(t);
+  }, []);
 
-  const isDark = theme === 'dark'
+  const isDark = theme === "dark";
 
-  return { theme, isDark, toggleTheme, setTheme }
+  return { theme, isDark, toggleTheme, setTheme };
 }
 ```
 
@@ -1223,19 +1223,19 @@ supabase status
 
 ```typescript
 // src/lib/supabase.ts (should already exist from Plan 1B)
-import { createClient } from '@supabase/supabase-js'
-import type { Database } from '@/types/database'
+import { createClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/database";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    storageKey: 'budget-tracker-auth-storage',
+    storageKey: "budget-tracker-auth-storage",
   },
-})
+});
 ```
 
 ---
@@ -1255,12 +1255,14 @@ Expect: Vite dev server starts on `localhost:5173` (or configured port) without 
 ### 14b. Auto-login works
 
 Open `http://localhost:5173` in the browser. With `VITE_DEV_AUTOLOGIN=true`, the app should:
+
 1. Briefly show loading spinner on index page
 2. Auto-sign in with `dev@budgettracker.local`
 3. Redirect to `/dashboard`
 4. Show the dashboard layout with sidebar and topbar
 
 If auto-login fails, check:
+
 - Supabase is running (`supabase status`)
 - Seed user exists (`dev@budgettracker.local` / `devpassword123` — should be created by Plan 1B seed)
 - `.env.local` values match `supabase status` output
@@ -1268,6 +1270,7 @@ If auto-login fails, check:
 ### 14c. Navigation works
 
 Click each sidebar link:
+
 - **Dashboard** → shows "Dashboard" heading at `/dashboard`
 - **Transactions** → shows "Transactions" heading at `/transactions`
 - **Budgets** → shows "Budgets" heading at `/budgets`
@@ -1278,6 +1281,7 @@ Active nav item should be visually highlighted.
 ### 14d. Theme toggle works
 
 Click the sun/moon icon in the topbar:
+
 - Light → Dark: `<html>` gets `dark` class, background/text colors change
 - Dark → Light: `dark` class removed, colors revert
 - Refresh page: theme persists (stored in localStorage)
@@ -1304,24 +1308,24 @@ In development, a small React Query Devtools button should appear in the bottom-
 
 ## File Inventory
 
-| File | Action | Purpose |
-|---|---|---|
-| `package.json` | Modify | Add react-router, @tanstack/react-query, @tanstack/react-query-devtools |
-| `src/lib/query-client.ts` | Create | React Query client singleton |
-| `src/hooks/use-auth.ts` | Create | Auth state management + dev auto-login |
-| `src/hooks/use-theme.ts` | Create | Dark mode toggle + localStorage persistence |
-| `src/app.tsx` | Create | Router + providers |
-| `src/main.tsx` | Create | Entry point |
-| `index.html` | Modify | Root div + script tag |
-| `src/routes/_layout.tsx` | Create | Dashboard shell (sidebar, topbar, auth guard) |
-| `src/routes/login.tsx` | Create | Login form |
-| `src/routes/register.tsx` | Create | Registration form |
-| `src/routes/index.tsx` | Create | Auth-aware redirect |
-| `src/routes/dashboard.tsx` | Create | Placeholder |
-| `src/routes/transactions.tsx` | Create | Placeholder |
-| `src/routes/budgets.tsx` | Create | Placeholder |
-| `src/routes/categories.tsx` | Create | Placeholder |
-| `.env.local` | Create | Supabase URL + anon key + dev auto-login flag |
+| File                          | Action | Purpose                                                                 |
+| ----------------------------- | ------ | ----------------------------------------------------------------------- |
+| `package.json`                | Modify | Add react-router, @tanstack/react-query, @tanstack/react-query-devtools |
+| `src/lib/query-client.ts`     | Create | React Query client singleton                                            |
+| `src/hooks/use-auth.ts`       | Create | Auth state management + dev auto-login                                  |
+| `src/hooks/use-theme.ts`      | Create | Dark mode toggle + localStorage persistence                             |
+| `src/app.tsx`                 | Create | Router + providers                                                      |
+| `src/main.tsx`                | Create | Entry point                                                             |
+| `index.html`                  | Modify | Root div + script tag                                                   |
+| `src/routes/_layout.tsx`      | Create | Dashboard shell (sidebar, topbar, auth guard)                           |
+| `src/routes/login.tsx`        | Create | Login form                                                              |
+| `src/routes/register.tsx`     | Create | Registration form                                                       |
+| `src/routes/index.tsx`        | Create | Auth-aware redirect                                                     |
+| `src/routes/dashboard.tsx`    | Create | Placeholder                                                             |
+| `src/routes/transactions.tsx` | Create | Placeholder                                                             |
+| `src/routes/budgets.tsx`      | Create | Placeholder                                                             |
+| `src/routes/categories.tsx`   | Create | Placeholder                                                             |
+| `.env.local`                  | Create | Supabase URL + anon key + dev auto-login flag                           |
 
 ## Assumptions
 
