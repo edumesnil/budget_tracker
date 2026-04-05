@@ -3,6 +3,7 @@ export { Button, ButtonGroup, type ButtonGroupProps, type ButtonProps } from "./
 export * as Card from "./card";
 export * as Checkbox from "./checkbox";
 export { CloseButton, type CloseButtonProps } from "./close-button";
+export * as Combobox from "./combobox";
 export * as Dialog from "./dialog";
 export * as Field from "./field";
 export { Group, type GroupProps } from "./group";

@@ -30,6 +30,7 @@ interface CategoryFormDialogProps {
   category: Category | null;
   groups: GroupWithCategories[];
   defaultGroupId: string | null;
+  defaultName?: string;
   onSubmit: (data: CategoryFormValues) => Promise<void>;
   isSubmitting: boolean;
 }
@@ -40,6 +41,7 @@ export function CategoryFormDialog({
   category,
   groups,
   defaultGroupId,
+  defaultName,
   onSubmit,
   isSubmitting,
 }: CategoryFormDialogProps) {
@@ -59,14 +61,14 @@ export function CategoryFormDialog({
   useEffect(() => {
     if (open) {
       reset({
-        name: category?.name ?? "",
+        name: category?.name ?? defaultName ?? "",
         type: category?.type ?? "EXPENSE",
         group_id: category?.group_id ?? defaultGroupId ?? null,
         icon: category?.icon ?? "",
         color: category?.color ?? "",
       });
     }
-  }, [open, category, defaultGroupId, reset]);
+  }, [open, category, defaultGroupId, defaultName, reset]);
 
   const handleFormSubmit = handleSubmit(async (data) => {
     await onSubmit({

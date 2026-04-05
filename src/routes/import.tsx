@@ -9,6 +9,7 @@ import { useImport } from "@/hooks/use-import";
 import { FileUpload } from "@/components/import/file-upload";
 import { ColumnMapper } from "@/components/import/column-mapper";
 import { ReviewTable } from "@/components/import/review-table";
+import { CategoryFormDialog } from "@/components/categories/category-form-dialog";
 import { Button } from "@/components/ui/button";
 import * as Card from "@/components/ui/card";
 import * as Progress from "@/components/ui/progress";
@@ -17,9 +18,18 @@ import { CheckCircle, AlertTriangle, Trash2 } from "lucide-react";
 
 export default function ImportPage() {
   const queryClient = useQueryClient();
-  const { groups, allCategories } = useCategories();
+  const { groups, allCategories, createCategory } = useCategories();
   const { mappings } = useMerchantMappings();
   const [clearing, setClearing] = useState(false);
+
+  // Category creation dialog triggered from the review table
+  const [catDialogOpen, setCatDialogOpen] = useState(false);
+  const [catPrefill, setCatPrefill] = useState<{ name?: string; groupId?: string | null }>({});
+
+  const handleCreateCategory = (prefill: { name?: string; groupId?: string | null }) => {
+    setCatPrefill(prefill);
+    setCatDialogOpen(true);
+  };
 
   const {
     status,
@@ -198,8 +208,25 @@ export default function ImportPage() {
           onCommit={handleCommit}
           onCancel={reset}
           isCommitting={false}
+          onCreateCategory={handleCreateCategory}
         />
       )}
+
+      {/* Category creation dialog (triggered from review table) */}
+      <CategoryFormDialog
+        open={catDialogOpen}
+        onOpenChange={setCatDialogOpen}
+        category={null}
+        groups={groups}
+        defaultGroupId={catPrefill.groupId ?? null}
+        defaultName={catPrefill.name}
+        onSubmit={async (data) => {
+          await createCategory.mutateAsync(data);
+          setCatDialogOpen(false);
+          toaster.success({ title: `Category "${data.name}" created` });
+        }}
+        isSubmitting={createCategory.isPending}
+      />
 
       {/* Importing: show progress */}
       {status === "importing" && (

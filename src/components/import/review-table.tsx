@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createListCollection } from "@ark-ui/react/collection";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, X, AlertTriangle, Sparkles, Database, HelpCircle, Plus } from "lucide-react";
 import { css } from "../../../styled-system/css";
 import * as Card from "@/components/ui/card";
 import * as Table from "@/components/ui/table";
-import * as Select from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -24,6 +23,7 @@ interface ReviewTableProps {
   onCommit: () => void;
   onCancel: () => void;
   isCommitting: boolean;
+  onCreateCategory: (prefill: { name?: string; groupId?: string | null }) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -66,7 +66,6 @@ function ConfidenceBadge({ confidence }: { confidence: ReviewItem["confidence"] 
 // ---------------------------------------------------------------------------
 
 function AiStatusCell({ item }: { item: ReviewItem }) {
-  // "done" with confidence badge — animate in on first render of this state
   if (item.aiStatus === "done" || item.aiStatus === "skipped") {
     return (
       <motion.span
@@ -103,7 +102,6 @@ function AiStatusCell({ item }: { item: ReviewItem }) {
     );
   }
 
-  // waiting — minimal, the row opacity already signals this
   return <span className={css({ fontSize: "xs", color: "fg.disabled" })}>—</span>;
 }
 
@@ -114,13 +112,16 @@ function AiStatusCell({ item }: { item: ReviewItem }) {
 function CategoryContent({
   item,
   getCategoryName,
+  onSuggestedClick,
 }: {
   item: ReviewItem;
   getCategoryName: (id: string | null) => string;
+  onSuggestedClick?: (e: React.MouseEvent) => void;
 }) {
   if (item.category_id === null && item.suggestedCategory) {
     return (
       <span
+        onClick={onSuggestedClick}
         className={css({
           display: "inline-flex",
           alignItems: "center",
@@ -132,6 +133,8 @@ function CategoryContent({
           fontWeight: "500",
           color: "colorPalette.fg",
           bg: "colorPalette.3",
+          cursor: "pointer",
+          _hover: { bg: "colorPalette.4" },
         })}
       >
         <Plus size={11} />
@@ -146,10 +149,199 @@ function CategoryContent({
         fontSize: "sm",
         color: item.category_id ? "fg.default" : "fg.muted",
         fontStyle: item.category_id ? "normal" : "italic",
+        cursor: "pointer",
       })}
     >
       {getCategoryName(item.category_id)}
     </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Category picker — popover with search + grouped list + create option
+// No cell morphing: the category text is the anchor, panel floats above
+// ---------------------------------------------------------------------------
+
+function CategoryPicker({
+  item,
+  groups,
+  onSelect,
+  onClose,
+  onCreateCategory,
+}: {
+  item: ReviewItem;
+  groups: GroupWithCategories[];
+  onSelect: (catId: string) => void;
+  onClose: () => void;
+  onCreateCategory: (prefill: { name?: string; groupId?: string | null }) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Focus search input when opened
+  useEffect(() => {
+    // Small delay to let the popover render
+    const t = setTimeout(() => inputRef.current?.focus(), 50);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Build grouped + filtered list
+  const groupedItems = useMemo(() => {
+    const q = search.toLowerCase();
+    const map = new Map<string, Array<{ id: string; name: string }>>();
+
+    for (const g of groups) {
+      if (g.id === "__ungrouped__") continue;
+      const cats = g.categories.filter((c) => !q || c.name.toLowerCase().includes(q));
+      if (cats.length > 0) map.set(g.name, cats);
+    }
+
+    const ungrouped = groups.find((g) => g.id === "__ungrouped__");
+    if (ungrouped) {
+      const cats = ungrouped.categories.filter((c) => !q || c.name.toLowerCase().includes(q));
+      if (cats.length > 0) map.set("Ungrouped", cats);
+    }
+
+    return map;
+  }, [groups, search]);
+
+  const totalResults = useMemo(
+    () => [...groupedItems.values()].reduce((sum, cats) => sum + cats.length, 0),
+    [groupedItems],
+  );
+
+  return (
+    <div
+      className={css({
+        pos: "absolute",
+        top: "100%",
+        left: 0,
+        zIndex: 50,
+        mt: "1",
+        w: "56",
+        bg: "bg.default",
+        rounded: "lg",
+        shadow: "lg",
+        display: "flex",
+        flexDir: "column",
+        overflow: "hidden",
+      })}
+    >
+      {/* Search input */}
+      <div className={css({ p: "2" })}>
+        <Input
+          ref={inputRef}
+          size="sm"
+          placeholder="Search..."
+          value={search}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
+          onKeyDown={(e: React.KeyboardEvent) => {
+            if (e.key === "Escape") {
+              e.stopPropagation();
+              onClose();
+            }
+          }}
+        />
+      </div>
+
+      {/* Category list */}
+      <div className={css({ maxH: "56", overflowY: "auto", px: "1", pb: "1" })}>
+        {Array.from(groupedItems.entries()).map(([groupName, cats]) => (
+          <div key={groupName}>
+            <div
+              className={css({
+                px: "2",
+                py: "1",
+                fontSize: "xs",
+                fontWeight: "600",
+                color: "fg.muted",
+                textTransform: "uppercase",
+                letterSpacing: "wide",
+              })}
+            >
+              {groupName}
+            </div>
+            {cats.map((cat) => (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelect(cat.id);
+                  onClose();
+                }}
+                className={css({
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "2",
+                  w: "full",
+                  px: "2",
+                  py: "1.5",
+                  rounded: "md",
+                  fontSize: "sm",
+                  color: cat.id === item.category_id ? "colorPalette.11" : "fg.default",
+                  bg: cat.id === item.category_id ? "colorPalette.3" : "transparent",
+                  fontWeight: cat.id === item.category_id ? "500" : "400",
+                  cursor: "pointer",
+                  border: "none",
+                  textAlign: "left",
+                  _hover: { bg: "gray.a3" },
+                  transition: "background 100ms",
+                })}
+              >
+                {cat.name}
+                {cat.id === item.category_id && <Check size={14} />}
+              </button>
+            ))}
+          </div>
+        ))}
+
+        {totalResults === 0 && (
+          <div
+            className={css({
+              px: "2",
+              py: "3",
+              fontSize: "sm",
+              color: "fg.muted",
+              textAlign: "center",
+            })}
+          >
+            No categories found
+          </div>
+        )}
+      </div>
+
+      {/* Create new */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onCreateCategory({ name: search || undefined });
+          onClose();
+        }}
+        className={css({
+          display: "flex",
+          alignItems: "center",
+          gap: "1.5",
+          w: "full",
+          px: "3",
+          py: "2",
+          fontSize: "sm",
+          fontWeight: "500",
+          color: "colorPalette.11",
+          bg: "transparent",
+          cursor: "pointer",
+          border: "none",
+          borderTopWidth: "1px",
+          borderColor: "border.subtle",
+          textAlign: "left",
+          _hover: { bg: "colorPalette.2" },
+        })}
+      >
+        <Plus size={14} />
+        Create new category
+      </button>
+    </div>
   );
 }
 
@@ -164,12 +356,13 @@ interface AnimatedRowProps {
   idx: number;
   isActive: boolean;
   isEditing: boolean;
-  categoryCollection: ReturnType<typeof createListCollection>;
   groups: GroupWithCategories[];
   getCategoryName: (id: string | null) => string;
   onClickRow: (idx: number) => void;
+  onClickCategory: (idx: number) => void;
   onUpdateItem: (id: string, updates: Partial<ReviewItem>) => void;
   onEditingClose: () => void;
+  onCreateCategory: (prefill: { name?: string; groupId?: string | null }) => void;
 }
 
 function AnimatedRow({
@@ -177,14 +370,14 @@ function AnimatedRow({
   idx,
   isActive,
   isEditing,
-  categoryCollection,
   groups,
   getCategoryName,
   onClickRow,
+  onClickCategory,
   onUpdateItem,
   onEditingClose,
+  onCreateCategory,
 }: AnimatedRowProps) {
-  // Track previous aiStatus to detect the "done" transition
   const prevAiStatus = useRef(item.aiStatus);
   const [flashKey, setFlashKey] = useState(0);
 
@@ -195,7 +388,6 @@ function AnimatedRow({
     prevAiStatus.current = item.aiStatus;
   }, [item.aiStatus]);
 
-  // Track previous category_id to animate category cell on AI update
   const prevCategoryId = useRef(item.category_id);
   const [categoryAnimKey, setCategoryAnimKey] = useState(0);
 
@@ -206,7 +398,6 @@ function AnimatedRow({
     prevCategoryId.current = item.category_id;
   }, [item.category_id, item.aiStatus]);
 
-  // Track previous displayName to animate description on AI update
   const prevDisplayName = useRef(item.displayName);
   const [displayNameAnimKey, setDisplayNameAnimKey] = useState(0);
 
@@ -224,7 +415,6 @@ function AnimatedRow({
       key={item.id}
       data-row-idx={idx}
       onClick={() => onClickRow(idx)}
-      // Flash the background when AI result arrives
       animate={
         flashKey > 0
           ? {
@@ -242,7 +432,7 @@ function AnimatedRow({
               ? 0.45
               : 1,
         transition: "opacity 200ms",
-        _hover: { bg: "bg.subtle" },
+        _hover: { bg: "gray.a2" },
         ...(item.aiStatus === "analyzing" && {
           boxShadow: "inset 3px 0 0 0 var(--colors-color-palette-8)",
         }),
@@ -310,60 +500,45 @@ function AnimatedRow({
       </Table.Cell>
 
       {/* Category */}
-      <Table.Cell className={css({ overflow: "visible", pos: "relative" })}>
-        {isEditing ? (
-          <Select.Root
-            collection={categoryCollection}
-            value={item.category_id ? [item.category_id] : []}
-            onValueChange={(d: { value: string[] }) => {
-              const val = d.value[0];
-              if (val) {
-                onUpdateItem(item.id, { category_id: val, confidence: "high" });
-              }
-              onEditingClose();
-            }}
-            onOpenChange={(d: { open: boolean }) => {
-              if (!d.open) onEditingClose();
-            }}
-            open
-            positioning={{ placement: "bottom-start", sameWidth: false }}
+      <Table.Cell
+        className={css({ overflow: "visible", pos: "relative", cursor: "pointer" })}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClickRow(idx);
+          onClickCategory(idx);
+        }}
+      >
+        {/* Always show the category text — no cell morphing */}
+        <AnimatePresence mode="wait">
+          <motion.span
+            key={`cat-${item.id}-${categoryAnimKey}`}
+            initial={categoryAnimKey > 0 ? { opacity: 0, x: -6 } : false}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            style={{ display: "inline-block" }}
           >
-            <Select.Control>
-              <Select.Trigger className={css({ w: "full", maxW: "full" })}>
-                <Select.ValueText placeholder="Select" />
-                <Select.Indicator />
-              </Select.Trigger>
-            </Select.Control>
-            <Select.Positioner>
-              <Select.Content className={css({ maxH: "48", overflowY: "auto", minW: "48" })}>
-                {groups
-                  .filter((g) => g.id !== "__ungrouped__")
-                  .map((g) => (
-                    <Select.ItemGroup key={g.id}>
-                      <Select.ItemGroupLabel>{g.name}</Select.ItemGroupLabel>
-                      {g.categories.map((cat) => (
-                        <Select.Item key={cat.id} item={{ label: cat.name, value: cat.id }}>
-                          <Select.ItemText>{cat.name}</Select.ItemText>
-                          <Select.ItemIndicator />
-                        </Select.Item>
-                      ))}
-                    </Select.ItemGroup>
-                  ))}
-              </Select.Content>
-            </Select.Positioner>
-          </Select.Root>
-        ) : (
-          <AnimatePresence mode="wait">
-            <motion.span
-              key={`cat-${item.id}-${categoryAnimKey}`}
-              initial={categoryAnimKey > 0 ? { opacity: 0, x: -6 } : false}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
-              style={{ display: "inline-block" }}
-            >
-              <CategoryContent item={item} getCategoryName={getCategoryName} />
-            </motion.span>
-          </AnimatePresence>
+            <CategoryContent
+              item={item}
+              getCategoryName={getCategoryName}
+              onSuggestedClick={(e) => {
+                e.stopPropagation();
+                onCreateCategory({ name: item.suggestedCategory ?? undefined });
+              }}
+            />
+          </motion.span>
+        </AnimatePresence>
+
+        {/* Floating picker — overlays below the cell */}
+        {isEditing && (
+          <CategoryPicker
+            item={item}
+            groups={groups}
+            onSelect={(catId) => {
+              onUpdateItem(item.id, { category_id: catId, confidence: "high" });
+            }}
+            onClose={onEditingClose}
+            onCreateCategory={onCreateCategory}
+          />
         )}
       </Table.Cell>
 
@@ -403,33 +578,11 @@ export function ReviewTable({
   onCommit,
   onCancel,
   isCommitting,
+  onCreateCategory,
 }: ReviewTableProps) {
   const [activeIdx, setActiveIdx] = useState(0);
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  // Category collection for the select dropdown
-  const categoryItems = useMemo(() => {
-    const result: { label: string; value: string; group: string }[] = [];
-    for (const g of groups) {
-      if (g.id === "__ungrouped__") continue;
-      for (const cat of g.categories) {
-        result.push({ label: cat.name, value: cat.id, group: g.name });
-      }
-    }
-    const ungrouped = groups.find((g) => g.id === "__ungrouped__");
-    if (ungrouped) {
-      for (const cat of ungrouped.categories) {
-        result.push({ label: cat.name, value: cat.id, group: "Ungrouped" });
-      }
-    }
-    return result;
-  }, [groups]);
-
-  const categoryCollection = useMemo(
-    () => createListCollection({ items: categoryItems }),
-    [categoryItems],
-  );
 
   // Stats
   const accepted = items.filter((i) => i.status === "accepted").length;
@@ -551,7 +704,6 @@ export function ReviewTable({
               <span>
                 Categorizing… {aiRemaining}/{aiTotal} remaining
               </span>
-              {/* inline progress track */}
               <span
                 className={css({
                   display: "inline-block",
@@ -655,12 +807,17 @@ export function ReviewTable({
                     idx={idx}
                     isActive={idx === activeIdx}
                     isEditing={editingIdx === idx}
-                    categoryCollection={categoryCollection}
                     groups={groups}
                     getCategoryName={getCategoryName}
-                    onClickRow={setActiveIdx}
+                    onClickRow={(i) => {
+                      setActiveIdx(i);
+                      // Close any open combobox when clicking a different row
+                      if (editingIdx !== null && editingIdx !== i) setEditingIdx(null);
+                    }}
+                    onClickCategory={(i) => setEditingIdx(i)}
                     onUpdateItem={onUpdateItem}
                     onEditingClose={() => setEditingIdx(null)}
+                    onCreateCategory={onCreateCategory}
                   />
                 ))}
               </Table.Body>

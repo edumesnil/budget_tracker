@@ -1,3 +1,4 @@
+import { combobox } from "./combobox";
 import { absoluteCenter } from "./absolute-center";
 import { button } from "./button";
 import { group } from "./group";
@@ -26,6 +27,7 @@ export const recipes = {
   icon,
   input,
   spinner,
+  combobox,
 };
 
 export const slotRecipes = {
