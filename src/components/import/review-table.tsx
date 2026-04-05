@@ -292,7 +292,12 @@ export function ReviewTable({
                       {/* Description */}
                       <Table.Cell>
                         <div>
-                          <span className={css({ fontSize: "sm" })}>{item.description}</span>
+                          <span className={css({ fontSize: "sm", fontWeight: "500" })}>
+                            {item.displayName}
+                          </span>
+                          <p className={css({ fontSize: "xs", color: "fg.muted", mt: "0.5" })}>
+                            {item.description}
+                          </p>
                           {item.duplicate && (
                             <div
                               className={css({
