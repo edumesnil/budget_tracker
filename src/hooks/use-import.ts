@@ -99,29 +99,47 @@ export function useImport(
     const minDate = dates.reduce((a, b) => (a < b ? a : b));
     const maxDate = dates.reduce((a, b) => (a > b ? a : b));
 
-    // Pad by 3 days to catch near-matches
+    // Pad by 1 day to catch posting-date vs transaction-date differences
     const padStart = new Date(minDate);
-    padStart.setDate(padStart.getDate() - 3);
+    padStart.setDate(padStart.getDate() - 1);
     const padEnd = new Date(maxDate);
-    padEnd.setDate(padEnd.getDate() + 3);
+    padEnd.setDate(padEnd.getDate() + 1);
 
     const { data: existing } = await supabase
       .from("transactions")
-      .select("id, amount, date, description, category_id")
+      .select("id, amount, date, description, notes, category_id")
       .gte("date", padStart.toISOString().split("T")[0])
       .lte("date", padEnd.toISOString().split("T")[0]);
 
     if (!existing || existing.length === 0) return dupes;
 
+    // Track which existing rows have already been matched so one DB row
+    // cannot satisfy multiple import rows
+    const matchedExisting = new Set<string>();
+
     for (let i = 0; i < txs.length; i++) {
       const tx = txs[i];
+      const txDescUpper = tx.description.toUpperCase().trim();
+
       for (const ex of existing) {
-        // Same amount (within 0.01) + date within 3 days
+        if (matchedExisting.has(ex.id)) continue;
+
         const amountMatch = Math.abs(Number(ex.amount) - tx.amount) < 0.01;
+        if (!amountMatch) continue;
+
         const daysDiff = Math.abs(
           (new Date(tx.date).getTime() - new Date(ex.date).getTime()) / 86400000,
         );
-        if (amountMatch && daysDiff <= 3) {
+        if (daysDiff > 1) continue;
+
+        // Compare against raw bank description stored in notes (preferred)
+        // or the display name in description as fallback
+        const exRaw = ((ex.notes as string | null) ?? ex.description ?? "").toUpperCase().trim();
+        const descMatch =
+          exRaw.length > 0 && (exRaw.includes(txDescUpper) || txDescUpper.includes(exRaw));
+
+        if (descMatch) {
+          matchedExisting.add(ex.id);
           dupes.set(i, {
             transaction_id: ex.id,
             description: ex.description,
@@ -522,7 +540,7 @@ export function useImport(
       }
 
       // Invalidate caches so the UI reflects new data without a page reload
-      await queryClient.invalidateQueries({ queryKey: merchantMappingKeys.all });
+      queryClient.invalidateQueries({ queryKey: merchantMappingKeys.all });
 
       setProgress(100);
       setStatus("done");
