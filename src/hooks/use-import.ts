@@ -1,7 +1,9 @@
 import { useState, useCallback, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { sanitize } from "@/lib/sanitizer";
 import { getAIProvider, cleanFallback } from "@/lib/ai";
+import { merchantMappingKeys } from "@/hooks/use-merchant-mappings";
 import { parsePdf } from "@/lib/parsers/pdf";
 import { getHeaders, parseCsv, detectColumns } from "@/lib/parsers/csv";
 import type { ParsedTransaction, CsvColumnMap } from "@/lib/parsers/types";
@@ -63,6 +65,7 @@ export function useImport(
   categoryGroups: Array<{ id: string; name: string }>,
   merchantMappings: MerchantMapping[],
 ) {
+  const queryClient = useQueryClient();
   const [status, setStatus] = useState<ImportStatus>("idle");
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -518,13 +521,16 @@ export function useImport(
         if (mapErr) throw mapErr;
       }
 
+      // Invalidate caches so the UI reflects new data without a page reload
+      await queryClient.invalidateQueries({ queryKey: merchantMappingKeys.all });
+
       setProgress(100);
       setStatus("done");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to import transactions");
       setStatus("reviewing");
     }
-  }, [items, merchantMappings]);
+  }, [items, merchantMappings, queryClient]);
 
   const reset = useCallback(() => {
     abortRef.current = true;
