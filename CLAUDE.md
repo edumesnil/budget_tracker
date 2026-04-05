@@ -1,64 +1,60 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Commands
 
 ```bash
-npm run dev          # Dev server on localhost:3000
-npm run build        # Production build
-npm run start        # Serve production build
-npm run lint         # ESLint
+nvm use 22             # Required — Node 22+
+npm run dev            # Dev server (Vite)
+npm run build          # Production build
+npm run lint           # ESLint
+supabase start         # Local Supabase (must be running)
+npx panda codegen --clean  # Regenerate styled-system after config changes
 ```
 
-No test framework is configured.
+No test framework configured.
 
 ## Architecture
 
-Next.js 14 App Router with client-side Supabase — no API routes except `/app/auth/callback/route.ts`. All data access happens directly from the browser via Supabase RLS (Row Level Security). There is no dedicated backend layer.
+Vite+ SPA with React Router v7 and client-side Supabase. No SSR, no API routes. All data access via Supabase RLS from the browser.
 
 ### Stack
 
-- **Framework:** Next.js 14, React 18, TypeScript
-- **Database/Auth:** Supabase (PostgreSQL + Auth)
-- **State:** TanStack React Query v5 for server state, React Context for UI state (auth, sidebar)
-- **UI:** shadcn/ui (Radix primitives) + Tailwind CSS + Framer Motion
-- **Forms:** react-hook-form + Zod validation
+- **Build:** Vite+ (alpha) — Vite + Oxlint
+- **Framework:** React 19, TypeScript
+- **Router:** React Router v7 (flat SPA routing)
+- **Styling:** Panda CSS (zero-runtime, build-time static CSS)
+- **Components:** Park UI (Ark UI primitives + Panda CSS recipes)
+- **Database/Auth:** Supabase (PostgreSQL + Auth, local via CLI)
+- **State:** TanStack React Query v5
+- **Forms:** react-hook-form + Zod
 - **Charts:** Recharts
 
-### Data Flow
+### Project Structure
 
-`useSupabaseQuery` and `useSupabaseMutation` in `lib/query-utils.ts` wrap React Query + Supabase client. These enforce auth checks and consistent error handling. Each feature has dedicated hooks (`hooks/use-transaction-data.ts`, `hooks/use-budget.ts`, etc.) that encapsulate all CRUD operations and query logic.
+```
+src/
+  routes/          # Page components (_layout.tsx, dashboard.tsx, etc.)
+  components/
+    ui/            # Park UI components (installed via CLI, DO NOT manually edit)
+    dashboard/     # Dashboard feature components
+    transactions/  # Transaction feature components
+    budgets/       # Budget feature components
+    categories/    # Category feature components
+  hooks/           # One hook per entity (use-transactions.ts, etc.)
+  lib/             # Supabase client, query config, utils
+  types/           # database.ts (single source of truth)
+  theme/           # Panda CSS theme (recipes, tokens, conditions, globalCss)
+styled-system/     # Panda CSS generated output (gitignored, regenerate with codegen)
+panda.config.ts    # Design tokens, recipes, presets
+```
 
-React Query config in `lib/react-query.ts`: staleTime 30s, gcTime 5m.
+### Database Schema (7 tables)
 
-### Supabase Client
-
-`lib/supabase.ts` exports a singleton client. Browser and server environments get different configurations. Auth sessions persist in localStorage under key `"budget-tracker-auth-storage"`.
-
-### Database Schema (4 tables)
-
-- **users** — id, email
-- **transactions** — id, user_id, category_id, amount, date, description, notes
-- **categories** — id, user_id, name, type (INCOME/EXPENSE), color, icon
-- **budgets** — id, user_id, category_id, amount, month, year, is_recurring
-
-Types auto-generated in `lib/database.types.ts`.
-
-### Auth Flow
-
-Supabase email/password auth managed by `contexts/auth-context.tsx`. Protected routes in `/dashboard` redirect unauthenticated users to `/login`. Middleware in `middleware.ts` is lightweight — auth redirects are component-driven.
+users, category_groups, categories, transactions, budgets, account_snapshots, merchant_mappings. All with RLS. Types in `types/database.ts`.
 
 ### Feature Organization
 
-Each feature (transactions, budget, categories, comparison) follows the same pattern:
-- Route in `app/dashboard/<feature>/`
-- Components in `components/<feature>/`
-- Data hook in `hooks/use-<feature>-data.ts`
-
-### Theme
-
-CSS variables in HSL format. Light/dark mode via `next-themes`. Sidebar colors are a separate token set from main UI colors. Financial semantic colors: income = teal, expense = red.
+Each feature follows: route in `routes/<feature>.tsx`, components in `components/<feature>/`, data hook in `hooks/use-<feature>.ts`.
 
 ## Environment Variables
 
@@ -67,8 +63,125 @@ NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
 ```
 
-## Build Notes
+## Park UI Component Rules
 
-- TypeScript and ESLint errors are ignored during build (`next.config.mjs`)
-- Images set to unoptimized
-- Path alias: `@/*` maps to project root
+These rules are non-negotiable. Every UI element must use Park UI components correctly.
+
+### Before using ANY Park UI component
+
+Read the component source in `src/components/ui/<component>.tsx` AND its recipe in `src/theme/recipes/<component>.ts` to understand what parts exist and what styling the recipe already provides. Do not guess APIs.
+
+### Form fields — always use Field component
+
+```tsx
+import * as Field from '@/components/ui/field'
+import { Input } from '@/components/ui/input'
+
+// Correct
+<Field.Root invalid={!!errors.name}>
+  <Field.Label>Name</Field.Label>
+  <Input {...register('name')} />
+  <Field.ErrorText>{errors.name?.message}</Field.ErrorText>
+</Field.Root>
+
+// WRONG — never do this
+<div>
+  <label className={css(...)}>Name</label>
+  <Input />
+  <p className={css(...)}>error</p>
+</div>
+```
+
+- Input is `styled(Field.Input)` — it must be inside `Field.Root` for focus ring to work
+- `Field.Label` auto-connects to Field.Input (no htmlFor/id needed)
+- `Field.ErrorText` shows only when `Field.Root` has `invalid={true}`
+- For Controller-based fields (Select, Checkbox, RadioGroup): wrap in `Field.Root` + `Field.Label`, keep Controller inside
+
+### Cards — padding rules
+
+Card.Body recipe: `pb: '6', px: '6'` (NO top padding). Card.Header: `p: '6'` (all sides).
+
+- If Card.Body follows Card.Header → no extra padding needed
+- If Card.Body has NO Card.Header above it → add `className={css({ pt: '6' })}`
+
+### Tables — let the recipe work
+
+The table recipe provides: cell padding, font size, color, border separators (via box-shadow), header styling.
+
+```tsx
+// Correct — recipe handles everything
+<Table.Root interactive>  {/* interactive = hover rows */}
+  <Table.Head>
+    <Table.Row>
+      <Table.Header>Date</Table.Header>
+      <Table.Header className={css({ textAlign: 'right' })}>Amount</Table.Header>
+    </Table.Row>
+  </Table.Head>
+  <Table.Body>
+    <Table.Row>
+      <Table.Cell>{date}</Table.Cell>
+      <Table.Cell className={css({ textAlign: 'right' })}>{amount}</Table.Cell>
+    </Table.Row>
+  </Table.Body>
+</Table.Root>
+
+// WRONG — duplicating recipe styling
+<Table.Header className={css({ fontSize: 'xs', fontWeight: '600', px: '4', py: '2.5' })}>
+<Table.Row className={css({ _hover: { bg: 'bg.subtle' } })}>
+```
+
+### Select compound component
+
+```tsx
+<Select.Root collection={collection} value={value} onValueChange={onChange}>
+  <Select.Control>
+    <Select.Trigger>
+      <Select.ValueText placeholder="..." />
+      <Select.Indicator />          {/* MUST be inside Trigger */}
+    </Select.Trigger>
+  </Select.Control>
+  <Select.Positioner>
+    <Select.Content>
+      <Select.Item item={item}>
+        <Select.ItemText>{label}</Select.ItemText>
+        <Select.ItemIndicator />
+      </Select.Item>
+    </Select.Content>
+  </Select.Positioner>
+</Select.Root>
+```
+
+`Select.ItemGroupLabel` — recipe handles its styling. Do not add custom className.
+
+### Forbidden patterns
+
+| Never do this | Do this instead |
+|---|---|
+| `border: '1px solid'` / `borderBottom` / `borderWidth` / `borderColor` in css() | Use Card.Root for containers. Table recipe handles cell borders. |
+| `fontFamily: 'mono'` | Not a Park UI default. Remove. |
+| Raw `<label>` with custom CSS | `Field.Label` inside `Field.Root` |
+| Raw `<p>` for field errors | `Field.ErrorText` inside `Field.Root` |
+| Manual div with borderWidth for containers | `Card.Root` |
+| Custom className on Table.Header/Cell duplicating recipe | Let recipe handle it, only add truly custom props |
+| `border: 'none'` is OK on native buttons (removing browser default) | |
+
+### Panda CSS globalCss token references
+
+In `src/theme/global-css.ts`, token references MUST use curly braces:
+```ts
+// Correct
+'--global-color-border': '{colors.border.subtle}'
+
+// WRONG — outputs literal string
+'--global-color-border': 'colors.border.subtle'
+```
+
+### Semantic colors for financial data
+
+- Income: `color: 'income'`, bg: `'income.muted'`
+- Expense: `color: 'expense'`, bg: `'expense.muted'`
+- Use these for badges, amounts, status indicators
+
+### Dark mode
+
+Panda CSS `_dark` condition on semantic tokens. `dark` class on `<html>`. Managed by `hooks/use-theme.ts`. Default: light mode.

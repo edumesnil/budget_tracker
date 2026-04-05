@@ -119,8 +119,6 @@ export default function CategoriesPage() {
           justifyContent: 'space-between',
           alignItems: 'flex-start',
           pb: '2',
-          borderBottom: '1px solid',
-          borderColor: 'border.subtle',
         })}
       >
         <div>

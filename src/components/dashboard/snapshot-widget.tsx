@@ -42,9 +42,6 @@ function AccountRow({
         alignItems: 'center',
         justifyContent: 'space-between',
         py: '2',
-        borderBottom: '1px solid',
-        borderColor: 'border.subtle',
-        _last: { borderBottom: 'none' },
       })}
     >
       <div className={css({ display: 'flex', flexDir: 'column', gap: '0.5' })}>
@@ -59,7 +56,6 @@ function AccountRow({
         className={css({
           fontSize: 'sm',
           fontWeight: '600',
-          fontFamily: 'mono',
           color: 'fg.default',
         })}
       >
@@ -108,7 +104,6 @@ function TypeSection({
             className={css({
               fontSize: 'xs',
               fontWeight: '600',
-              fontFamily: 'mono',
               color: 'fg.muted',
             })}
           >
@@ -199,41 +194,31 @@ export function SnapshotWidget() {
         </div>
       </Card.Header>
 
-      {/* Grand total */}
-      <div
-        className={css({
-          px: '4',
-          py: '3',
-          borderBottom: '1px solid',
-          borderColor: 'border.subtle',
-        })}
-      >
-        {isLoading ? (
-          <div
-            className={css({
-              h: '8',
-              w: '40',
-              rounded: 'md',
-              bg: 'bg.muted',
-            })}
-          />
-        ) : (
-          <span
-            className={css({
-              fontSize: '2xl',
-              fontWeight: '700',
-              fontFamily: 'mono',
-              color: 'fg.default',
-              letterSpacing: 'tight',
-            })}
-          >
-            {formatCurrency(grandTotal)}
-          </span>
-        )}
-      </div>
-
-      {/* Account sections */}
       <Card.Body className={css({ display: 'flex', flexDir: 'column', gap: '3' })}>
+        {/* Grand total */}
+        <div className={css({ mb: '4' })}>
+          {isLoading ? (
+            <div
+              className={css({
+                h: '8',
+                w: '40',
+                rounded: 'md',
+                bg: 'bg.muted',
+              })}
+            />
+          ) : (
+            <span
+              className={css({
+                fontSize: '2xl',
+                fontWeight: '700',
+                color: 'fg.default',
+                letterSpacing: 'tight',
+              })}
+            >
+              {formatCurrency(grandTotal)}
+            </span>
+          )}
+        </div>
         {isLoading ? (
           <div
             className={css({

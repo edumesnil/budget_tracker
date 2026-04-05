@@ -74,9 +74,6 @@ function CategoryRow({
         gap: '1',
         py: '2',
         px: '3',
-        borderBottom: '1px solid',
-        borderColor: 'border.subtle',
-        _last: { borderBottom: 'none' },
       })}
     >
       <div className={css({ display: 'flex', justifyContent: 'space-between', alignItems: 'center' })}>
@@ -90,7 +87,7 @@ function CategoryRow({
             {cat?.name ?? 'Unknown'}
           </span>
         </div>
-        <div className={css({ display: 'flex', alignItems: 'center', gap: '2', fontFamily: 'mono', fontSize: 'xs' })}>
+        <div className={css({ display: 'flex', alignItems: 'center', gap: '2', fontSize: 'xs' })}>
           <span className={css({ color: 'fg.muted' })}>{formatCurrency(spent)}</span>
           <span className={css({ color: 'fg.subtle' })}>/ {formatCurrency(budgeted)}</span>
         </div>
@@ -200,12 +197,12 @@ function GroupCard({
           <div className={css({ display: 'flex', alignItems: 'center', gap: '3' })}>
             <div className={css({ textAlign: 'right' })}>
               <span
-                className={css({ fontSize: 'sm', fontWeight: '600', fontFamily: 'mono' })}
+                className={css({ fontSize: 'sm', fontWeight: '600' })}
                 style={{ color }}
               >
                 {formatCurrency(totalActual)}
               </span>
-              <span className={css({ fontSize: 'xs', color: 'fg.muted', fontFamily: 'mono', ml: '1' })}>
+              <span className={css({ fontSize: 'xs', color: 'fg.muted', ml: '1' })}>
                 / {formatCurrency(totalBudgeted)}
               </span>
             </div>
@@ -244,7 +241,7 @@ function GroupCard({
         {status !== 'ok' && (
           <div className={css({ display: 'flex', justifyContent: 'flex-end' })}>
             <span
-              className={css({ fontSize: 'xs', fontFamily: 'mono', fontWeight: '500' })}
+              className={css({ fontSize: 'xs', fontWeight: '500' })}
               style={{ color }}
             >
               {status === 'over'
@@ -259,8 +256,6 @@ function GroupCard({
       {expanded && expenseEntries.length > 0 && (
         <div
           className={css({
-            borderTop: '1px solid',
-            borderColor: 'border.subtle',
             bg: 'bg.subtle',
           })}
         >

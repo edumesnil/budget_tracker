@@ -19,7 +19,6 @@ function AmountCell({ transaction }: { transaction: Transaction }) {
   return (
     <span
       className={css({
-        fontFamily: 'mono',
         fontSize: 'sm',
         fontWeight: '500',
         color: isIncome ? 'income' : isExpense ? 'expense' : 'fg.default',
@@ -50,16 +49,14 @@ function CategoryCell({ transaction }: { transaction: Transaction }) {
         className={css({
           display: 'inline-flex',
           alignItems: 'center',
-          px: '1',
+          px: '1.5',
           py: '0.5',
-          rounded: 'xs',
+          rounded: 'sm',
           fontSize: 'xs',
-          fontFamily: 'mono',
+          fontWeight: '500',
           letterSpacing: 'wide',
-          bg: 'bg.muted',
-          borderWidth: '1px',
-          borderColor: 'border.subtle',
           color: isIncome ? 'income' : 'expense',
+          bg: isIncome ? 'income.muted' : 'expense.muted',
         })}
       >
         {cat.type}
@@ -86,102 +83,24 @@ export function TransactionTable({
 
   return (
     <Card.Root>
-      <Table.Root>
+      <Table.Root interactive>
         <Table.Head>
           <Table.Row>
-            <Table.Header
-              className={css({
-                fontSize: 'xs',
-                fontWeight: '600',
-                color: 'fg.muted',
-                letterSpacing: 'wide',
-                textTransform: 'uppercase',
-                py: '2.5',
-                px: '4',
-              })}
-            >
-              Date
-            </Table.Header>
-            <Table.Header
-              className={css({
-                fontSize: 'xs',
-                fontWeight: '600',
-                color: 'fg.muted',
-                letterSpacing: 'wide',
-                textTransform: 'uppercase',
-                py: '2.5',
-                px: '4',
-              })}
-            >
-              Description
-            </Table.Header>
-            <Table.Header
-              className={css({
-                fontSize: 'xs',
-                fontWeight: '600',
-                color: 'fg.muted',
-                letterSpacing: 'wide',
-                textTransform: 'uppercase',
-                py: '2.5',
-                px: '4',
-              })}
-            >
-              Category
-            </Table.Header>
-            <Table.Header
-              className={css({
-                fontSize: 'xs',
-                fontWeight: '600',
-                color: 'fg.muted',
-                letterSpacing: 'wide',
-                textTransform: 'uppercase',
-                py: '2.5',
-                px: '4',
-                textAlign: 'right',
-              })}
-            >
-              Amount
-            </Table.Header>
-            <Table.Header
-              className={css({
-                py: '2.5',
-                px: '4',
-                w: '24',
-              })}
-            />
+            <Table.Header>Date</Table.Header>
+            <Table.Header>Description</Table.Header>
+            <Table.Header>Category</Table.Header>
+            <Table.Header className={css({ textAlign: 'right' })}>Amount</Table.Header>
+            <Table.Header />
           </Table.Row>
         </Table.Head>
         <Table.Body>
           {transactions.map((tx) => (
-            <Table.Row
-              key={tx.id}
-              className={css({
-                borderTop: '1px solid',
-                borderColor: 'border.subtle',
-                _hover: { bg: 'bg.subtle' },
-                transition: 'background 120ms ease',
-              })}
-            >
-              <Table.Cell
-                className={css({
-                  py: '3',
-                  px: '4',
-                  fontSize: 'sm',
-                  color: 'fg.muted',
-                  fontFamily: 'mono',
-                  whiteSpace: 'nowrap',
-                })}
-              >
+            <Table.Row key={tx.id}>
+              <Table.Cell>
                 {formatDate(tx.date)}
               </Table.Cell>
 
-              <Table.Cell
-                className={css({
-                  py: '3',
-                  px: '4',
-                  maxW: '56',
-                })}
-              >
+              <Table.Cell className={css({ maxW: '56' })}>
                 <div>
                   <p
                     className={css({
@@ -213,26 +132,15 @@ export function TransactionTable({
                 </div>
               </Table.Cell>
 
-              <Table.Cell className={css({ py: '3', px: '4' })}>
+              <Table.Cell>
                 <CategoryCell transaction={tx} />
               </Table.Cell>
 
-              <Table.Cell
-                className={css({
-                  py: '3',
-                  px: '4',
-                  textAlign: 'right',
-                })}
-              >
+              <Table.Cell className={css({ textAlign: 'right' })}>
                 <AmountCell transaction={tx} />
               </Table.Cell>
 
-              <Table.Cell
-                className={css({
-                  py: '3',
-                  px: '4',
-                })}
-              >
+              <Table.Cell>
                 <div className={css({ display: 'flex', gap: '1', justifyContent: 'flex-end' })}>
                   <Button
                     variant="plain"

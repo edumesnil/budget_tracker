@@ -5,6 +5,7 @@ import { css } from '../../styled-system/css'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import * as Card from '@/components/ui/card'
+import * as Field from '@/components/ui/field'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -87,15 +88,9 @@ export default function LoginPage() {
               onSubmit={handleSubmit}
               className={css({ display: 'flex', flexDirection: 'column', gap: '4' })}
             >
-              <div className={css({ display: 'flex', flexDirection: 'column', gap: '1.5' })}>
-                <label
-                  htmlFor="email"
-                  className={css({ fontSize: 'sm', fontWeight: '500', color: 'fg.default' })}
-                >
-                  Email
-                </label>
+              <Field.Root>
+                <Field.Label>Email</Field.Label>
                 <Input
-                  id="email"
                   type="email"
                   placeholder="name@example.com"
                   value={email}
@@ -103,24 +98,18 @@ export default function LoginPage() {
                   required
                   autoComplete="email"
                 />
-              </div>
+              </Field.Root>
 
-              <div className={css({ display: 'flex', flexDirection: 'column', gap: '1.5' })}>
-                <label
-                  htmlFor="password"
-                  className={css({ fontSize: 'sm', fontWeight: '500', color: 'fg.default' })}
-                >
-                  Password
-                </label>
+              <Field.Root>
+                <Field.Label>Password</Field.Label>
                 <Input
-                  id="password"
                   type="password"
                   value={password}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                   required
                   autoComplete="current-password"
                 />
-              </div>
+              </Field.Root>
 
               {error && (
                 <p

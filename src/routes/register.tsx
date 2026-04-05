@@ -5,6 +5,7 @@ import { css } from '../../styled-system/css'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import * as Card from '@/components/ui/card'
+import * as Field from '@/components/ui/field'
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('')
@@ -102,15 +103,9 @@ export default function RegisterPage() {
               onSubmit={handleSubmit}
               className={css({ display: 'flex', flexDirection: 'column', gap: '4' })}
             >
-              <div className={css({ display: 'flex', flexDirection: 'column', gap: '1.5' })}>
-                <label
-                  htmlFor="email"
-                  className={css({ fontSize: 'sm', fontWeight: '500', color: 'fg.default' })}
-                >
-                  Email
-                </label>
+              <Field.Root>
+                <Field.Label>Email</Field.Label>
                 <Input
-                  id="email"
                   type="email"
                   placeholder="name@example.com"
                   value={email}
@@ -118,41 +113,29 @@ export default function RegisterPage() {
                   required
                   autoComplete="email"
                 />
-              </div>
+              </Field.Root>
 
-              <div className={css({ display: 'flex', flexDirection: 'column', gap: '1.5' })}>
-                <label
-                  htmlFor="password"
-                  className={css({ fontSize: 'sm', fontWeight: '500', color: 'fg.default' })}
-                >
-                  Password
-                </label>
+              <Field.Root>
+                <Field.Label>Password</Field.Label>
                 <Input
-                  id="password"
                   type="password"
                   value={password}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                   required
                   autoComplete="new-password"
                 />
-              </div>
+              </Field.Root>
 
-              <div className={css({ display: 'flex', flexDirection: 'column', gap: '1.5' })}>
-                <label
-                  htmlFor="confirmPassword"
-                  className={css({ fontSize: 'sm', fontWeight: '500', color: 'fg.default' })}
-                >
-                  Confirm password
-                </label>
+              <Field.Root>
+                <Field.Label>Confirm password</Field.Label>
                 <Input
-                  id="confirmPassword"
                   type="password"
                   value={confirmPassword}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
                   required
                   autoComplete="new-password"
                 />
-              </div>
+              </Field.Root>
 
               {error && (
                 <p

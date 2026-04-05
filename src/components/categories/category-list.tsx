@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { css } from '../../../styled-system/css'
 import { Button } from '@/components/ui/button'
+import * as Card from '@/components/ui/card'
 import type { CategoryGroup, Category } from '@/types/database'
 import type { GroupWithCategories } from '@/hooks/use-categories'
 
@@ -26,11 +27,8 @@ function TypeBadge({ type }: { type: 'INCOME' | 'EXPENSE' }) {
         fontSize: 'xs',
         fontWeight: '500',
         letterSpacing: 'wide',
-        fontFamily: 'mono',
         color: isIncome ? 'income' : 'expense',
-        bg: 'bg.muted',
-        borderWidth: '1px',
-        borderColor: 'border.subtle',
+        bg: isIncome ? 'income.muted' : 'expense.muted',
       })}
     >
       {type}
@@ -55,9 +53,6 @@ function CategoryRow({
         justifyContent: 'space-between',
         py: '2.5',
         px: '4',
-        borderBottom: '1px solid',
-        borderColor: 'border.subtle',
-        _last: { borderBottom: 'none' },
         _hover: { bg: 'bg.subtle' },
         transition: 'background 120ms ease',
       })}
@@ -133,15 +128,7 @@ export function CategoryList({
   const isVirtual = group.id === '__ungrouped__'
 
   return (
-    <div
-      className={css({
-        borderWidth: '1px',
-        borderColor: 'border.default',
-        rounded: 'lg',
-        overflow: 'hidden',
-        bg: 'bg.default',
-      })}
-    >
+    <Card.Root>
       {/* Group header */}
       <div
         className={css({
@@ -151,8 +138,6 @@ export function CategoryList({
           px: '4',
           py: '2.5',
           bg: 'bg.subtle',
-          borderBottom: isCollapsed ? 'none' : '1px solid',
-          borderColor: 'border.subtle',
           cursor: 'pointer',
           userSelect: 'none',
         })}
@@ -197,7 +182,6 @@ export function CategoryList({
               px: '1.5',
               py: '0.5',
               rounded: 'full',
-              fontFamily: 'mono',
             })}
           >
             {group.categories.length}
@@ -277,6 +261,6 @@ export function CategoryList({
           )}
         </div>
       )}
-    </div>
+    </Card.Root>
   )
 }

@@ -30,7 +30,7 @@ function monthLabel(month: number, year: number) {
 function RecurringBadge() {
   return (
     <span
-      title="Using recurring template — no specific entry for this month"
+      title="Using recurring template"
       className={css({
         display: 'inline-flex',
         alignItems: 'center',
@@ -40,11 +40,8 @@ function RecurringBadge() {
         rounded: 'sm',
         fontSize: 'xs',
         fontWeight: '500',
-        fontFamily: 'mono',
         color: 'fg.muted',
         bg: 'bg.muted',
-        border: '1px solid',
-        borderColor: 'border.subtle',
         letterSpacing: 'wide',
       })}
     >
@@ -79,9 +76,6 @@ function BudgetRow({
         justifyContent: 'space-between',
         py: '2.5',
         px: '4',
-        borderBottom: '1px solid',
-        borderColor: 'border.subtle',
-        _last: { borderBottom: 'none' },
         _hover: { bg: 'bg.subtle' },
         transition: 'background 120ms ease',
       })}
@@ -126,7 +120,6 @@ function BudgetRow({
           className={css({
             fontSize: 'sm',
             fontWeight: '600',
-            fontFamily: 'mono',
             color: isIncome ? 'income' : 'fg.default',
           })}
         >
@@ -244,8 +237,6 @@ export default function BudgetsPage() {
           justifyContent: 'space-between',
           alignItems: 'flex-start',
           pb: '2',
-          borderBottom: '1px solid',
-          borderColor: 'border.subtle',
         })}
       >
         <div>
@@ -281,8 +272,6 @@ export default function BudgetsPage() {
             w: '8',
             h: '8',
             borderRadius: 'md',
-            border: '1px solid',
-            borderColor: 'border.default',
             bg: 'bg.default',
             color: 'fg.muted',
             cursor: 'pointer',
@@ -317,8 +306,6 @@ export default function BudgetsPage() {
             w: '8',
             h: '8',
             borderRadius: 'md',
-            border: '1px solid',
-            borderColor: 'border.default',
             bg: 'bg.default',
             color: 'fg.muted',
             cursor: 'pointer',
@@ -341,7 +328,7 @@ export default function BudgetsPage() {
         >
           {/* Income */}
           <Card.Root>
-            <Card.Body>
+            <Card.Body className={css({ pt: '6' })}>
               <p
                 className={css({
                   fontSize: 'xs',
@@ -358,7 +345,7 @@ export default function BudgetsPage() {
                 className={css({
                   fontSize: 'lg',
                   fontWeight: '600',
-                  fontFamily: 'mono',
+
                   color: 'income',
                 })}
               >
@@ -369,7 +356,7 @@ export default function BudgetsPage() {
 
           {/* Expenses */}
           <Card.Root>
-            <Card.Body>
+            <Card.Body className={css({ pt: '6' })}>
               <p
                 className={css({
                   fontSize: 'xs',
@@ -386,7 +373,7 @@ export default function BudgetsPage() {
                 className={css({
                   fontSize: 'lg',
                   fontWeight: '600',
-                  fontFamily: 'mono',
+
                   color: 'expense',
                 })}
               >
@@ -397,7 +384,7 @@ export default function BudgetsPage() {
 
           {/* Projected net */}
           <Card.Root>
-            <Card.Body>
+            <Card.Body className={css({ pt: '6' })}>
               <p
                 className={css({
                   fontSize: 'xs',
@@ -414,7 +401,7 @@ export default function BudgetsPage() {
                 className={css({
                   fontSize: 'lg',
                   fontWeight: '600',
-                  fontFamily: 'mono',
+
                   color: netPositive ? 'income' : 'expense',
                 })}
               >
@@ -509,11 +496,8 @@ function BudgetGroupSection({
           px: '4',
           py: '2.5',
           bg: 'bg.subtle',
-          borderBottom: isCollapsed ? 'none' : '1px solid',
-          borderColor: 'border.subtle',
           cursor: 'pointer',
           userSelect: 'none',
-          borderRadius: isCollapsed ? 'inherit' : undefined,
         })}
         onClick={() => setIsCollapsed((v) => !v)}
       >
@@ -556,7 +540,6 @@ function BudgetGroupSection({
               px: '1.5',
               py: '0.5',
               rounded: 'full',
-              fontFamily: 'mono',
             })}
           >
             {group.entries.length}
@@ -573,7 +556,6 @@ function BudgetGroupSection({
               className={css({
                 fontSize: 'sm',
                 fontWeight: '600',
-                fontFamily: 'mono',
                 color: 'income',
               })}
             >
@@ -585,7 +567,6 @@ function BudgetGroupSection({
               className={css({
                 fontSize: 'sm',
                 fontWeight: '600',
-                fontFamily: 'mono',
                 color: 'fg.muted',
               })}
             >
