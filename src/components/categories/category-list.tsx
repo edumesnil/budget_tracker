@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { css } from "../../../styled-system/css";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import * as Card from "@/components/ui/card";
 import type { CategoryGroup, Category } from "@/types/database";
@@ -17,22 +18,17 @@ interface CategoryListProps {
 function TypeBadge({ type }: { type: "INCOME" | "EXPENSE" }) {
   const isIncome = type === "INCOME";
   return (
-    <span
+    <Badge
+      size="sm"
+      variant="subtle"
       className={css({
-        display: "inline-flex",
-        alignItems: "center",
-        px: "1.5",
-        py: "0.5",
-        rounded: "sm",
-        fontSize: "xs",
-        fontWeight: "500",
-        letterSpacing: "wide",
         color: isIncome ? "income" : "expense",
         bg: isIncome ? "income.muted" : "expense.muted",
+        borderColor: "transparent",
       })}
     >
       {type}
-    </span>
+    </Badge>
   );
 }
 
