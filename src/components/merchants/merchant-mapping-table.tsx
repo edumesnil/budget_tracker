@@ -13,19 +13,15 @@ interface MerchantMappingTableProps {
 function CategoryCell({ mapping }: { mapping: MerchantMapping }) {
   const cat = mapping.categories;
   if (!cat) {
-    return (
-      <span className={css({ color: "fg.subtle", fontSize: "sm", fontStyle: "italic" })}>
-        Unknown
-      </span>
-    );
+    return <span className={css({ fontStyle: "italic", color: "fg.subtle" })}>Unknown</span>;
   }
 
   const isIncome = cat.type === "INCOME";
 
   return (
     <div className={css({ display: "flex", alignItems: "center", gap: "2" })}>
-      {cat.icon && <span className={css({ fontSize: "sm" })}>{cat.icon}</span>}
-      <span className={css({ fontSize: "sm", color: "fg.default" })}>{cat.name}</span>
+      {cat.icon && <span>{cat.icon}</span>}
+      <span>{cat.name}</span>
       <span
         className={css({
           display: "inline-flex",
@@ -61,20 +57,16 @@ export function MerchantMappingTable({ mappings, onEdit, onDelete }: MerchantMap
         <Table.Body>
           {mappings.map((mapping) => (
             <Table.Row key={mapping.id}>
-              <Table.Cell>
-                <span className={css({ fontSize: "sm", color: "fg.default", fontWeight: "500" })}>
-                  {mapping.merchant_pattern}
-                </span>
+              <Table.Cell className={css({ fontWeight: "500" })}>
+                {mapping.merchant_pattern}
               </Table.Cell>
 
               <Table.Cell>
                 <CategoryCell mapping={mapping} />
               </Table.Cell>
 
-              <Table.Cell className={css({ textAlign: "right" })}>
-                <span className={css({ fontSize: "sm", color: "fg.muted" })}>
-                  {Math.round(mapping.confidence * 100)}%
-                </span>
+              <Table.Cell className={css({ textAlign: "right", color: "fg.muted" })}>
+                {Math.round(mapping.confidence * 100)}%
               </Table.Cell>
 
               <Table.Cell>
@@ -82,15 +74,7 @@ export function MerchantMappingTable({ mappings, onEdit, onDelete }: MerchantMap
                   <Button variant="plain" size="xs" onClick={() => onEdit(mapping)}>
                     Edit
                   </Button>
-                  <Button
-                    variant="plain"
-                    size="xs"
-                    onClick={() => onDelete(mapping.id)}
-                    className={css({
-                      color: "fg.muted",
-                      _hover: { bg: "bg.muted", color: "fg.default" },
-                    })}
-                  >
+                  <Button variant="plain" size="xs" onClick={() => onDelete(mapping.id)}>
                     Delete
                   </Button>
                 </div>
