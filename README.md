@@ -1,73 +1,65 @@
-# React + TypeScript + Vite
+# Budget Tracker
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Household budget tracker built for tracking income, expenses, and savings across Desjardins, Wealthsimple, and TD accounts. The core feature is **automated bank statement import** with AI-assisted transaction categorization.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Build:** Vite+ (Vite 8, Oxlint, Oxfmt, Vitest)
+- **Framework:** React 19, TypeScript
+- **Router:** React Router v7 (client-side SPA)
+- **Styling:** Panda CSS + Park UI (Ark UI primitives)
+- **Database/Auth:** Supabase (PostgreSQL + Auth, local via CLI)
+- **State:** TanStack React Query v5
+- **AI:** Groq / Gemini / Ollama (for merchant categorization)
 
-## React Compiler
+## Setup
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+# Install dependencies
+npm install
 
-## Expanding the ESLint configuration
+# Start local Supabase
+supabase start
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+# Copy env vars (Supabase URL + anon key from `supabase status`)
+cp .env.example .env
 
-```js
-export default defineConfig([
-  globalIgnores(["dist"]),
-  {
-    files: ["**/*.{ts,tsx}"],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ["./tsconfig.node.json", "./tsconfig.app.json"],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-]);
+# Start dev server
+vp dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## AI Categorization
 
-```js
-// eslint.config.js
-import reactX from "eslint-plugin-react-x";
-import reactDom from "eslint-plugin-react-dom";
+The import pipeline uses an LLM to categorize unknown merchants and clean up cryptic bank descriptions. Set one of these in `.env`:
 
-export default defineConfig([
-  globalIgnores(["dist"]),
-  {
-    files: ["**/*.{ts,tsx}"],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs["recommended-typescript"],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ["./tsconfig.node.json", "./tsconfig.app.json"],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-]);
+```bash
+VITE_GROQ_API_KEY=gsk_...     # Groq (free tier, recommended)
+VITE_GEMINI_API_KEY=AI...      # Google Gemini (free tier, alternative)
+# If neither is set, falls back to Ollama on localhost:11434
 ```
+
+Get a free Groq key at [console.groq.com/keys](https://console.groq.com/keys).
+
+Known merchants are auto-categorized from a local mapping table — the AI is only called for new merchants. The system learns from your corrections.
+
+## Commands
+
+```bash
+vp dev                         # Dev server
+vp build                       # Production build
+vp check                       # Format + lint + type check
+vp check --fix                 # Auto-fix formatting
+vp lint .                      # Oxlint only
+vp fmt                         # Oxfmt only
+vp test                        # Vitest
+supabase start                 # Local Supabase
+npx panda codegen --clean      # Regenerate styled-system
+```
+
+## Features
+
+- **Dashboard** — monthly spending overview, budget health, account snapshots, spending trends
+- **Transactions** — filterable list, manual quick-add, month navigation
+- **Budgets** — monthly budget amounts per category, recurring and one-time
+- **Categories** — groups and categories with drag-and-drop ordering
+- **Import** — PDF/CSV bank statement upload, AI categorization, keyboard-driven batch review, duplicate detection, merchant memory
