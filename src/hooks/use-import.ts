@@ -294,6 +294,8 @@ export function useImport(
 
       const isPreMatched = !!(mapping || nameMatch);
 
+      const isDuplicate = duplicates.has(i);
+
       const item: ReviewItem = {
         id: `import-${i}`,
         date: tx.date,
@@ -304,13 +306,13 @@ export function useImport(
         type: tx.type,
         category_id: mapping?.category_id ?? nameMatch?.category_id ?? null,
         confidence: mapping ? "known" : nameMatch ? "high" : "low",
-        status: "pending",
-        aiStatus: isPreMatched ? "skipped" : "waiting",
+        status: isDuplicate ? "skipped" : "pending",
+        aiStatus: isDuplicate ? "skipped" : isPreMatched ? "skipped" : "waiting",
         duplicate: duplicates.get(i) ?? null,
       };
 
-      // Pre-accept high-confidence pre-matched items
-      if (isPreMatched && item.category_id && !item.duplicate) {
+      // Pre-accept high-confidence pre-matched items (not duplicates)
+      if (!isDuplicate && isPreMatched && item.category_id) {
         item.status = "accepted";
       }
 
