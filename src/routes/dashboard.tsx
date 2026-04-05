@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { css } from "../../styled-system/css";
@@ -243,6 +243,8 @@ function PreImportView({
 // Post-import state
 // ---------------------------------------------------------------------------
 
+type TrendView = "6m" | "12m" | "ytd";
+
 function PostImportView({
   month,
   year,
@@ -250,6 +252,9 @@ function PostImportView({
   transactionTotals,
   budgetGroups,
   trendTransactions,
+  trendView,
+  onTrendViewChange,
+  trendMonthCount,
 }: {
   month: number;
   year: number;
@@ -257,6 +262,9 @@ function PostImportView({
   transactionTotals: ReturnType<typeof useTransactions>["totals"];
   budgetGroups: ReturnType<typeof useBudgets>["budgetGroups"];
   trendTransactions: ReturnType<typeof useTrendTransactions>["data"];
+  trendView: TrendView;
+  onTrendViewChange: (view: TrendView) => void;
+  trendMonthCount: number;
 }) {
   const { net, totalIncome, totalExpenses } = transactionTotals;
   const surplus = net >= 0;
@@ -334,16 +342,51 @@ function PostImportView({
       {/* Month-over-month trend */}
       <Card.Root>
         <Card.Header>
-          <Card.Title className={css({ fontSize: "sm", fontWeight: "600" })}>
-            6-month trend
-          </Card.Title>
-          <Card.Description>Income vs expenses</Card.Description>
+          <div
+            className={css({
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            })}
+          >
+            <div>
+              <Card.Title className={css({ fontSize: "sm", fontWeight: "600" })}>
+                Spending trend
+              </Card.Title>
+              <Card.Description>Income vs expenses</Card.Description>
+            </div>
+            <div className={css({ display: "flex", gap: "1" })}>
+              {(["6m", "12m", "ytd"] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => onTrendViewChange(v)}
+                  className={css({
+                    px: "2.5",
+                    py: "1",
+                    rounded: "md",
+                    fontSize: "xs",
+                    fontWeight: "500",
+                    cursor: "pointer",
+                    border: "none",
+                    color: trendView === v ? "colorPalette.fg" : "fg.muted",
+                    bg: trendView === v ? "colorPalette.3" : "transparent",
+                    _hover: { bg: trendView === v ? "colorPalette.3" : "bg.subtle" },
+                    transition: "background 150ms, color 150ms",
+                  })}
+                >
+                  {v.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
         </Card.Header>
         <Card.Body>
           <SpendingTrend
             transactions={trendTransactions ?? []}
             currentMonth={month}
             currentYear={year}
+            monthCount={trendMonthCount}
           />
         </Card.Body>
       </Card.Root>
@@ -362,6 +405,13 @@ export default function DashboardPage() {
   const { month: initMonth, year: initYear } = getCurrentPeriod();
   const [month, setMonth] = useState(initMonth);
   const [year, setYear] = useState(initYear);
+  const [trendView, setTrendView] = useState<TrendView>("6m");
+
+  const trendMonthCount = useMemo(() => {
+    if (trendView === "12m") return 12;
+    if (trendView === "ytd") return month;
+    return 6;
+  }, [trendView, month]);
 
   const prevMonth = () => {
     if (month === 1) {
@@ -383,7 +433,7 @@ export default function DashboardPage() {
 
   const { transactions, isLoading: txLoading, totals } = useTransactions(month, year);
   const { budgetGroups, totals: budgetTotals, isLoading: budgetsLoading } = useBudgets(month, year);
-  const { data: trendTxs } = useTrendTransactions(month, year);
+  const { data: trendTxs } = useTrendTransactions(month, year, trendMonthCount);
 
   const hasTransactions = !txLoading && transactions.length > 0;
   const isLoading = txLoading || budgetsLoading;
@@ -437,6 +487,9 @@ export default function DashboardPage() {
           transactionTotals={totals}
           budgetGroups={budgetGroups}
           trendTransactions={trendTxs}
+          trendView={trendView}
+          onTrendViewChange={setTrendView}
+          trendMonthCount={trendMonthCount}
         />
       ) : (
         <PreImportView

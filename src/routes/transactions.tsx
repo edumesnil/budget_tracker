@@ -1,12 +1,16 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { ChevronLeft, ChevronRight, RotateCw } from "lucide-react";
 import { css } from "../../styled-system/css";
-import { useTransactions } from "@/hooks/use-transactions";
+import { useTransactions, transactionKeys } from "@/hooks/use-transactions";
 import { useCategories } from "@/hooks/use-categories";
+import { useRecurringTransactions } from "@/hooks/use-recurring-transactions";
+import { supabase } from "@/lib/supabase";
 import { TransactionFormDialog } from "@/components/transactions/transaction-form-dialog";
 import { TransactionTable } from "@/components/transactions/transaction-table";
 import { Button } from "@/components/ui/button";
-import { Toaster, toaster } from "@/components/ui/toast";
+import { Toaster } from "@/components/ui/toast";
+import { toaster } from "@/lib/toaster";
 import { formatCurrency, getCurrentPeriod } from "@/lib/utils";
 import type { Transaction } from "@/types/database";
 import * as Card from "@/components/ui/card";
@@ -43,8 +47,15 @@ export default function TransactionsPage() {
   const [month, setMonth] = useState(initMonth);
   const [year, setYear] = useState(initYear);
 
-  const { transactions, isLoading, create, update, remove, totals } = useTransactions(month, year);
+  const { transactions, isLoading, create, update, totals } = useTransactions(month, year);
   const { groups } = useCategories();
+  const {
+    pending: recurringPending,
+    apply: applyRecurring,
+    prevMonth: rPrevMonth,
+  } = useRecurringTransactions(month, year);
+
+  const queryClient = useQueryClient();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
@@ -78,13 +89,34 @@ export default function TransactionsPage() {
     setDialogOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    try {
-      await remove.mutateAsync(id);
-      toaster.success({ title: "Transaction deleted" });
-    } catch {
-      toaster.error({ title: "Error", description: "Failed to delete transaction." });
-    }
+  const handleDelete = (id: string) => {
+    const cacheKey = transactionKeys.month(month, year);
+    const prev = queryClient.getQueryData<Transaction[]>(cacheKey);
+    const tx = prev?.find((t) => t.id === id);
+    let undone = false;
+
+    queryClient.setQueryData<Transaction[]>(cacheKey, (old = []) => old.filter((t) => t.id !== id));
+
+    toaster.create({
+      title: `"${tx?.description || "Transaction"}" deleted`,
+      type: "info",
+      action: {
+        label: "Undo",
+        onClick: () => {
+          undone = true;
+          queryClient.setQueryData(cacheKey, prev);
+        },
+      },
+      onStatusChange: async (d: { status: string }) => {
+        if (d.status === "unmounted" && !undone) {
+          const { error } = await supabase.from("transactions").delete().eq("id", id);
+          if (error) {
+            queryClient.setQueryData(cacheKey, prev);
+            toaster.error({ title: "Delete failed" });
+          }
+        }
+      },
+    });
   };
 
   const handleSubmit = async (data: {
@@ -310,6 +342,44 @@ export default function TransactionsPage() {
             </Card.Body>
           </Card.Root>
         </div>
+      )}
+
+      {/* Recurring transactions banner */}
+      {recurringPending.length > 0 && (
+        <Card.Root>
+          <Card.Body className={css({ pt: "6" })}>
+            <div
+              className={css({
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "3",
+              })}
+            >
+              <div>
+                <p className={css({ fontSize: "sm", fontWeight: "500", color: "fg.default" })}>
+                  {recurringPending.length} recurring transaction
+                  {recurringPending.length !== 1 ? "s" : ""} from {MONTHS[rPrevMonth - 1]}
+                </p>
+                <p className={css({ fontSize: "xs", color: "fg.muted", mt: "0.5" })}>
+                  {recurringPending.map((tx) => tx.description).join(", ")}
+                </p>
+              </div>
+              <Button
+                size="xs"
+                onClick={() => {
+                  applyRecurring.mutateAsync(recurringPending).then(() => {
+                    toaster.success({ title: "Recurring transactions applied" });
+                  });
+                }}
+                loading={applyRecurring.isPending}
+              >
+                <RotateCw size={12} />
+                Apply recurring
+              </Button>
+            </div>
+          </Card.Body>
+        </Card.Root>
       )}
 
       {/* Transaction table */}

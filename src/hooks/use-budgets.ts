@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { supabase } from "@/lib/supabase";
+import { getMonthRange } from "@/lib/utils";
 import type { Budget, Category } from "@/types/database";
 
 // ---------------------------------------------------------------------------
@@ -80,6 +81,9 @@ const BUDGET_SELECT = "*, categories(*, category_groups(*))" as const;
 export function useBudgets(month: number, year: number) {
   const queryClient = useQueryClient();
 
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const prevYear = month === 1 ? year - 1 : year;
+
   // -------------------------------------------------------------------------
   // Query 1: specific budgets for this month/year
   // -------------------------------------------------------------------------
@@ -119,6 +123,77 @@ export function useBudgets(month: number, year: number) {
     },
     staleTime: 60 * 1000, // 1 min
   });
+
+  // -------------------------------------------------------------------------
+  // Query 3: previous month budgets
+  // -------------------------------------------------------------------------
+
+  const prevBudgetQuery = useQuery({
+    queryKey: budgetKeys.month(prevMonth, prevYear),
+    queryFn: async (): Promise<BudgetWithCategory[]> => {
+      const { data, error } = await supabase
+        .from("budgets")
+        .select(BUDGET_SELECT)
+        .eq("month", prevMonth)
+        .eq("year", prevYear);
+
+      if (error) throw error;
+      return (data ?? []) as BudgetWithCategory[];
+    },
+    staleTime: 60 * 1000,
+  });
+
+  // -------------------------------------------------------------------------
+  // Query 4: previous month transactions (amount + category_id + type)
+  // -------------------------------------------------------------------------
+
+  const prevTransactionsQuery = useQuery({
+    queryKey: ["transactions", { month: prevMonth, year: prevYear, fields: "carryover" }],
+    queryFn: async () => {
+      const { startDate, endDate } = getMonthRange(prevMonth, prevYear);
+      const { data, error } = await supabase
+        .from("transactions")
+        .select("amount, category_id, categories(type)")
+        .gte("date", startDate)
+        .lte("date", endDate);
+
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        amount: number;
+        category_id: string | null;
+        categories: { type: string } | null;
+      }>;
+    },
+    staleTime: 60 * 1000,
+  });
+
+  // -------------------------------------------------------------------------
+  // Derived: carryover map — for each EXPENSE category: budgeted - actual
+  // Positive = surplus (under budget), negative = deficit (over budget)
+  // -------------------------------------------------------------------------
+
+  const carryoverMap = useMemo<Map<string, number>>(() => {
+    const prevBudgets = prevBudgetQuery.data ?? [];
+    const prevTxns = prevTransactionsQuery.data ?? [];
+
+    // Sum actual spending per category (expenses only)
+    const spentByCat = new Map<string, number>();
+    for (const txn of prevTxns) {
+      if (!txn.category_id || txn.categories?.type !== "EXPENSE") continue;
+      const prev = spentByCat.get(txn.category_id) ?? 0;
+      spentByCat.set(txn.category_id, prev + Math.abs(Number(txn.amount)));
+    }
+
+    const map = new Map<string, number>();
+    for (const b of prevBudgets) {
+      if (b.categories?.type !== "EXPENSE") continue;
+      const spent = spentByCat.get(b.category_id) ?? 0;
+      const carryover = Number(b.amount) - spent;
+      map.set(b.category_id, carryover);
+    }
+
+    return map;
+  }, [prevBudgetQuery.data, prevTransactionsQuery.data]);
 
   // -------------------------------------------------------------------------
   // Merge: specific entries + recurring fallback
@@ -342,6 +417,7 @@ export function useBudgets(month: number, year: number) {
     /** Merged entries grouped by category group, sorted */
     budgetGroups,
     totals,
+    carryoverMap,
     isLoading: specificQuery.isLoading || recurringQuery.isLoading,
     error: specificQuery.error ?? recurringQuery.error,
     create,
