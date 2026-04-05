@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, X, AlertTriangle, Sparkles, Database, HelpCircle, Plus } from "lucide-react";
 import { css } from "../../../styled-system/css";
 import * as Card from "@/components/ui/card";
@@ -68,15 +67,14 @@ function ConfidenceBadge({ confidence }: { confidence: ReviewItem["confidence"] 
 function AiStatusCell({ item }: { item: ReviewItem }) {
   if (item.aiStatus === "done" || item.aiStatus === "skipped") {
     return (
-      <motion.span
-        key={`badge-${item.id}`}
-        initial={{ opacity: 0, x: -4 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.2, ease: "easeOut" }}
-        style={{ display: "inline-block" }}
+      <span
+        className={css({
+          display: "inline-block",
+          animation: "slide-fade-in-x 200ms ease-out",
+        })}
       >
         <ConfidenceBadge confidence={item.confidence} />
-      </motion.span>
+      </span>
     );
   }
 
@@ -346,10 +344,8 @@ function CategoryPicker({
 }
 
 // ---------------------------------------------------------------------------
-// Animated row — wraps Table.Row with framer-motion for background flash
+// Animated row — CSS animations replace framer-motion
 // ---------------------------------------------------------------------------
-
-const MotionTr = motion.tr;
 
 interface AnimatedRowProps {
   item: ReviewItem;
@@ -365,7 +361,7 @@ interface AnimatedRowProps {
   onCreateCategory: (prefill: { name?: string; groupId?: string | null }) => void;
 }
 
-function AnimatedRow({
+const AnimatedRow = memo(function AnimatedRow({
   item,
   idx,
   isActive,
@@ -379,11 +375,11 @@ function AnimatedRow({
   onCreateCategory,
 }: AnimatedRowProps) {
   const prevAiStatus = useRef(item.aiStatus);
-  const [flashKey, setFlashKey] = useState(0);
+  const [flashActive, setFlashActive] = useState(false);
 
   useEffect(() => {
     if (prevAiStatus.current !== "done" && item.aiStatus === "done") {
-      setFlashKey((k) => k + 1);
+      setFlashActive(true);
     }
     prevAiStatus.current = item.aiStatus;
   }, [item.aiStatus]);
@@ -411,18 +407,10 @@ function AnimatedRow({
   const rowBg = isActive ? "var(--colors-color-palette-2)" : "transparent";
 
   return (
-    <MotionTr
-      key={item.id}
+    <tr
       data-row-idx={idx}
       onClick={() => onClickRow(idx)}
-      animate={
-        flashKey > 0
-          ? {
-              backgroundColor: [rowBg, "var(--colors-color-palette-3)", rowBg],
-            }
-          : { backgroundColor: rowBg }
-      }
-      transition={{ duration: 0.4, ease: "easeOut" }}
+      onAnimationEnd={() => setFlashActive(false)}
       className={css({
         cursor: "pointer",
         opacity:
@@ -436,8 +424,14 @@ function AnimatedRow({
         ...(item.aiStatus === "analyzing" && {
           boxShadow: "inset 3px 0 0 0 var(--colors-color-palette-8)",
         }),
+        ...(flashActive && {
+          animation: "flash-row 400ms ease-out",
+        }),
       })}
-      style={{ backgroundColor: rowBg }}
+      style={{
+        backgroundColor: rowBg,
+        ["--flash-bg" as string]: "var(--colors-color-palette-3)",
+      }}
     >
       {/* Status icon */}
       <Table.Cell>
@@ -453,17 +447,19 @@ function AnimatedRow({
       {/* Description */}
       <Table.Cell>
         <div>
-          <AnimatePresence mode="wait">
-            <motion.span
-              key={`dn-${item.id}-${displayNameAnimKey}`}
-              initial={displayNameAnimKey > 0 ? { opacity: 0, y: -4 } : false}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-              className={css({ display: "block", fontSize: "sm", fontWeight: "500" })}
-            >
-              {item.displayName}
-            </motion.span>
-          </AnimatePresence>
+          <span
+            key={`dn-${item.id}-${displayNameAnimKey}`}
+            className={css({
+              display: "block",
+              fontSize: "sm",
+              fontWeight: "500",
+              ...(displayNameAnimKey > 0 && {
+                animation: "slide-fade-in-y 200ms ease-out",
+              }),
+            })}
+          >
+            {item.displayName}
+          </span>
           <p className={css({ fontSize: "xs", color: "fg.muted", mt: "0.5" })}>
             {item.description}
           </p>
@@ -508,25 +504,24 @@ function AnimatedRow({
           onClickCategory(idx);
         }}
       >
-        {/* Always show the category text — no cell morphing */}
-        <AnimatePresence mode="wait">
-          <motion.span
-            key={`cat-${item.id}-${categoryAnimKey}`}
-            initial={categoryAnimKey > 0 ? { opacity: 0, x: -6 } : false}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
-            style={{ display: "inline-block" }}
-          >
-            <CategoryContent
-              item={item}
-              getCategoryName={getCategoryName}
-              onSuggestedClick={(e) => {
-                e.stopPropagation();
-                onCreateCategory({ name: item.suggestedCategory ?? undefined });
-              }}
-            />
-          </motion.span>
-        </AnimatePresence>
+        <span
+          key={`cat-${item.id}-${categoryAnimKey}`}
+          className={css({
+            display: "inline-block",
+            ...(categoryAnimKey > 0 && {
+              animation: "slide-fade-in-x 250ms ease-out",
+            }),
+          })}
+        >
+          <CategoryContent
+            item={item}
+            getCategoryName={getCategoryName}
+            onSuggestedClick={(e) => {
+              e.stopPropagation();
+              onCreateCategory({ name: item.suggestedCategory ?? undefined });
+            }}
+          />
+        </span>
 
         {/* Floating picker — overlays below the cell */}
         {isEditing && (
@@ -544,27 +539,18 @@ function AnimatedRow({
 
       {/* AI status / Confidence */}
       <Table.Cell>
-        <AnimatePresence mode="wait">
-          <motion.span
-            key={`ai-${item.id}-${item.aiStatus}`}
-            initial={false}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            style={{ display: "inline-block" }}
-          >
-            <AiStatusCell item={item} />
-          </motion.span>
-        </AnimatePresence>
+        <span key={`ai-${item.id}-${item.aiStatus}`} className={css({ display: "inline-block" })}>
+          <AiStatusCell item={item} />
+        </span>
       </Table.Cell>
 
       {/* Duplicate warning icon */}
       <Table.Cell>
         {item.duplicate && <AlertTriangle size={14} className={css({ color: "expense" })} />}
       </Table.Cell>
-    </MotionTr>
+    </tr>
   );
-}
+});
 
 // ---------------------------------------------------------------------------
 // Component
@@ -650,14 +636,33 @@ export function ReviewTable({
     [activeIdx, items, editingIdx, onUpdateItem],
   );
 
-  const getCategoryName = (catId: string | null): string => {
-    if (!catId) return "Uncategorized";
-    for (const g of groups) {
-      const cat = g.categories.find((c) => c.id === catId);
-      if (cat) return cat.name;
-    }
-    return "Unknown";
-  };
+  const getCategoryName = useCallback(
+    (catId: string | null): string => {
+      if (!catId) return "Uncategorized";
+      for (const g of groups) {
+        const cat = g.categories.find((c) => c.id === catId);
+        if (cat) return cat.name;
+      }
+      return "Unknown";
+    },
+    [groups],
+  );
+
+  const handleClickRow = useCallback(
+    (i: number) => {
+      setActiveIdx(i);
+      if (editingIdx !== null && editingIdx !== i) setEditingIdx(null);
+    },
+    [editingIdx],
+  );
+
+  const handleClickCategory = useCallback((i: number) => {
+    setEditingIdx(i);
+  }, []);
+
+  const handleEditingClose = useCallback(() => {
+    setEditingIdx(null);
+  }, []);
 
   return (
     <div className={css({ display: "flex", flexDir: "column", gap: "4" })}>
@@ -683,52 +688,45 @@ export function ReviewTable({
         )}
 
         {/* AI categorization progress */}
-        <AnimatePresence>
-          {isAiRunning && (
-            <motion.span
-              initial={{ opacity: 0, width: 0 }}
-              animate={{ opacity: 1, width: "auto" }}
-              exit={{ opacity: 0, width: 0 }}
-              transition={{ duration: 0.2 }}
+        {isAiRunning && (
+          <span
+            className={css({
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "2",
+              fontSize: "sm",
+              color: "colorPalette.fg",
+              whiteSpace: "nowrap",
+              animation: "fade-in 200ms ease-out",
+            })}
+          >
+            <Spinner size="xs" />
+            <span>
+              Categorizing… {aiRemaining}/{aiTotal} remaining
+            </span>
+            <span
               className={css({
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "2",
-                fontSize: "sm",
-                color: "colorPalette.fg",
+                display: "inline-block",
+                w: "16",
+                h: "1",
+                rounded: "full",
+                bg: "bg.subtle",
                 overflow: "hidden",
-                whiteSpace: "nowrap",
               })}
             >
-              <Spinner size="xs" />
-              <span>
-                Categorizing… {aiRemaining}/{aiTotal} remaining
-              </span>
               <span
                 className={css({
-                  display: "inline-block",
-                  w: "16",
-                  h: "1",
+                  display: "block",
+                  h: "full",
                   rounded: "full",
-                  bg: "bg.subtle",
-                  overflow: "hidden",
+                  bg: "colorPalette.9",
+                  transition: "width 300ms ease-out",
                 })}
-              >
-                <motion.span
-                  className={css({
-                    display: "block",
-                    h: "full",
-                    rounded: "full",
-                    bg: "colorPalette.9",
-                  })}
-                  animate={{ width: `${(aiDone / aiTotal) * 100}%` }}
-                  transition={{ duration: 0.3, ease: "easeOut" }}
-                  style={{ width: 0 }}
-                />
-              </span>
-            </motion.span>
-          )}
-        </AnimatePresence>
+                style={{ width: `${(aiDone / aiTotal) * 100}%` }}
+              />
+            </span>
+          </span>
+        )}
 
         <div className={css({ ml: "auto", display: "flex", gap: "2" })}>
           <Button variant="outline" size="sm" onClick={onAcceptAll}>
@@ -809,14 +807,10 @@ export function ReviewTable({
                     isEditing={editingIdx === idx}
                     groups={groups}
                     getCategoryName={getCategoryName}
-                    onClickRow={(i) => {
-                      setActiveIdx(i);
-                      // Close any open combobox when clicking a different row
-                      if (editingIdx !== null && editingIdx !== i) setEditingIdx(null);
-                    }}
-                    onClickCategory={(i) => setEditingIdx(i)}
+                    onClickRow={handleClickRow}
+                    onClickCategory={handleClickCategory}
                     onUpdateItem={onUpdateItem}
-                    onEditingClose={() => setEditingIdx(null)}
+                    onEditingClose={handleEditingClose}
                     onCreateCategory={onCreateCategory}
                   />
                 ))}

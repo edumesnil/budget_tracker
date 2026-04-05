@@ -1,3 +1,4 @@
+import { lazy } from "react";
 import { BrowserRouter, Routes, Route } from "react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
@@ -7,11 +8,13 @@ import { DashboardLayout } from "@/routes/_layout";
 import IndexPage from "@/routes/index";
 import LoginPage from "@/routes/login";
 import RegisterPage from "@/routes/register";
-import DashboardPage from "@/routes/dashboard";
-import TransactionsPage from "@/routes/transactions";
-import BudgetsPage from "@/routes/budgets";
-import CategoriesPage from "@/routes/categories";
-import ImportPage from "@/routes/import";
+
+// Lazy-loaded dashboard routes — each gets its own chunk
+const DashboardPage = lazy(() => import("@/routes/dashboard"));
+const TransactionsPage = lazy(() => import("@/routes/transactions"));
+const BudgetsPage = lazy(() => import("@/routes/budgets"));
+const CategoriesPage = lazy(() => import("@/routes/categories"));
+const ImportPage = lazy(() => import("@/routes/import"));
 
 export default function App() {
   return (

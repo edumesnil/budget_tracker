@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { Outlet, Navigate, NavLink, useLocation } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/hooks/use-theme";
@@ -216,7 +217,22 @@ export function DashboardLayout() {
         {/* Content */}
         <main className={css({ flex: 1, overflow: "auto" })}>
           <div className={css({ p: { base: "4", md: "8" }, maxW: "7xl", mx: "auto" })}>
-            <Outlet />
+            <Suspense
+              fallback={
+                <div
+                  className={css({
+                    py: "16",
+                    textAlign: "center",
+                    color: "fg.muted",
+                    fontSize: "sm",
+                  })}
+                >
+                  Loading…
+                </div>
+              }
+            >
+              <Outlet />
+            </Suspense>
           </div>
         </main>
       </div>

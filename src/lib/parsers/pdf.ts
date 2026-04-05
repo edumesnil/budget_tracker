@@ -8,14 +8,21 @@
 //   4. Fallback: tries all parsers, picks the one that finds the most transactions
 // =============================================================================
 
-import * as pdfjsLib from "pdfjs-dist";
 import type { ParseResult, ParsedTransaction } from "./types";
 
-// Use the bundled worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.mjs",
-  import.meta.url,
-).toString();
+// Lazy-load pdfjs-dist — ~300KB deferred until first PDF upload
+let pdfjsMod: typeof import("pdfjs-dist") | null = null;
+
+async function getPdfjs() {
+  if (!pdfjsMod) {
+    pdfjsMod = await import("pdfjs-dist");
+    pdfjsMod.GlobalWorkerOptions.workerSrc = new URL(
+      "pdfjs-dist/build/pdf.worker.min.mjs",
+      import.meta.url,
+    ).toString();
+  }
+  return pdfjsMod;
+}
 
 // ---------------------------------------------------------------------------
 // Generic text extraction — reusable across all bank formats
@@ -26,6 +33,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
  * Groups text items by Y position, inserts spacing based on X gaps.
  */
 export async function extractLines(file: File): Promise<string[]> {
+  const pdfjsLib = await getPdfjs();
   const buffer = await file.arrayBuffer();
   const doc = await pdfjsLib.getDocument({ data: buffer }).promise;
 
