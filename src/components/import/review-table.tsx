@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createListCollection } from "@ark-ui/react/collection";
-import { Check, X, AlertTriangle, Sparkles, Database, HelpCircle } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Check, X, AlertTriangle, Sparkles, Database, HelpCircle, Plus } from "lucide-react";
 import { css } from "../../../styled-system/css";
 import * as Card from "@/components/ui/card";
 import * as Table from "@/components/ui/table";
 import * as Select from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { ReviewItem } from "@/hooks/use-import";
 import type { GroupWithCategories } from "@/hooks/use-categories";
@@ -60,6 +62,326 @@ function ConfidenceBadge({ confidence }: { confidence: ReviewItem["confidence"] 
 }
 
 // ---------------------------------------------------------------------------
+// AI status indicator (shown in the Confidence column)
+// ---------------------------------------------------------------------------
+
+function AiStatusCell({ item }: { item: ReviewItem }) {
+  // "done" with confidence badge — animate in on first render of this state
+  if (item.aiStatus === "done" || item.aiStatus === "skipped") {
+    return (
+      <motion.span
+        key={`badge-${item.id}`}
+        initial={{ opacity: 0, x: -4 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
+        style={{ display: "inline-block" }}
+      >
+        <ConfidenceBadge confidence={item.confidence} />
+      </motion.span>
+    );
+  }
+
+  if (item.aiStatus === "analyzing") {
+    return (
+      <span
+        className={css({
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "1.5",
+          color: "colorPalette.fg",
+          fontSize: "xs",
+        })}
+      >
+        <Spinner size="xs" />
+        <span>Analyzing…</span>
+      </span>
+    );
+  }
+
+  // waiting
+  return (
+    <span className={css({ fontSize: "xs", color: "fg.muted", fontStyle: "italic" })}>
+      Waiting…
+    </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Animated category cell content
+// ---------------------------------------------------------------------------
+
+function CategoryContent({
+  item,
+  getCategoryName,
+}: {
+  item: ReviewItem;
+  getCategoryName: (id: string | null) => string;
+}) {
+  if (item.category_id === null && item.suggestedCategory) {
+    return (
+      <span
+        className={css({
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "1",
+          px: "1.5",
+          py: "0.5",
+          rounded: "sm",
+          fontSize: "xs",
+          fontWeight: "500",
+          color: "colorPalette.fg",
+          bg: "colorPalette.3",
+        })}
+      >
+        <Plus size={11} />
+        {item.suggestedCategory}
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className={css({
+        fontSize: "sm",
+        color: item.category_id ? "fg.default" : "fg.muted",
+        fontStyle: item.category_id ? "normal" : "italic",
+      })}
+    >
+      {getCategoryName(item.category_id)}
+    </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Animated row — wraps Table.Row with framer-motion for background flash
+// ---------------------------------------------------------------------------
+
+const MotionTr = motion.tr;
+
+interface AnimatedRowProps {
+  item: ReviewItem;
+  idx: number;
+  isActive: boolean;
+  isEditing: boolean;
+  categoryCollection: ReturnType<typeof createListCollection>;
+  groups: GroupWithCategories[];
+  getCategoryName: (id: string | null) => string;
+  onClickRow: (idx: number) => void;
+  onUpdateItem: (id: string, updates: Partial<ReviewItem>) => void;
+  onEditingClose: () => void;
+}
+
+function AnimatedRow({
+  item,
+  idx,
+  isActive,
+  isEditing,
+  categoryCollection,
+  groups,
+  getCategoryName,
+  onClickRow,
+  onUpdateItem,
+  onEditingClose,
+}: AnimatedRowProps) {
+  // Track previous aiStatus to detect the "done" transition
+  const prevAiStatus = useRef(item.aiStatus);
+  const [flashKey, setFlashKey] = useState(0);
+
+  useEffect(() => {
+    if (prevAiStatus.current !== "done" && item.aiStatus === "done") {
+      setFlashKey((k) => k + 1);
+    }
+    prevAiStatus.current = item.aiStatus;
+  }, [item.aiStatus]);
+
+  // Track previous category_id to animate category cell on AI update
+  const prevCategoryId = useRef(item.category_id);
+  const [categoryAnimKey, setCategoryAnimKey] = useState(0);
+
+  useEffect(() => {
+    if (prevCategoryId.current !== item.category_id && item.aiStatus === "done") {
+      setCategoryAnimKey((k) => k + 1);
+    }
+    prevCategoryId.current = item.category_id;
+  }, [item.category_id, item.aiStatus]);
+
+  // Track previous displayName to animate description on AI update
+  const prevDisplayName = useRef(item.displayName);
+  const [displayNameAnimKey, setDisplayNameAnimKey] = useState(0);
+
+  useEffect(() => {
+    if (prevDisplayName.current !== item.displayName) {
+      setDisplayNameAnimKey((k) => k + 1);
+    }
+    prevDisplayName.current = item.displayName;
+  }, [item.displayName]);
+
+  const rowBg = isActive ? "var(--colors-color-palette-2)" : "transparent";
+
+  return (
+    <MotionTr
+      key={item.id}
+      data-row-idx={idx}
+      onClick={() => onClickRow(idx)}
+      // Flash the background when AI result arrives
+      animate={
+        flashKey > 0
+          ? {
+              backgroundColor: [rowBg, "var(--colors-color-palette-3)", rowBg],
+            }
+          : { backgroundColor: rowBg }
+      }
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className={css({
+        cursor: "pointer",
+        opacity: item.status === "skipped" ? 0.4 : 1,
+        transition: "opacity 100ms",
+        _hover: { bg: "bg.subtle" },
+      })}
+      style={{ backgroundColor: rowBg }}
+    >
+      {/* Status icon */}
+      <Table.Cell>
+        {item.status === "accepted" && <Check size={14} className={css({ color: "income" })} />}
+        {item.status === "skipped" && <X size={14} className={css({ color: "fg.muted" })} />}
+      </Table.Cell>
+
+      {/* Date */}
+      <Table.Cell className={css({ fontSize: "xs", whiteSpace: "nowrap" })}>
+        {formatDate(item.date)}
+      </Table.Cell>
+
+      {/* Description */}
+      <Table.Cell>
+        <div>
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={`dn-${item.id}-${displayNameAnimKey}`}
+              initial={displayNameAnimKey > 0 ? { opacity: 0, y: -4 } : false}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className={css({ display: "block", fontSize: "sm", fontWeight: "500" })}
+            >
+              {item.displayName}
+            </motion.span>
+          </AnimatePresence>
+          <p className={css({ fontSize: "xs", color: "fg.muted", mt: "0.5" })}>
+            {item.description}
+          </p>
+          {item.duplicate && (
+            <div
+              className={css({
+                display: "flex",
+                alignItems: "center",
+                gap: "1",
+                mt: "0.5",
+              })}
+            >
+              <AlertTriangle size={12} className={css({ color: "expense" })} />
+              <span className={css({ fontSize: "xs", color: "expense" })}>
+                Possible duplicate: {item.duplicate.description ?? "manual entry"} on{" "}
+                {formatDate(item.duplicate.date)}
+              </span>
+            </div>
+          )}
+        </div>
+      </Table.Cell>
+
+      {/* Amount */}
+      <Table.Cell
+        className={css({
+          textAlign: "right",
+          whiteSpace: "nowrap",
+          fontVariantNumeric: "tabular-nums",
+          color: item.type === "INCOME" ? "income" : "expense",
+        })}
+      >
+        {item.type === "INCOME" ? "+" : "−"}
+        {formatCurrency(item.amount)}
+      </Table.Cell>
+
+      {/* Category */}
+      <Table.Cell>
+        {isEditing ? (
+          <Select.Root
+            collection={categoryCollection}
+            value={item.category_id ? [item.category_id] : []}
+            onValueChange={(d: { value: string[] }) => {
+              const val = d.value[0];
+              if (val) {
+                onUpdateItem(item.id, { category_id: val, confidence: "high" });
+              }
+              onEditingClose();
+            }}
+            onOpenChange={(d: { open: boolean }) => {
+              if (!d.open) onEditingClose();
+            }}
+            open
+          >
+            <Select.Control>
+              <Select.Trigger className={css({ minW: "40" })}>
+                <Select.ValueText placeholder="Select category" />
+                <Select.Indicator />
+              </Select.Trigger>
+            </Select.Control>
+            <Select.Positioner>
+              <Select.Content className={css({ maxH: "48", overflowY: "auto" })}>
+                {groups
+                  .filter((g) => g.id !== "__ungrouped__")
+                  .map((g) => (
+                    <Select.ItemGroup key={g.id}>
+                      <Select.ItemGroupLabel>{g.name}</Select.ItemGroupLabel>
+                      {g.categories.map((cat) => (
+                        <Select.Item key={cat.id} item={{ label: cat.name, value: cat.id }}>
+                          <Select.ItemText>{cat.name}</Select.ItemText>
+                          <Select.ItemIndicator />
+                        </Select.Item>
+                      ))}
+                    </Select.ItemGroup>
+                  ))}
+              </Select.Content>
+            </Select.Positioner>
+          </Select.Root>
+        ) : (
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={`cat-${item.id}-${categoryAnimKey}`}
+              initial={categoryAnimKey > 0 ? { opacity: 0, x: -6 } : false}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              style={{ display: "inline-block" }}
+            >
+              <CategoryContent item={item} getCategoryName={getCategoryName} />
+            </motion.span>
+          </AnimatePresence>
+        )}
+      </Table.Cell>
+
+      {/* AI status / Confidence */}
+      <Table.Cell>
+        <AnimatePresence mode="wait">
+          <motion.span
+            key={`ai-${item.id}-${item.aiStatus}`}
+            initial={false}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            style={{ display: "inline-block" }}
+          >
+            <AiStatusCell item={item} />
+          </motion.span>
+        </AnimatePresence>
+      </Table.Cell>
+
+      {/* Duplicate warning icon */}
+      <Table.Cell>
+        {item.duplicate && <AlertTriangle size={14} className={css({ color: "expense" })} />}
+      </Table.Cell>
+    </MotionTr>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -105,6 +427,14 @@ export function ReviewTable({
   const pending = items.filter((i) => i.status === "pending").length;
   const dupeCount = items.filter((i) => i.duplicate).length;
 
+  // AI progress
+  const aiDone = items.filter((i) => i.aiStatus === "done" || i.aiStatus === "skipped").length;
+  const aiTotal = items.length;
+  const aiRemaining = items.filter(
+    (i) => i.aiStatus === "waiting" || i.aiStatus === "analyzing",
+  ).length;
+  const isAiRunning = aiRemaining > 0;
+
   // Scroll active row into view
   useEffect(() => {
     const row = containerRef.current?.querySelector(`[data-row-idx="${activeIdx}"]`);
@@ -114,7 +444,6 @@ export function ReviewTable({
   // Keyboard navigation
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      // Don't intercept when select dropdown is open
       if (editingIdx !== null) return;
 
       const item = items[activeIdx];
@@ -190,6 +519,55 @@ export function ReviewTable({
           </span>
         )}
 
+        {/* AI categorization progress */}
+        <AnimatePresence>
+          {isAiRunning && (
+            <motion.span
+              initial={{ opacity: 0, width: 0 }}
+              animate={{ opacity: 1, width: "auto" }}
+              exit={{ opacity: 0, width: 0 }}
+              transition={{ duration: 0.2 }}
+              className={css({
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "2",
+                fontSize: "sm",
+                color: "colorPalette.fg",
+                overflow: "hidden",
+                whiteSpace: "nowrap",
+              })}
+            >
+              <Spinner size="xs" />
+              <span>
+                Categorizing… {aiRemaining}/{aiTotal} remaining
+              </span>
+              {/* inline progress track */}
+              <span
+                className={css({
+                  display: "inline-block",
+                  w: "16",
+                  h: "1",
+                  rounded: "full",
+                  bg: "bg.subtle",
+                  overflow: "hidden",
+                })}
+              >
+                <motion.span
+                  className={css({
+                    display: "block",
+                    h: "full",
+                    rounded: "full",
+                    bg: "colorPalette.9",
+                  })}
+                  animate={{ width: `${(aiDone / aiTotal) * 100}%` }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                  style={{ width: 0 }}
+                />
+              </span>
+            </motion.span>
+          )}
+        </AnimatePresence>
+
         <div className={css({ ml: "auto", display: "flex", gap: "2" })}>
           <Button variant="outline" size="sm" onClick={onAcceptAll}>
             Accept all categorized
@@ -258,150 +636,21 @@ export function ReviewTable({
                 </Table.Row>
               </Table.Head>
               <Table.Body>
-                {items.map((item, idx) => {
-                  const isActive = idx === activeIdx;
-                  const isEditing = editingIdx === idx;
-
-                  return (
-                    <Table.Row
-                      key={item.id}
-                      data-row-idx={idx}
-                      onClick={() => setActiveIdx(idx)}
-                      className={css({
-                        cursor: "pointer",
-                        bg: isActive ? "colorPalette.2" : "transparent",
-                        opacity: item.status === "skipped" ? 0.4 : 1,
-                        transition: "background 100ms",
-                      })}
-                    >
-                      {/* Status icon */}
-                      <Table.Cell>
-                        {item.status === "accepted" && (
-                          <Check size={14} className={css({ color: "income" })} />
-                        )}
-                        {item.status === "skipped" && (
-                          <X size={14} className={css({ color: "fg.muted" })} />
-                        )}
-                      </Table.Cell>
-
-                      {/* Date */}
-                      <Table.Cell className={css({ fontSize: "xs", whiteSpace: "nowrap" })}>
-                        {formatDate(item.date)}
-                      </Table.Cell>
-
-                      {/* Description */}
-                      <Table.Cell>
-                        <div>
-                          <span className={css({ fontSize: "sm", fontWeight: "500" })}>
-                            {item.displayName}
-                          </span>
-                          <p className={css({ fontSize: "xs", color: "fg.muted", mt: "0.5" })}>
-                            {item.description}
-                          </p>
-                          {item.duplicate && (
-                            <div
-                              className={css({
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "1",
-                                mt: "0.5",
-                              })}
-                            >
-                              <AlertTriangle size={12} className={css({ color: "expense" })} />
-                              <span className={css({ fontSize: "xs", color: "expense" })}>
-                                Possible duplicate: {item.duplicate.description ?? "manual entry"}{" "}
-                                on {formatDate(item.duplicate.date)}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </Table.Cell>
-
-                      {/* Amount */}
-                      <Table.Cell
-                        className={css({
-                          textAlign: "right",
-                          whiteSpace: "nowrap",
-                          fontVariantNumeric: "tabular-nums",
-                          color: item.type === "INCOME" ? "income" : "expense",
-                        })}
-                      >
-                        {item.type === "INCOME" ? "+" : "−"}
-                        {formatCurrency(item.amount)}
-                      </Table.Cell>
-
-                      {/* Category */}
-                      <Table.Cell>
-                        {isEditing ? (
-                          <Select.Root
-                            collection={categoryCollection}
-                            value={item.category_id ? [item.category_id] : []}
-                            onValueChange={(d: { value: string[] }) => {
-                              const val = d.value[0];
-                              if (val) {
-                                onUpdateItem(item.id, { category_id: val, confidence: "high" });
-                              }
-                              setEditingIdx(null);
-                            }}
-                            onOpenChange={(d: { open: boolean }) => {
-                              if (!d.open) setEditingIdx(null);
-                            }}
-                            open
-                          >
-                            <Select.Control>
-                              <Select.Trigger className={css({ minW: "40" })}>
-                                <Select.ValueText placeholder="Select category" />
-                                <Select.Indicator />
-                              </Select.Trigger>
-                            </Select.Control>
-                            <Select.Positioner>
-                              <Select.Content className={css({ maxH: "48", overflowY: "auto" })}>
-                                {groups
-                                  .filter((g) => g.id !== "__ungrouped__")
-                                  .map((g) => (
-                                    <Select.ItemGroup key={g.id}>
-                                      <Select.ItemGroupLabel>{g.name}</Select.ItemGroupLabel>
-                                      {g.categories.map((cat) => (
-                                        <Select.Item
-                                          key={cat.id}
-                                          item={{ label: cat.name, value: cat.id }}
-                                        >
-                                          <Select.ItemText>{cat.name}</Select.ItemText>
-                                          <Select.ItemIndicator />
-                                        </Select.Item>
-                                      ))}
-                                    </Select.ItemGroup>
-                                  ))}
-                              </Select.Content>
-                            </Select.Positioner>
-                          </Select.Root>
-                        ) : (
-                          <span
-                            className={css({
-                              fontSize: "sm",
-                              color: item.category_id ? "fg.default" : "fg.muted",
-                              fontStyle: item.category_id ? "normal" : "italic",
-                            })}
-                          >
-                            {getCategoryName(item.category_id)}
-                          </span>
-                        )}
-                      </Table.Cell>
-
-                      {/* Confidence */}
-                      <Table.Cell>
-                        <ConfidenceBadge confidence={item.confidence} />
-                      </Table.Cell>
-
-                      {/* Duplicate warning icon */}
-                      <Table.Cell>
-                        {item.duplicate && (
-                          <AlertTriangle size={14} className={css({ color: "expense" })} />
-                        )}
-                      </Table.Cell>
-                    </Table.Row>
-                  );
-                })}
+                {items.map((item, idx) => (
+                  <AnimatedRow
+                    key={item.id}
+                    item={item}
+                    idx={idx}
+                    isActive={idx === activeIdx}
+                    isEditing={editingIdx === idx}
+                    categoryCollection={categoryCollection}
+                    groups={groups}
+                    getCategoryName={getCategoryName}
+                    onClickRow={setActiveIdx}
+                    onUpdateItem={onUpdateItem}
+                    onEditingClose={() => setEditingIdx(null)}
+                  />
+                ))}
               </Table.Body>
             </Table.Root>
           </div>

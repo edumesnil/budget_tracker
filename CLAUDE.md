@@ -42,8 +42,15 @@ src/
     transactions/  # Transaction feature components
     budgets/       # Budget feature components
     categories/    # Category feature components
+    import/        # Import pipeline components (file-upload, review-table, column-mapper)
   hooks/           # One hook per entity (use-transactions.ts, etc.)
-  lib/             # Supabase client, query config, utils
+  lib/
+    parsers/       # PDF and CSV statement parsers (bank-specific + generic)
+    ai.ts          # LLM adapter (Groq, Gemini, Ollama providers)
+    sanitizer.ts   # PII stripping before LLM calls
+    supabase.ts    # Supabase client
+    query-client.ts
+    utils.ts
   types/           # database.ts (single source of truth)
   theme/           # Panda CSS theme (recipes, tokens, conditions, globalCss)
 styled-system/     # Panda CSS generated output (gitignored, regenerate with codegen)
@@ -58,11 +65,37 @@ users, category_groups, categories, transactions, budgets, account_snapshots, me
 
 Each feature follows: route in `routes/<feature>.tsx`, components in `components/<feature>/`, data hook in `hooks/use-<feature>.ts`.
 
+### Import Pipeline
+
+PDF/CSV bank statement import with AI-assisted categorization. Architecture:
+
+```
+File upload → Parser (bank-specific) → PII sanitizer → Merchant lookup →
+  Known merchants: auto-categorized from merchant_mappings table
+  Unknown merchants: sent to LLM (sanitized descriptions only) →
+    LLM returns: category ID + clean display name →
+      Keyboard-driven batch review → Commit to DB + save new mappings
+```
+
+Key files:
+
+- `lib/parsers/pdf.ts` — pdfjs text extraction + pluggable `BankParser` interface (Desjardins CC, generic fallback)
+- `lib/parsers/csv.ts` — generic CSV parser with auto-detect + manual column mapping
+- `lib/sanitizer.ts` — strips PII before LLM sees data
+- `lib/ai.ts` — `AIProvider` interface with Groq, Gemini, Ollama providers. Auto-selects from env vars
+- `hooks/use-import.ts` — orchestrates the full import flow
+- `hooks/use-merchant-mappings.ts` — CRUD for merchant→category mappings
+
+AI provider priority: `VITE_GROQ_API_KEY` → `VITE_GEMINI_API_KEY` → Ollama (localhost). The prompt uses numeric category IDs (not names) to avoid accent/spelling mismatches.
+
 ## Environment Variables
 
 ```
-NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY
+VITE_SUPABASE_URL
+VITE_SUPABASE_ANON_KEY
+VITE_GROQ_API_KEY          # Groq (free tier, recommended)
+VITE_GEMINI_API_KEY         # Google Gemini (free tier, alternative)
+# If neither is set, falls back to Ollama on localhost:11434
 ```
 
 ## Park UI Component Rules

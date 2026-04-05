@@ -16,7 +16,6 @@ export type ImportStatus =
   | "idle"
   | "parsing"
   | "mapping" // CSV column mapping needed
-  | "categorizing"
   | "reviewing"
   | "importing"
   | "done";
@@ -32,7 +31,9 @@ export interface ReviewItem {
   category_id: string | null;
   confidence: "high" | "medium" | "low" | "known"; // "known" = from merchant mapping
   status: "pending" | "accepted" | "skipped";
+  aiStatus: "waiting" | "analyzing" | "done" | "skipped"; // per-row AI progress
   duplicate: DuplicateMatch | null;
+  suggestedCategory?: string; // AI-suggested new category when nothing fits
 }
 
 export interface DuplicateMatch {
@@ -40,6 +41,17 @@ export interface DuplicateMatch {
   description: string | null;
   date: string;
   amount: number;
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+const BATCH_SIZE = 10;
+const BATCH_DELAY_MS = 2000;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
 }
 
 // ---------------------------------------------------------------------------
@@ -61,7 +73,7 @@ export function useImport(
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [csvRows, setCsvRows] = useState<string[][]>([]);
 
-  // Keep a ref to abort
+  // Keep a ref to abort background categorization
   const abortRef = useRef(false);
 
   // Build category options for the AI
@@ -122,25 +134,144 @@ export function useImport(
   }
 
   // -------------------------------------------------------------------------
-  // Core pipeline: parse → sanitize → lookup → categorize → review
+  // Background AI categorization (streaming batches)
+  // -------------------------------------------------------------------------
+
+  async function categorizeInBackground(
+    unknowns: Array<{ indices: number[]; sanitizedDesc: string }>,
+  ) {
+    const ai = getAIProvider();
+    const totalUnique = unknowns.length;
+    let processed = 0;
+
+    for (let b = 0; b < totalUnique; b += BATCH_SIZE) {
+      if (abortRef.current) {
+        console.log("[import] Background categorization aborted");
+        return;
+      }
+
+      const batch = unknowns.slice(b, b + BATCH_SIZE);
+
+      // Mark batch rows as "analyzing"
+      setItems((prev) => {
+        const next = [...prev];
+        for (const entry of batch) {
+          for (const idx of entry.indices) {
+            next[idx] = { ...next[idx], aiStatus: "analyzing" };
+          }
+        }
+        return next;
+      });
+
+      try {
+        const descriptions = batch.map((u) => u.sanitizedDesc);
+        const results = await ai.categorize(descriptions, categoryOptions, merchantMappings);
+
+        if (abortRef.current) return;
+
+        // Apply results to all matching rows
+        setItems((prev) => {
+          const next = [...prev];
+          for (let j = 0; j < results.length; j++) {
+            const r = results[j];
+            const entry = batch[j];
+            for (const idx of entry.indices) {
+              next[idx] = {
+                ...next[idx],
+                category_id: r.category_id,
+                confidence: r.confidence,
+                displayName: r.displayName,
+                aiStatus: "done",
+                suggestedCategory: r.suggestedCategory,
+              };
+            }
+          }
+          return next;
+        });
+
+        // Auto-accept high-confidence items from this batch
+        setItems((prev) => {
+          const next = [...prev];
+          for (const entry of batch) {
+            for (const idx of entry.indices) {
+              const item = next[idx];
+              if (
+                (item.confidence === "high" || item.confidence === "known") &&
+                item.category_id &&
+                !item.duplicate
+              ) {
+                next[idx] = { ...next[idx], status: "accepted" };
+              }
+            }
+          }
+          return next;
+        });
+      } catch (err) {
+        // Mark failed batch rows as "done" (uncategorized) so user can handle them
+        setItems((prev) => {
+          const next = [...prev];
+          for (const entry of batch) {
+            for (const idx of entry.indices) {
+              next[idx] = { ...next[idx], aiStatus: "done" };
+            }
+          }
+          return next;
+        });
+
+        const msg = err instanceof Error ? err.message : "Unknown error";
+        setWarnings((w) => [
+          ...w,
+          `AI batch failed: ${msg}. Some merchants will need manual categorization.`,
+        ]);
+      }
+
+      processed += batch.length;
+      setProgress(Math.round((processed / totalUnique) * 100));
+
+      // Rate limit: wait between batches (skip delay after the last batch)
+      if (b + BATCH_SIZE < totalUnique && !abortRef.current) {
+        await delay(BATCH_DELAY_MS);
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Core pipeline: parse → sanitize → lookup → show table → background AI
   // -------------------------------------------------------------------------
 
   async function processTransactions(parsed: ParsedTransaction[]) {
-    setStatus("categorizing");
+    setStatus("parsing");
     setProgress(0);
 
     const duplicates = await findDuplicates(parsed);
 
     const reviewItems: ReviewItem[] = [];
-    const unknowns: { index: number; description: string }[] = [];
+    // Map: sanitized description → list of indices that share it
+    const unknownsByDesc = new Map<string, number[]>();
 
-    // First pass: look up known merchants
+    // First pass: look up known merchants, then try category name matching
     for (let i = 0; i < parsed.length; i++) {
       const tx = parsed[i];
       const sanitized = sanitize(tx.description);
+      const descUpper = tx.description.toUpperCase();
+
+      // 1. Check merchant_mappings table
       const mapping = merchantMappings.find((m) =>
-        tx.description.toUpperCase().includes(m.merchant_pattern.toUpperCase()),
+        descUpper.includes(m.merchant_pattern.toUpperCase()),
       );
+
+      // 2. If no mapping, try direct category name match
+      let nameMatch: { category_id: string; name: string } | null = null;
+      if (!mapping) {
+        for (const cat of categories) {
+          if (cat.name.length >= 3 && descUpper.includes(cat.name.toUpperCase())) {
+            nameMatch = { category_id: cat.id, name: cat.name };
+            break;
+          }
+        }
+      }
+
+      const isPreMatched = !!(mapping || nameMatch);
 
       const item: ReviewItem = {
         id: `import-${i}`,
@@ -150,65 +281,69 @@ export function useImport(
         sanitizedDescription: sanitized,
         amount: tx.amount,
         type: tx.type,
-        category_id: mapping?.category_id ?? null,
-        confidence: mapping ? "known" : "low",
+        category_id: mapping?.category_id ?? nameMatch?.category_id ?? null,
+        confidence: mapping ? "known" : nameMatch ? "high" : "low",
         status: "pending",
+        aiStatus: isPreMatched ? "skipped" : "waiting",
         duplicate: duplicates.get(i) ?? null,
       };
 
-      if (!mapping) {
-        unknowns.push({ index: i, description: sanitized });
+      // Pre-accept high-confidence pre-matched items
+      if (isPreMatched && item.category_id && !item.duplicate) {
+        item.status = "accepted";
+      }
+
+      if (!isPreMatched) {
+        // Group by sanitized description for deduplication
+        const existing = unknownsByDesc.get(sanitized);
+        if (existing) {
+          existing.push(i);
+        } else {
+          unknownsByDesc.set(sanitized, [i]);
+        }
       }
 
       reviewItems.push(item);
     }
 
-    setProgress(50);
-
-    // Second pass: send unknowns to LLM
-    if (unknowns.length > 0) {
-      try {
-        const ai = getAIProvider();
-        const results = await ai.categorize(
-          unknowns.map((u) => u.description),
-          categoryOptions,
-          merchantMappings,
-        );
-
-        for (let j = 0; j < results.length; j++) {
-          const r = results[j];
-          const idx = unknowns[j].index;
-          reviewItems[idx].category_id = r.category_id;
-          reviewItems[idx].confidence = r.confidence;
-          reviewItems[idx].displayName = r.displayName;
-        }
-      } catch (err) {
-        // LLM failed — leave unknowns as uncategorized, let user handle in review
-        const msg = err instanceof Error ? err.message : "Unknown error";
-        setWarnings((w) => [
-          ...w,
-          `AI categorization failed: ${msg}. Unknown merchants will need manual categorization.`,
-        ]);
-      }
-    }
-
-    // Pre-accept high-confidence and known items (user can override)
-    for (const item of reviewItems) {
-      if (
-        (item.confidence === "high" || item.confidence === "known") &&
-        item.category_id &&
-        !item.duplicate
-      ) {
-        item.status = "accepted";
-      }
-    }
-
     // Sort by date ascending
     reviewItems.sort((a, b) => a.date.localeCompare(b.date));
 
-    setProgress(100);
+    // After sorting, indices in unknownsByDesc point to pre-sort positions.
+    // We need to rebuild the index mapping based on sorted order.
+    const oldToNew = new Map<string, number>();
+    for (let newIdx = 0; newIdx < reviewItems.length; newIdx++) {
+      oldToNew.set(reviewItems[newIdx].id, newIdx);
+    }
+
+    // Build deduplicated unknowns list with post-sort indices
+    const unknowns: Array<{ indices: number[]; sanitizedDesc: string }> = [];
+    for (const [desc, oldIndices] of unknownsByDesc) {
+      const newIndices = oldIndices.map((oi) => {
+        const id = `import-${oi}`;
+        return oldToNew.get(id)!;
+      });
+      unknowns.push({ indices: newIndices, sanitizedDesc: desc });
+    }
+
+    const preMatchedCount = reviewItems.filter((r) => r.aiStatus === "skipped").length;
+    const uniqueUnknowns = unknowns.length;
+    const totalUnknownRows = reviewItems.filter((r) => r.aiStatus === "waiting").length;
+    console.log(
+      `[import] ${reviewItems.length} transactions: ${preMatchedCount} pre-matched, ${totalUnknownRows} unknown (${uniqueUnknowns} unique descriptions)`,
+    );
+
+    // Show the review table immediately
     setItems(reviewItems);
     setStatus("reviewing");
+    setProgress(0);
+
+    // Start background AI categorization for unknowns
+    if (unknowns.length > 0) {
+      categorizeInBackground(unknowns);
+    } else {
+      setProgress(100);
+    }
   }
 
   // -------------------------------------------------------------------------

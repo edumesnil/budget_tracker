@@ -158,8 +158,8 @@ export default function ImportPage() {
       {/* Idle: show file upload */}
       {status === "idle" && <FileUpload onFile={handleFile} />}
 
-      {/* Parsing / Categorizing: show progress */}
-      {(status === "parsing" || status === "categorizing") && (
+      {/* Parsing: show progress */}
+      {status === "parsing" && (
         <Card.Root>
           <Card.Body
             className={css({
@@ -171,9 +171,7 @@ export default function ImportPage() {
               py: "12",
             })}
           >
-            <p className={css({ fontSize: "sm", color: "fg.muted" })}>
-              {status === "parsing" ? "Parsing statement..." : "Categorizing transactions..."}
-            </p>
+            <p className={css({ fontSize: "sm", color: "fg.muted" })}>Parsing statement...</p>
             <div className={css({ w: "full", maxW: "xs" })}>
               <Progress.Root value={progress}>
                 <Progress.Track>
