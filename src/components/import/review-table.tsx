@@ -87,23 +87,24 @@ function AiStatusCell({ item }: { item: ReviewItem }) {
         className={css({
           display: "inline-flex",
           alignItems: "center",
-          gap: "1.5",
-          color: "colorPalette.fg",
+          gap: "1",
+          px: "1.5",
+          py: "0.5",
+          rounded: "sm",
           fontSize: "xs",
+          fontWeight: "500",
+          color: "blue.11",
+          bg: "blue.3",
         })}
       >
         <Spinner size="xs" />
-        <span>Analyzing…</span>
+        Analyzing
       </span>
     );
   }
 
-  // waiting
-  return (
-    <span className={css({ fontSize: "xs", color: "fg.muted", fontStyle: "italic" })}>
-      Waiting…
-    </span>
-  );
+  // waiting — minimal, the row opacity already signals this
+  return <span className={css({ fontSize: "xs", color: "fg.disabled" })}>—</span>;
 }
 
 // ---------------------------------------------------------------------------
@@ -234,9 +235,17 @@ function AnimatedRow({
       transition={{ duration: 0.4, ease: "easeOut" }}
       className={css({
         cursor: "pointer",
-        opacity: item.status === "skipped" ? 0.4 : 1,
-        transition: "opacity 100ms",
+        opacity:
+          item.status === "skipped"
+            ? 0.4
+            : item.aiStatus === "waiting" || item.aiStatus === "analyzing"
+              ? 0.45
+              : 1,
+        transition: "opacity 200ms",
         _hover: { bg: "bg.subtle" },
+        ...(item.aiStatus === "analyzing" && {
+          boxShadow: "inset 3px 0 0 0 var(--colors-color-palette-8)",
+        }),
       })}
       style={{ backgroundColor: rowBg }}
     >
@@ -301,7 +310,7 @@ function AnimatedRow({
       </Table.Cell>
 
       {/* Category */}
-      <Table.Cell>
+      <Table.Cell className={css({ overflow: "visible", pos: "relative" })}>
         {isEditing ? (
           <Select.Root
             collection={categoryCollection}
@@ -317,15 +326,16 @@ function AnimatedRow({
               if (!d.open) onEditingClose();
             }}
             open
+            positioning={{ placement: "bottom-start", sameWidth: false }}
           >
             <Select.Control>
-              <Select.Trigger className={css({ minW: "40" })}>
-                <Select.ValueText placeholder="Select category" />
+              <Select.Trigger className={css({ w: "full", maxW: "full" })}>
+                <Select.ValueText placeholder="Select" />
                 <Select.Indicator />
               </Select.Trigger>
             </Select.Control>
             <Select.Positioner>
-              <Select.Content className={css({ maxH: "48", overflowY: "auto" })}>
+              <Select.Content className={css({ maxH: "48", overflowY: "auto", minW: "48" })}>
                 {groups
                   .filter((g) => g.id !== "__ungrouped__")
                   .map((g) => (
@@ -627,11 +637,13 @@ export function ReviewTable({
               <Table.Head>
                 <Table.Row>
                   <Table.Header className={css({ w: "8" })} />
-                  <Table.Header>Date</Table.Header>
+                  <Table.Header className={css({ w: "32", minW: "32" })}>Date</Table.Header>
                   <Table.Header>Description</Table.Header>
-                  <Table.Header className={css({ textAlign: "right" })}>Amount</Table.Header>
-                  <Table.Header>Category</Table.Header>
-                  <Table.Header>Confidence</Table.Header>
+                  <Table.Header className={css({ textAlign: "right", w: "24", minW: "24" })}>
+                    Amount
+                  </Table.Header>
+                  <Table.Header className={css({ w: "40", minW: "40" })}>Category</Table.Header>
+                  <Table.Header className={css({ w: "28", minW: "28" })}>Status</Table.Header>
                   <Table.Header className={css({ w: "8" })} />
                 </Table.Row>
               </Table.Head>

@@ -326,6 +326,9 @@ export function useImport(
       unknowns.push({ indices: newIndices, sanitizedDesc: desc });
     }
 
+    // Sort unknowns by their first (earliest) row index so batches process top-to-bottom
+    unknowns.sort((a, b) => Math.min(...a.indices) - Math.min(...b.indices));
+
     const preMatchedCount = reviewItems.filter((r) => r.aiStatus === "skipped").length;
     const uniqueUnknowns = unknowns.length;
     const totalUnknownRows = reviewItems.filter((r) => r.aiStatus === "waiting").length;
