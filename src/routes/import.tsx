@@ -1,0 +1,262 @@
+import { useState } from "react";
+import { css } from "../../styled-system/css";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
+import { useCategories } from "@/hooks/use-categories";
+import { useMerchantMappings, merchantMappingKeys } from "@/hooks/use-merchant-mappings";
+import { transactionKeys } from "@/hooks/use-transactions";
+import { useImport } from "@/hooks/use-import";
+import { FileUpload } from "@/components/import/file-upload";
+import { ColumnMapper } from "@/components/import/column-mapper";
+import { ReviewTable } from "@/components/import/review-table";
+import { Button } from "@/components/ui/button";
+import * as Card from "@/components/ui/card";
+import * as Progress from "@/components/ui/progress";
+import { Toaster, toaster } from "@/components/ui/toast";
+import { CheckCircle, AlertTriangle, Trash2 } from "lucide-react";
+
+export default function ImportPage() {
+  const queryClient = useQueryClient();
+  const { groups, allCategories } = useCategories();
+  const { mappings } = useMerchantMappings();
+  const [clearing, setClearing] = useState(false);
+
+  const {
+    status,
+    items,
+    warnings,
+    error,
+    progress,
+    csvHeaders,
+    handleFile,
+    handleCsvMapping,
+    updateItem,
+    acceptAll,
+    commit,
+    reset,
+  } = useImport(allCategories, groups, mappings);
+
+  const handleClearData = async () => {
+    setClearing(true);
+    try {
+      await supabase
+        .from("transactions")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+      await supabase
+        .from("merchant_mappings")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+      queryClient.invalidateQueries({ queryKey: transactionKeys.all });
+      queryClient.invalidateQueries({ queryKey: merchantMappingKeys.all });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      reset();
+      toaster.success({ title: "Cleared all transactions and merchant mappings" });
+    } catch {
+      toaster.error({ title: "Failed to clear data" });
+    } finally {
+      setClearing(false);
+    }
+  };
+
+  const handleCommit = async () => {
+    await commit();
+    toaster.success({
+      title: "Import complete",
+      description: `${items.filter((i) => i.status === "accepted").length} transactions imported.`,
+    });
+  };
+
+  return (
+    <div className={css({ display: "flex", flexDir: "column", gap: "6" })}>
+      {/* Page header */}
+      <div
+        className={css({
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+        })}
+      >
+        <div>
+          <h1
+            className={css({
+              fontSize: "xl",
+              fontWeight: "600",
+              color: "fg.default",
+              letterSpacing: "tight",
+            })}
+          >
+            Import
+          </h1>
+          <p className={css({ color: "fg.muted", mt: "0.5", fontSize: "sm" })}>
+            Upload a bank statement to auto-categorize transactions.
+          </p>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleClearData}
+          loading={clearing}
+          className={css({ color: "fg.muted" })}
+        >
+          <Trash2 size={14} />
+          Clear transactions + mappings
+        </Button>
+      </div>
+
+      {/* Error display */}
+      {error && (
+        <Card.Root>
+          <Card.Body
+            className={css({
+              pt: "6",
+              display: "flex",
+              alignItems: "center",
+              gap: "3",
+              color: "expense",
+            })}
+          >
+            <AlertTriangle size={16} />
+            <span className={css({ fontSize: "sm" })}>{error}</span>
+            <Button variant="outline" size="sm" onClick={reset} className={css({ ml: "auto" })}>
+              Try again
+            </Button>
+          </Card.Body>
+        </Card.Root>
+      )}
+
+      {/* Warnings */}
+      {warnings.length > 0 && (
+        <Card.Root>
+          <Card.Body
+            className={css({
+              pt: "6",
+              display: "flex",
+              flexDir: "column",
+              gap: "1",
+            })}
+          >
+            {warnings.map((w, i) => (
+              <div
+                key={i}
+                className={css({
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: "2",
+                  fontSize: "xs",
+                  color: "fg.muted",
+                })}
+              >
+                <AlertTriangle size={12} className={css({ flexShrink: 0, mt: "0.5" })} />
+                <span>{w}</span>
+              </div>
+            ))}
+          </Card.Body>
+        </Card.Root>
+      )}
+
+      {/* Idle: show file upload */}
+      {status === "idle" && <FileUpload onFile={handleFile} />}
+
+      {/* Parsing / Categorizing: show progress */}
+      {(status === "parsing" || status === "categorizing") && (
+        <Card.Root>
+          <Card.Body
+            className={css({
+              pt: "6",
+              display: "flex",
+              flexDir: "column",
+              gap: "3",
+              alignItems: "center",
+              py: "12",
+            })}
+          >
+            <p className={css({ fontSize: "sm", color: "fg.muted" })}>
+              {status === "parsing" ? "Parsing statement..." : "Categorizing transactions..."}
+            </p>
+            <div className={css({ w: "full", maxW: "xs" })}>
+              <Progress.Root value={progress}>
+                <Progress.Track>
+                  <Progress.Range />
+                </Progress.Track>
+              </Progress.Root>
+            </div>
+          </Card.Body>
+        </Card.Root>
+      )}
+
+      {/* CSV column mapping */}
+      {status === "mapping" && (
+        <ColumnMapper headers={csvHeaders} onSubmit={handleCsvMapping} onCancel={reset} />
+      )}
+
+      {/* Review */}
+      {status === "reviewing" && (
+        <ReviewTable
+          items={items}
+          groups={groups}
+          onUpdateItem={updateItem}
+          onAcceptAll={acceptAll}
+          onCommit={handleCommit}
+          onCancel={reset}
+          isCommitting={false}
+        />
+      )}
+
+      {/* Importing: show progress */}
+      {status === "importing" && (
+        <Card.Root>
+          <Card.Body
+            className={css({
+              pt: "6",
+              display: "flex",
+              flexDir: "column",
+              gap: "3",
+              alignItems: "center",
+              py: "12",
+            })}
+          >
+            <p className={css({ fontSize: "sm", color: "fg.muted" })}>Importing transactions...</p>
+            <div className={css({ w: "full", maxW: "xs" })}>
+              <Progress.Root value={progress}>
+                <Progress.Track>
+                  <Progress.Range />
+                </Progress.Track>
+              </Progress.Root>
+            </div>
+          </Card.Body>
+        </Card.Root>
+      )}
+
+      {/* Done */}
+      {status === "done" && (
+        <Card.Root>
+          <Card.Body
+            className={css({
+              pt: "6",
+              display: "flex",
+              flexDir: "column",
+              gap: "3",
+              alignItems: "center",
+              py: "12",
+            })}
+          >
+            <CheckCircle size={32} className={css({ color: "income" })} />
+            <p className={css({ fontSize: "sm", fontWeight: "500", color: "fg.default" })}>
+              Import complete
+            </p>
+            <p className={css({ fontSize: "sm", color: "fg.muted" })}>
+              {items.filter((i) => i.status === "accepted").length} transactions imported.{" "}
+              {items.filter((i) => i.status === "skipped").length} skipped.
+            </p>
+            <Button variant="outline" size="sm" onClick={reset}>
+              Import another statement
+            </Button>
+          </Card.Body>
+        </Card.Root>
+      )}
+
+      <Toaster />
+    </div>
+  );
+}
