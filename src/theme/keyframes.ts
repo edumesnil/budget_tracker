@@ -104,6 +104,19 @@ export const keyframes = defineKeyframes({
     from: { scale: "1" },
     to: { scale: "0.95" },
   },
+  // Review table animations
+  "flash-row": {
+    "0%": { backgroundColor: "var(--flash-bg)" },
+    "100%": { backgroundColor: "transparent" },
+  },
+  "slide-fade-in-y": {
+    from: { opacity: "0", translate: "0 -4px" },
+    to: { opacity: "1", translate: "0" },
+  },
+  "slide-fade-in-x": {
+    from: { opacity: "0", translate: "-6px 0" },
+    to: { opacity: "1", translate: "0" },
+  },
   "bg-position": {
     from: {
       backgroundPosition: "var(--animate-from, 1rem) 0",

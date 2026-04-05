@@ -118,6 +118,18 @@ export default defineConfig({
     options: {},
   },
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id: string) {
+          if (/node_modules\/(react|react-dom|react-router)\//.test(id)) return "vendor-react";
+          if (/node_modules\/(@supabase|@tanstack\/react-query|zod)\//.test(id))
+            return "vendor-data";
+          if (/node_modules\/(@ark-ui|lucide-react)\//.test(id)) return "vendor-ui";
+        },
+      },
+    },
+  },
   resolve: {
     alias: {
       "@": resolve(root, "./src"),
