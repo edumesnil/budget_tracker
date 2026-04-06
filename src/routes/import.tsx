@@ -307,28 +307,32 @@ export default function ImportPage() {
       )}
 
       {/* Validation summary — shown above review table when there are flagged/unparseable rows */}
-      {status === "reviewing" && validationResult && (validationResult.flagged.length > 0 || validationResult.unparseable.length > 0) && (
-        <ValidationSummaryCard
-          bankName={detectedSchema?.bank_name ?? ""}
-          statementType={detectedSchema?.statement_type ?? ""}
-          totalCount={items.length}
-          cleanCount={validationResult.clean.length}
-          flaggedCount={validationResult.flagged.length}
-          unparseableCount={validationResult.unparseable.length}
-          knownCount={items.filter((i) => i.confidence === "known").length}
-          pendingAiCount={items.filter((i) => i.aiStatus === "waiting").length}
-          onReviewAll={() => setFlaggedFirst(false)}
-          onShowFlaggedFirst={() => setFlaggedFirst(true)}
-        />
-      )}
+      {status === "reviewing" &&
+        validationResult &&
+        (validationResult.flagged.length > 0 || validationResult.unparseable.length > 0) && (
+          <ValidationSummaryCard
+            bankName={detectedSchema?.bank_name ?? ""}
+            statementType={detectedSchema?.statement_type ?? ""}
+            totalCount={items.length}
+            cleanCount={validationResult.clean.length}
+            flaggedCount={validationResult.flagged.length}
+            unparseableCount={validationResult.unparseable.length}
+            knownCount={items.filter((i) => i.confidence === "known").length}
+            pendingAiCount={items.filter((i) => i.aiStatus === "waiting").length}
+            onReviewAll={() => setFlaggedFirst(false)}
+            onShowFlaggedFirst={() => setFlaggedFirst(true)}
+          />
+        )}
 
       {/* Review */}
       {status === "reviewing" && (
         <>
           <ReviewTable
-            items={flaggedFirst
-              ? [...items].sort((a, b) => (b.warnings?.length ?? 0) - (a.warnings?.length ?? 0))
-              : items}
+            items={
+              flaggedFirst
+                ? [...items].sort((a, b) => (b.warnings?.length ?? 0) - (a.warnings?.length ?? 0))
+                : items
+            }
             groups={groups}
             onUpdateItem={updateItem}
             onAcceptAll={acceptAll}

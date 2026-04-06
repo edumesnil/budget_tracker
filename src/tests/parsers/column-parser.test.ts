@@ -179,4 +179,192 @@ describe("parseWithSchema", () => {
     const result = parseWithSchema(lines, fullText, CHEQUING_SCHEMA, { limit: 3 });
     expect(result.transactions).toHaveLength(3);
   });
+
+  it("appends continuation lines when multiline_rule is indent", () => {
+    const schema: StatementSchema = {
+      ...CHEQUING_SCHEMA,
+      multiline_rule: "indent",
+    };
+    const fullText = "RELEVÉ DE COMPTE Mars 2026";
+    const lines: TextItem[][] = [
+      // Transaction line with date
+      [
+        item("2 MAR", 55, 100),
+        item("ACH", 84, 100),
+        item("PAIEMENT HYDRO", 108, 100),
+        item("156,43", 412, 100),
+        item("2 000,00", 543, 100),
+      ],
+      // Continuation line — no date, just description
+      [item("QUEBEC FACTURE 12345", 108, 112)],
+      // Next transaction with date
+      [
+        item("3 MAR", 55, 130),
+        item("ACH", 84, 130),
+        item("METRO PLUS", 108, 130),
+        item("45,00", 412, 130),
+        item("1 955,00", 543, 130),
+      ],
+    ];
+
+    const result = parseWithSchema(lines, fullText, schema);
+
+    expect(result.transactions).toHaveLength(2);
+    expect(result.transactions[0].description).toBe("PAIEMENT HYDRO QUEBEC FACTURE 12345");
+    expect(result.transactions[1].description).toBe("METRO PLUS");
+  });
+
+  it("respects section rules — skips non-parseable sections", () => {
+    const schema: StatementSchema = {
+      ...CHEQUING_SCHEMA,
+      sections: [
+        { header_pattern: "OPÉRATIONS COURANTES", parse: true },
+        { header_pattern: "LIGNE DE CRÉDIT", parse: false },
+      ],
+    };
+    const fullText = "RELEVÉ DE COMPTE Mars 2026";
+    const lines: TextItem[][] = [
+      // Section header: parseable
+      [item("OPÉRATIONS COURANTES", 50, 50, 120)],
+      // Transaction in parseable section
+      [
+        item("2 MAR", 55, 100),
+        item("ACH", 84, 100),
+        item("METRO", 108, 100),
+        item("10,00", 412, 100),
+        item("990,00", 543, 100),
+      ],
+      // Section header: not parseable
+      [item("LIGNE DE CRÉDIT", 50, 150, 100)],
+      // Transaction in non-parseable section — should be skipped
+      [
+        item("3 MAR", 55, 170),
+        item("ACH", 84, 170),
+        item("INTEREST", 108, 170),
+        item("5,00", 412, 170),
+        item("500,00", 543, 170),
+      ],
+    ];
+
+    const result = parseWithSchema(lines, fullText, schema);
+
+    expect(result.transactions).toHaveLength(1);
+    expect(result.transactions[0].description).toBe("METRO");
+  });
+
+  it("uses format hint to disambiguate DD/MM vs MM/DD", () => {
+    const ddmmSchema: StatementSchema = {
+      ...CC_SCHEMA,
+      columns: {
+        ...CC_SCHEMA.columns,
+        date: { x: [50, 80], format: "DD/MM" },
+      },
+    };
+    const mmddSchema: StatementSchema = {
+      ...CC_SCHEMA,
+      columns: {
+        ...CC_SCHEMA.columns,
+        date: { x: [50, 80], format: "MM/DD" },
+      },
+    };
+    const fullText = "Année 2026";
+    // 03/04 is ambiguous — March 4 or April 3?
+    const lines: TextItem[][] = [
+      [item("03/04", 55, 100), item("SHOP", 108, 100), item("10,00", 420, 100)],
+    ];
+
+    const ddmm = parseWithSchema(lines, fullText, ddmmSchema);
+    expect(ddmm.transactions[0].date).toBe("2026-04-03"); // day=03, month=04
+
+    const mmdd = parseWithSchema(lines, fullText, mmddSchema);
+    expect(mmdd.transactions[0].date).toBe("2026-03-04"); // month=03, day=04
+  });
+
+  it("rawLines align with transactions even when lines are skipped", () => {
+    const fullText = "RELEVÉ DE COMPTE Mars 2026";
+    const lines: TextItem[][] = [
+      // Line 0: header — skipped (no date in date column)
+      [
+        item("Date", 56, 50),
+        item("Code", 84, 50),
+        item("Description", 196, 50),
+        item("Retrait", 388, 50),
+        item("Solde", 533, 50),
+      ],
+      // Line 1: skip pattern match
+      [item("TOTAL DES RETRAITS", 108, 70), item("500,00", 412, 70)],
+      // Line 2: actual transaction
+      [
+        item("5 MAR", 55, 100),
+        item("ACH", 84, 100),
+        item("METRO", 108, 100),
+        item("25,00", 412, 100),
+        item("975,00", 543, 100),
+      ],
+      // Line 3: another skip (no date)
+      [item("Some footer text", 50, 130, 60)],
+      // Line 4: actual transaction
+      [
+        item("7 MAR", 55, 150),
+        item("DI", 84, 150),
+        item("PAIE", 108, 150),
+        item("500,00", 479, 150),
+        item("1 475,00", 543, 150),
+      ],
+    ];
+
+    const result = parseWithSchema(lines, fullText, CHEQUING_SCHEMA);
+
+    expect(result.transactions).toHaveLength(2);
+    expect(result.rawLines).toHaveLength(2);
+
+    // rawLines[0] should be the text from line 2 (the METRO transaction), not line 0
+    expect(result.rawLines[0]).toContain("METRO");
+    expect(result.rawLines[0]).toContain("25,00");
+
+    // rawLines[1] should be the text from line 4 (the PAIE transaction)
+    expect(result.rawLines[1]).toContain("PAIE");
+    expect(result.rawLines[1]).toContain("500,00");
+  });
+
+  it("extracts year from full text when no year_pattern matches", () => {
+    const schema: StatementSchema = {
+      ...CHEQUING_SCHEMA,
+      year_pattern: undefined,
+    };
+    const fullText = "Statement for 2025 fiscal year";
+    const lines: TextItem[][] = [
+      [
+        item("2 MAR", 55, 100),
+        item("ACH", 84, 100),
+        item("SHOP", 108, 100),
+        item("10,00", 412, 100),
+        item("990,00", 543, 100),
+      ],
+    ];
+
+    const result = parseWithSchema(lines, fullText, schema);
+    expect(result.transactions[0].date).toBe("2025-03-02");
+  });
+
+  it("falls back to current year when no year found in text", () => {
+    const schema: StatementSchema = {
+      ...CHEQUING_SCHEMA,
+      year_pattern: undefined,
+    };
+    const fullText = "Some statement with no year";
+    const lines: TextItem[][] = [
+      [
+        item("15 JUN", 55, 100),
+        item("ACH", 84, 100),
+        item("SHOP", 108, 100),
+        item("10,00", 412, 100),
+        item("990,00", 543, 100),
+      ],
+    ];
+
+    const result = parseWithSchema(lines, fullText, schema);
+    const currentYear = new Date().getFullYear();
+    expect(result.transactions[0].date).toBe(`${currentYear}-06-15`);
+  });
 });
