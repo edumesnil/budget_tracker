@@ -452,15 +452,6 @@ export function useImport(
             setValidationResult(result.validation ?? null);
             await processTransactions(result.transactions);
           } else {
-            // Need schema detection
-            if (!result.sanitizedSample) {
-              // Garbled PDF — can't extract text
-              setWarnings(result.warnings);
-              setError("Could not extract text from this PDF. Try CSV export instead.");
-              setStatus("idle");
-              return;
-            }
-
             setSchemaItems(result.items ?? null);
             setSchemaFullText(result.fullText ?? null);
 
@@ -469,7 +460,9 @@ export function useImport(
             const rawSchema = await ai.detectSchema(result.sanitizedSample);
 
             if (!rawSchema) {
-              setError("Failed to detect statement format. Try a different file.");
+              setError(
+                "Could not detect statement format. The PDF may use a font encoding that prevents text extraction — try CSV export from your bank's website.",
+              );
               setStatus("idle");
               return;
             }
