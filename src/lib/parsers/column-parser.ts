@@ -97,10 +97,11 @@ export function parseWithSchema(
   fullText: string,
   schema: StatementSchema,
   options: ParseOptions = {},
-): { transactions: ParsedTransaction[]; warnings: string[] } {
+): { transactions: ParsedTransaction[]; warnings: string[]; rawLines: string[] } {
   const year = extractYear(fullText, schema);
   const warnings: string[] = [];
   const transactions: ParsedTransaction[] = [];
+  const rawLines: string[] = [];
 
   const skipRes = schema.skip_patterns.map((p) => new RegExp(p, "i"));
   const transferCodes = new Set(schema.transfer_codes?.map((c) => c.toUpperCase()) ?? []);
@@ -182,7 +183,8 @@ export function parseWithSchema(
       type,
       transferType,
     });
+    rawLines.push(line.map((i) => i.text).join(" "));
   }
 
-  return { transactions, warnings };
+  return { transactions, warnings, rawLines };
 }

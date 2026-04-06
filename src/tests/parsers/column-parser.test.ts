@@ -91,6 +91,7 @@ describe("parseWithSchema", () => {
     const result = parseWithSchema(lines, fullText, CHEQUING_SCHEMA);
 
     expect(result.transactions).toHaveLength(2);
+    expect(result.rawLines).toHaveLength(2);
 
     const expense = result.transactions[0];
     expect(expense.date).toBe("2026-03-02");
@@ -143,17 +144,9 @@ describe("parseWithSchema", () => {
     const fullText = "Année 2026 RELEVÉ MASTERCARD";
     const lines: TextItem[][] = [
       // Expense (no CR)
-      [
-        item("05 03", 55, 100),
-        item("NETFLIX.COM", 108, 100),
-        item("22,99", 420, 100),
-      ],
+      [item("05 03", 55, 100), item("NETFLIX.COM", 108, 100), item("22,99", 420, 100)],
       // Credit/refund (has CR)
-      [
-        item("10 03", 55, 115),
-        item("REMBOURSEMENT AMAZON", 108, 115),
-        item("45,00CR", 420, 115),
-      ],
+      [item("10 03", 55, 115), item("REMBOURSEMENT AMAZON", 108, 115), item("45,00CR", 420, 115)],
     ];
 
     const result = parseWithSchema(lines, fullText, CC_SCHEMA);

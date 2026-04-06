@@ -543,8 +543,7 @@ export function useImport(
         created_at: saved.created_at,
       } as StatementSchema;
       const result = parseWithSchema(schemaItems, schemaFullText, fullSchema);
-      const rawLines = schemaItems.map((line) => line.map((i) => i.text).join(" "));
-      const validation = validateTransactions(result.transactions, rawLines);
+      const validation = validateTransactions(result.transactions, result.rawLines);
       setValidationResult(validation);
 
       const allTx = [...validation.clean, ...validation.flagged];

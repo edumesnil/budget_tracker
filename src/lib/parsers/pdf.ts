@@ -66,13 +66,18 @@ export async function extractLines(file: File): Promise<string[]> {
 }
 
 /**
- * Remove duplicate transactions within a single parse result.
+ * Remove duplicate transactions within a single parse result, keeping rawLines aligned.
  */
-function deduplicateTransactions(txs: ParsedTransaction[]): ParsedTransaction[] {
+function deduplicateTransactions(
+  txs: ParsedTransaction[],
+  lines: string[],
+): { transactions: ParsedTransaction[]; rawLines: string[] } {
   const seen = new Set<string>();
-  const result: ParsedTransaction[] = [];
+  const resultTxs: ParsedTransaction[] = [];
+  const resultLines: string[] = [];
 
-  for (const tx of txs) {
+  for (let i = 0; i < txs.length; i++) {
+    const tx = txs[i];
     const normDesc = tx.description
       .toUpperCase()
       .replace(/\s{2,}/g, " ")
@@ -80,10 +85,11 @@ function deduplicateTransactions(txs: ParsedTransaction[]): ParsedTransaction[] 
     const key = `${tx.date}|${tx.amount}|${tx.type}|${normDesc}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    result.push(tx);
+    resultTxs.push(tx);
+    resultLines.push(lines[i] ?? tx.description);
   }
 
-  return result;
+  return { transactions: resultTxs, rawLines: resultLines };
 }
 
 // ---------------------------------------------------------------------------
@@ -127,17 +133,16 @@ export async function parsePdf(file: File): Promise<SchemaParsePipelineResult> {
   if (cached) {
     console.log(`[pdf-parser] Cache hit: ${cached.bank_name} ${cached.statement_type}`);
     const result = parseWithSchema(items, fullText, cached);
-    const deduped = deduplicateTransactions(result.transactions);
-    const rawLines = items.map((line) => line.map((i) => i.text).join(" "));
-    const validation = validateTransactions(deduped, rawLines);
+    const deduped = deduplicateTransactions(result.transactions, result.rawLines);
+    const validation = validateTransactions(deduped.transactions, deduped.rawLines);
     console.log(
-      `[pdf-parser] ${deduped.length} transactions (${validation.clean.length} clean, ${validation.flagged.length} flagged, ${validation.unparseable.length} unparseable)`,
+      `[pdf-parser] ${deduped.transactions.length} transactions (${validation.clean.length} clean, ${validation.flagged.length} flagged, ${validation.unparseable.length} unparseable)`,
     );
     console.groupEnd();
 
     return {
       status: "cached",
-      transactions: deduped,
+      transactions: deduped.transactions,
       validation,
       warnings: result.warnings,
     };
