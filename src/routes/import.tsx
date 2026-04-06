@@ -50,11 +50,8 @@ export default function ImportPage() {
     reset,
     schemaPreview,
     detectedSchema,
-    validationResult,
     confirmSchema,
     rejectSchema,
-    flaggedFirst,
-    setFlaggedFirst,
   } = useImport(allCategories, groups, mappings);
 
   const handleClearData = async () => {

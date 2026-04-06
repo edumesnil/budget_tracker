@@ -9,7 +9,7 @@
 // =============================================================================
 
 import type { ParsedTransaction, ValidatedTransaction } from "./types";
-import type { TextItem, StatementSchema } from "./schema-types";
+import type { TextItem } from "./schema-types";
 import { extractItems } from "./extract-items";
 import { computeFingerprint } from "./fingerprint";
 import { allowlistSanitize } from "./allowlist-sanitizer";
