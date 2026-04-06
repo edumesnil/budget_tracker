@@ -321,8 +321,7 @@ function CategoryPicker({
           bg: "transparent",
           cursor: "pointer",
           border: "none",
-          borderTopWidth: "1px",
-          borderColor: "border.subtle",
+          boxShadow: "inset 0 1px 0 0 var(--colors-border-subtle)",
           textAlign: "left",
           _hover: { bg: "teal.a2" },
         })}

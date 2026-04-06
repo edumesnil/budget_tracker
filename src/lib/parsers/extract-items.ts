@@ -1,4 +1,5 @@
 import type { TextItem } from "./schema-types";
+import { log } from "@/lib/logger";
 
 let pdfjsMod: typeof import("pdfjs-dist") | null = null;
 
@@ -105,7 +106,7 @@ export async function extractItems(file: File): Promise<TextItem[][]> {
   }
 
   if (emptyItems > 0) {
-    console.warn(
+    log.warn(
       `[extract-items] ${doc.numPages} pages, ${totalRawItems} raw items, ${emptyItems} empty (font encoding issue), ${allItems.length} usable`,
     );
   }

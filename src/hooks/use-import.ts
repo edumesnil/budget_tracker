@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { sanitize } from "@/lib/sanitizer";
 import { getAIProvider, cleanFallback } from "@/lib/ai";
 import { merchantMappingKeys } from "@/hooks/use-merchant-mappings";
-import { parsePdf, type SchemaParsePipelineResult } from "@/lib/parsers/pdf";
+import { parsePdf, deduplicateTransactions, type SchemaParsePipelineResult } from "@/lib/parsers/pdf";
 import { parseWithSchema } from "@/lib/parsers/column-parser";
 import { validateTransactions } from "@/lib/parsers/validate";
 import { buildSchema, saveSchema } from "@/lib/parsers/schema-store";
@@ -548,19 +548,18 @@ export function useImport(
     if (!detectedSchema || !schemaItems || !schemaFullText) return;
 
     try {
-      const saved = await saveSchema(detectedSchema);
-
       setStatus("parsing");
-      const fullSchema = {
+      const tempSchema = {
         ...detectedSchema,
-        id: saved.id,
-        user_id: saved.user_id,
-        created_at: saved.created_at,
+        id: "",
+        user_id: "",
+        created_at: "",
       } as StatementSchema;
-      const result = parseWithSchema(schemaItems, schemaFullText, fullSchema, {
+      const result = parseWithSchema(schemaItems, schemaFullText, tempSchema, {
         startLine: schemaTxStart,
       });
-      const validation = validateTransactions(result.transactions, result.rawLines);
+      const deduped = deduplicateTransactions(result.transactions, result.rawLines);
+      const validation = validateTransactions(deduped.transactions, deduped.rawLines);
       setValidationResult(validation);
 
       const allTx = [...validation.clean, ...validation.flagged];
@@ -569,6 +568,12 @@ export function useImport(
         setStatus("idle");
         return;
       }
+
+      // Save schema AFTER verifying it produces transactions
+      const saved = await saveSchema(detectedSchema);
+      tempSchema.id = saved.id;
+      tempSchema.user_id = saved.user_id;
+      tempSchema.created_at = saved.created_at;
 
       setWarnings(result.warnings);
       await processTransactions(allTx);

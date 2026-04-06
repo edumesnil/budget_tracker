@@ -46,16 +46,15 @@ export function SchemaValidationCard({
           <Table.Body>
             {preview.map((tx, i) => (
               <Table.Row key={i}>
-                <Table.Cell className={css({ whiteSpace: "nowrap", fontSize: "sm" })}>
+                <Table.Cell className={css({ whiteSpace: "nowrap" })}>
                   {formatDate(tx.date)}
                 </Table.Cell>
-                <Table.Cell className={css({ fontSize: "sm" })}>{tx.description}</Table.Cell>
+                <Table.Cell>{tx.description}</Table.Cell>
                 <Table.Cell
                   className={css({
                     textAlign: "right",
                     fontVariantNumeric: "tabular-nums",
                     color: tx.type === "INCOME" ? "income" : "expense",
-                    fontSize: "sm",
                   })}
                 >
                   {tx.type === "INCOME" ? "+" : "\u2212"}
