@@ -77,6 +77,8 @@ export async function extractItems(file: File): Promise<TextItem[][]> {
 
   const allItems: TextItem[] = [];
   let pageOffset = 0;
+  let totalRawItems = 0;
+  let emptyItems = 0;
 
   for (let i = 1; i <= doc.numPages; i++) {
     const page = await doc.getPage(i);
@@ -84,7 +86,12 @@ export async function extractItems(file: File): Promise<TextItem[][]> {
     const viewport = page.getViewport({ scale: 1 });
 
     for (const item of content.items) {
-      if (!("str" in item) || !item.str.trim()) continue;
+      if (!("str" in item)) continue;
+      totalRawItems++;
+      if (!item.str.trim()) {
+        emptyItems++;
+        continue;
+      }
       allItems.push({
         text: item.str,
         x: item.transform[4],
@@ -95,6 +102,12 @@ export async function extractItems(file: File): Promise<TextItem[][]> {
     }
 
     pageOffset += viewport.height + 50;
+  }
+
+  if (emptyItems > 0) {
+    console.warn(
+      `[extract-items] ${doc.numPages} pages, ${totalRawItems} raw items, ${emptyItems} empty (font encoding issue), ${allItems.length} usable`,
+    );
   }
 
   return groupItemsIntoLines(allItems);
