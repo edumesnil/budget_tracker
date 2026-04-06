@@ -7,6 +7,7 @@ interface ValidationSummaryCardProps {
   bankName: string;
   statementType: string;
   totalCount: number;
+  cleanCount: number;
   flaggedCount: number;
   unparseableCount: number;
   knownCount: number;

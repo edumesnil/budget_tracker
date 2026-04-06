@@ -12,6 +12,8 @@ import { ReviewTable } from "@/components/import/review-table";
 import { ImportStepper, type Step } from "@/components/import/import-stepper";
 import { SchemaDetectingCard } from "@/components/import/schema-detecting-card";
 import { SchemaValidationCard } from "@/components/import/schema-validation-card";
+import { ValidationSummaryCard } from "@/components/import/validation-summary-card";
+import { UnparseableSection } from "@/components/import/unparseable-section";
 import { CategoryFormDialog } from "@/components/categories/category-form-dialog";
 import { Button } from "@/components/ui/button";
 import * as Card from "@/components/ui/card";
@@ -52,6 +54,9 @@ export default function ImportPage() {
     detectedSchema,
     confirmSchema,
     rejectSchema,
+    validationResult,
+    flaggedFirst,
+    setFlaggedFirst,
   } = useImport(allCategories, groups, mappings);
 
   const handleClearData = async () => {
@@ -301,18 +306,41 @@ export default function ImportPage() {
         <ColumnMapper headers={csvHeaders} onSubmit={handleCsvMapping} onCancel={reset} />
       )}
 
+      {/* Validation summary — shown above review table when there are flagged/unparseable rows */}
+      {status === "reviewing" && validationResult && (validationResult.flagged.length > 0 || validationResult.unparseable.length > 0) && (
+        <ValidationSummaryCard
+          bankName={detectedSchema?.bank_name ?? ""}
+          statementType={detectedSchema?.statement_type ?? ""}
+          totalCount={items.length}
+          cleanCount={validationResult.clean.length}
+          flaggedCount={validationResult.flagged.length}
+          unparseableCount={validationResult.unparseable.length}
+          knownCount={items.filter((i) => i.confidence === "known").length}
+          pendingAiCount={items.filter((i) => i.aiStatus === "waiting").length}
+          onReviewAll={() => setFlaggedFirst(false)}
+          onShowFlaggedFirst={() => setFlaggedFirst(true)}
+        />
+      )}
+
       {/* Review */}
       {status === "reviewing" && (
-        <ReviewTable
-          items={items}
-          groups={groups}
-          onUpdateItem={updateItem}
-          onAcceptAll={acceptAll}
-          onCommit={handleCommit}
-          onCancel={reset}
-          isCommitting={false}
-          onCreateCategory={handleCreateCategory}
-        />
+        <>
+          <ReviewTable
+            items={flaggedFirst
+              ? [...items].sort((a, b) => (b.warnings?.length ?? 0) - (a.warnings?.length ?? 0))
+              : items}
+            groups={groups}
+            onUpdateItem={updateItem}
+            onAcceptAll={acceptAll}
+            onCommit={handleCommit}
+            onCancel={reset}
+            isCommitting={false}
+            onCreateCategory={handleCreateCategory}
+          />
+          {validationResult && validationResult.unparseable.length > 0 && (
+            <UnparseableSection rows={validationResult.unparseable} />
+          )}
+        </>
       )}
 
       {/* Category creation dialog (triggered from review table) */}

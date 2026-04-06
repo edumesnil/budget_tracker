@@ -328,6 +328,9 @@ export function useImport(
 
       const isDuplicate = duplicates.has(i);
 
+      // Carry through validation metadata if this is a ValidatedTransaction
+      const vtx = tx as ValidatedTransaction;
+
       const item: ReviewItem = {
         id: `import-${i}`,
         date: tx.date,
@@ -341,9 +344,9 @@ export function useImport(
         status: isDuplicate ? "skipped" : "pending",
         aiStatus: isDuplicate ? "skipped" : isPreMatched ? "skipped" : "waiting",
         duplicate: duplicates.get(i) ?? null,
-        warnings: [],
-        rawLine: undefined,
-        parseError: undefined,
+        warnings: vtx.warnings ?? [],
+        rawLine: vtx.rawLine,
+        parseError: vtx.parseError,
         transferType: tx.transferType ?? null,
       };
 
