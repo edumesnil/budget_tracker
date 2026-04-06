@@ -98,12 +98,18 @@ describe("allowlistSanitize", () => {
     expect(result).not.toContain("METRO PLUS JOLIETTE");
   });
 
-  it("falls back to verbatim first 12 lines when no transactions found", () => {
-    const lines: TextItem[][] = [[item("Some header", 50, 10)], [item("More stuff", 50, 20)]];
+  it("falls back to PII-masked lines when no transactions found", () => {
+    const lines: TextItem[][] = [
+      [item("ERIC DUMESNIL", 50, 10), item("13.71", 200, 10)],
+      [item("123 RUE MAIN", 50, 20)],
+    ];
 
     const result = allowlistSanitize(lines);
-    // Falls back to verbatim — no masking
-    expect(result).toContain("Some header");
-    expect(result).toContain("More stuff");
+    // PII masked even in fallback — names/addresses become [TEXT]
+    expect(result).not.toContain("ERIC DUMESNIL");
+    expect(result).not.toContain("123 RUE MAIN");
+    expect(result).toContain("[TEXT]");
+    // Amounts still visible
+    expect(result).toContain("13.71");
   });
 });

@@ -144,10 +144,10 @@ export function allowlistSanitize(lines: TextItem[][]): string {
   const txIdx = findFirstTransactionLine(lines);
 
   if (txIdx < 0) {
-    // No transaction block found — send up to 50 lines verbatim
+    // No transaction block found — send up to 50 lines, PII-masked
     return lines
       .slice(0, 50)
-      .map((l) => formatLineVerbatim(l))
+      .map((l) => formatLineMasked(l))
       .join("\n");
   }
 
