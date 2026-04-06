@@ -10,7 +10,7 @@ Household budget tracker built for tracking income, expenses, and savings across
 - **Styling:** Panda CSS + Park UI (Ark UI primitives)
 - **Database/Auth:** Supabase (PostgreSQL + Auth, local via CLI)
 - **State:** TanStack React Query v5
-- **AI:** Groq / Gemini / Ollama (for merchant categorization)
+- **AI:** Groq / Gemini / Ollama (schema detection + merchant categorization)
 
 ## Setup
 
@@ -28,9 +28,13 @@ cp .env.example .env
 vp dev
 ```
 
-## AI Categorization
+## AI Integration
 
-The import pipeline uses an LLM to categorize unknown merchants and clean up cryptic bank descriptions. Set one of these in `.env`:
+The import pipeline uses AI for two tasks:
+
+1. **Schema detection** — When you upload a new bank format for the first time, the AI analyzes the column layout (dates, amounts, descriptions) from allowlist-sanitized structural data. Zero PII reaches the AI. The detected schema is cached — subsequent imports of the same format are instant with no AI call.
+
+2. **Merchant categorization** — Unknown merchants are sent to the AI for category assignment and name cleanup. Known merchants are auto-categorized from a local mapping table. The system learns from your corrections.
 
 ```bash
 VITE_GROQ_API_KEY=gsk_...     # Groq (free tier, recommended)
@@ -39,8 +43,6 @@ VITE_GEMINI_API_KEY=AI...      # Google Gemini (free tier, alternative)
 ```
 
 Get a free Groq key at [console.groq.com/keys](https://console.groq.com/keys).
-
-Known merchants are auto-categorized from a local mapping table — the AI is only called for new merchants. The system learns from your corrections.
 
 ## Commands
 
@@ -62,4 +64,4 @@ npx panda codegen --clean      # Regenerate styled-system
 - **Transactions** — filterable list, manual quick-add, month navigation
 - **Budgets** — monthly budget amounts per category, recurring and one-time
 - **Categories** — groups and categories with drag-and-drop ordering
-- **Import** — PDF/CSV bank statement upload, AI categorization, keyboard-driven batch review, duplicate detection, merchant memory
+- **Import** — PDF/CSV bank statement upload, AI-driven schema detection (any bank format), multi-step progress UI, inline editing, transfer detection, post-parse validation, keyboard-driven batch review, duplicate detection, merchant memory
