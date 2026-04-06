@@ -40,6 +40,31 @@ function getColumnText(line: TextItem[], col: ColumnDef | undefined): string {
     .trim();
 }
 
+/**
+ * Like getColumnText but also grabs digit-only items immediately to the left.
+ * Handles French thousands separator ("4 380,74" split into "4" + "380,74"
+ * where "4" is just outside the column range).
+ */
+function getAmountText(line: TextItem[], col: ColumnDef | undefined): string {
+  if (!col) return "";
+  const inRange = line.filter((i) => itemInColumn(i, col));
+  if (inRange.length === 0) return "";
+
+  // Look for digit-only items just to the left of the leftmost matched item
+  const leftmost = inRange[0];
+  const adjacent = line.filter(
+    (i) =>
+      i.x < leftmost.x &&
+      leftmost.x - (i.x + i.width) < 15 &&
+      /^\d+$/.test(i.text.trim()),
+  );
+
+  return [...adjacent, ...inRange]
+    .map((i) => i.text)
+    .join(" ")
+    .trim();
+}
+
 function parseDateDDMMM(text: string): { day: number; month: number } | null {
   const m = text.match(/^(\d{1,2})\s+([A-ZÀ-Ü]{3})/i);
   if (!m) return null;
@@ -198,8 +223,8 @@ export function parseWithSchema(
     let type: "INCOME" | "EXPENSE";
 
     if (schema.columns.withdrawal && schema.columns.deposit) {
-      const depositText = getColumnText(line, schema.columns.deposit);
-      const withdrawalText = getColumnText(line, schema.columns.withdrawal);
+      const depositText = getAmountText(line, schema.columns.deposit);
+      const withdrawalText = getAmountText(line, schema.columns.withdrawal);
 
       if (depositText) {
         amount = parseAmount(depositText);
@@ -211,7 +236,7 @@ export function parseWithSchema(
         continue;
       }
     } else if (schema.columns.amount) {
-      const amountText = getColumnText(line, schema.columns.amount);
+      const amountText = getAmountText(line, schema.columns.amount);
       if (!amountText) continue;
 
       const hasCredit = schema.credit_marker ? amountText.includes(schema.credit_marker) : false;
