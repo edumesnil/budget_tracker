@@ -29,29 +29,25 @@ export function buildSchemaPrompt(sanitizedSample: string): {
   user: string;
 } {
   const system = `You are analyzing the column structure of a bank statement PDF.
-Text has been extracted with x-positions. Each item shows x:<position> <text>.
-Items marked [TEXT] are masked content — ignore their values, but note their x-positions.
 
-Analyze the layout and return a JSON schema with:
-- columns: what columns exist and their x-position ranges [min, max]
-- date format used in the date column (e.g., "DD MMM", "DD/MM/YYYY")
-- amount_format: "french" (space thousands, comma decimal: "1 234,56") or "english" (comma thousands, period decimal: "1,234.56")
-- whether amounts use separate withdrawal/deposit columns or a single amount column
-- credit_marker (e.g., "CR") if a single amount column uses a suffix for credits
-- skip_patterns: regex patterns for lines to ignore (totals, subtotals, section headers)
-- bank_name and statement_type (if identifiable)
-- year_source: "header" if the year appears in the document header, "inline" if dates include the year
-- year_pattern: regex to extract the year from the full text (if year_source is "header")
-- transfer_codes: transaction codes that indicate transfers (if a code column exists)
-- internal_transfer_pattern: regex for descriptions of internal transfers between accounts
-- external_income_pattern: regex for descriptions of incoming external transfers
+The input has two sections:
+1. HEADER LINES — column headers shown verbatim (no masking). These tell you the column names and their x-positions.
+2. DATA LINES — transaction rows with PII masked as [TEXT]. Dates, amounts, and short codes are visible.
 
-Return ONLY valid JSON. No explanation. Schema:
+CRITICAL RULES:
+- Match column names from the header lines to data positions. If a header says "Retrait" at x:388, the withdrawal column starts near x:388. If "Dépôt" is at x:461, deposits start near x:461.
+- The LAST numeric column on each data line is usually the running balance — map it as "balance" so the parser SKIPs it.
+- Small repeated identical values (like 1.00, 2.00, 3.00) in a column are percentages or fees, NOT transaction amounts. The actual amount column has varying values (12.82, 31.02, 300.00).
+- For date columns: if dates are split into separate day/month items (x:91 "19" x:115 "02"), the date column range should cover both items.
+- Use "withdrawal" + "deposit" when there are separate debit/credit columns. Use "amount" only when there is a single column for both.
+- "amount_format": use "french" when decimals use comma (13,71) and thousands use space/period. Use "english" when decimals use period (13.71).
+
+Return ONLY valid JSON:
 {
   "bank_name": string,
   "statement_type": string,
   "columns": {
-    "date": { "x": [min, max], "format": string },
+    "date": { "x": [min, max], "format": "DD MMM" | "DD MM" | "DD/MM/YYYY" | "YYYY-MM-DD" },
     "code?": { "x": [min, max] },
     "description": { "x": [min, max] },
     "withdrawal?": { "x": [min, max] },
