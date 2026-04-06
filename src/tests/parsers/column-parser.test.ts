@@ -6,6 +6,26 @@ function item(text: string, x: number, y: number, page = 1): TextItem {
   return { text, x, y, width: 30, page };
 }
 
+const CC_SCHEMA: StatementSchema = {
+  id: "test-cc",
+  user_id: "test-user",
+  fingerprint: "test-cc-fp",
+  bank_name: "Desjardins",
+  statement_type: "credit-card",
+  columns: {
+    date: { x: [50, 80], format: "DD MM" },
+    description: { x: [108, 380] },
+    amount: { x: [400, 480] },
+  },
+  amount_format: "french",
+  credit_marker: "CR",
+  skip_patterns: ["TOTAL"],
+  year_source: "header",
+  year_pattern: "Ann[ée]e\\s+(20\\d{2})",
+  confirmed: true,
+  created_at: "",
+};
+
 const CHEQUING_SCHEMA: StatementSchema = {
   id: "test-id",
   user_id: "test-user",
@@ -117,6 +137,40 @@ describe("parseWithSchema", () => {
 
     const result = parseWithSchema(lines, fullText, CHEQUING_SCHEMA);
     expect(result.transactions).toHaveLength(1);
+  });
+
+  it("parses credit card transactions with single amount column and credit marker", () => {
+    const fullText = "Année 2026 RELEVÉ MASTERCARD";
+    const lines: TextItem[][] = [
+      // Expense (no CR)
+      [
+        item("05 03", 55, 100),
+        item("NETFLIX.COM", 108, 100),
+        item("22,99", 420, 100),
+      ],
+      // Credit/refund (has CR)
+      [
+        item("10 03", 55, 115),
+        item("REMBOURSEMENT AMAZON", 108, 115),
+        item("45,00CR", 420, 115),
+      ],
+    ];
+
+    const result = parseWithSchema(lines, fullText, CC_SCHEMA);
+
+    expect(result.transactions).toHaveLength(2);
+
+    const expense = result.transactions[0];
+    expect(expense.date).toBe("2026-03-05");
+    expect(expense.description).toBe("NETFLIX.COM");
+    expect(expense.amount).toBe(22.99);
+    expect(expense.type).toBe("EXPENSE");
+
+    const credit = result.transactions[1];
+    expect(credit.date).toBe("2026-03-10");
+    expect(credit.description).toBe("REMBOURSEMENT AMAZON");
+    expect(credit.amount).toBe(45.0);
+    expect(credit.type).toBe("INCOME");
   });
 
   it("respects limit option for preview parsing", () => {
