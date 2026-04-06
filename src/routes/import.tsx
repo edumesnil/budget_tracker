@@ -9,6 +9,11 @@ import { useImport } from "@/hooks/use-import";
 import { FileUpload } from "@/components/import/file-upload";
 import { ColumnMapper } from "@/components/import/column-mapper";
 import { ReviewTable } from "@/components/import/review-table";
+import { ImportStepper, type Step } from "@/components/import/import-stepper";
+import { SchemaDetectingCard } from "@/components/import/schema-detecting-card";
+import { SchemaValidationCard } from "@/components/import/schema-validation-card";
+import { ValidationSummaryCard } from "@/components/import/validation-summary-card";
+import { UnparseableSection } from "@/components/import/unparseable-section";
 import { CategoryFormDialog } from "@/components/categories/category-form-dialog";
 import { Button } from "@/components/ui/button";
 import * as Card from "@/components/ui/card";
@@ -22,6 +27,7 @@ export default function ImportPage() {
   const { groups, allCategories, createCategory } = useCategories();
   const { mappings } = useMerchantMappings();
   const [clearing, setClearing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   // Category creation dialog triggered from the review table
   const [catDialogOpen, setCatDialogOpen] = useState(false);
@@ -45,6 +51,13 @@ export default function ImportPage() {
     acceptAll,
     commit,
     reset,
+    schemaPreview,
+    detectedSchema,
+    confirmSchema,
+    rejectSchema,
+    validationResult,
+    flaggedFirst,
+    setFlaggedFirst,
   } = useImport(allCategories, groups, mappings);
 
   const handleClearData = async () => {
@@ -77,6 +90,83 @@ export default function ImportPage() {
       description: `${items.filter((i) => i.status === "accepted").length} transactions imported.`,
     });
   };
+
+  const stepperSteps: Step[] = (() => {
+    const isFirstTime =
+      status === "schema_detecting" || status === "schema_validating" || detectedSchema !== null;
+
+    if (isFirstTime) {
+      return [
+        {
+          label: "Extract",
+          status: (status === "parsing"
+            ? "active"
+            : status === "idle"
+              ? "pending"
+              : "completed") as Step["status"],
+        },
+        {
+          label: "Detect format",
+          status: (status === "schema_detecting"
+            ? "active"
+            : ["schema_validating", "reviewing", "importing", "done"].includes(status)
+              ? "completed"
+              : "pending") as Step["status"],
+        },
+        {
+          label: "Confirm format",
+          status: (status === "schema_validating"
+            ? "active"
+            : ["reviewing", "importing", "done"].includes(status)
+              ? "completed"
+              : "pending") as Step["status"],
+        },
+        {
+          label: "Review",
+          status: (status === "reviewing"
+            ? "active"
+            : ["importing", "done"].includes(status)
+              ? "completed"
+              : "pending") as Step["status"],
+        },
+        {
+          label: "Import",
+          status: (status === "importing"
+            ? "active"
+            : status === "done"
+              ? "completed"
+              : "pending") as Step["status"],
+        },
+      ];
+    }
+
+    return [
+      {
+        label: "Extract",
+        status: (status === "parsing"
+          ? "active"
+          : status === "idle"
+            ? "pending"
+            : "completed") as Step["status"],
+      },
+      {
+        label: "Review",
+        status: (status === "reviewing"
+          ? "active"
+          : ["importing", "done"].includes(status)
+            ? "completed"
+            : "pending") as Step["status"],
+      },
+      {
+        label: "Import",
+        status: (status === "importing"
+          ? "active"
+          : status === "done"
+            ? "completed"
+            : "pending") as Step["status"],
+      },
+    ];
+  })();
 
   return (
     <div className={css({ display: "flex", flexDir: "column", gap: "6" })}>
@@ -114,6 +204,9 @@ export default function ImportPage() {
           Clear transactions + mappings
         </Button>
       </div>
+
+      {/* Stepper — shown during active import */}
+      {status !== "idle" && <ImportStepper steps={stepperSteps} />}
 
       {/* Error display */}
       {error && (
@@ -194,23 +287,72 @@ export default function ImportPage() {
         </Card.Root>
       )}
 
+      {/* Schema detecting: AI analyzing format */}
+      {status === "schema_detecting" && <SchemaDetectingCard />}
+
+      {/* Schema validating: user confirms sample rows */}
+      {status === "schema_validating" && schemaPreview && detectedSchema && (
+        <SchemaValidationCard
+          bankName={detectedSchema.bank_name}
+          statementType={detectedSchema.statement_type}
+          preview={schemaPreview}
+          onConfirm={async () => {
+            setConfirming(true);
+            try {
+              await confirmSchema();
+            } finally {
+              setConfirming(false);
+            }
+          }}
+          onReject={rejectSchema}
+          isConfirming={confirming}
+        />
+      )}
+
       {/* CSV column mapping */}
       {status === "mapping" && (
         <ColumnMapper headers={csvHeaders} onSubmit={handleCsvMapping} onCancel={reset} />
       )}
 
+      {/* Validation summary — shown above review table when there are flagged/unparseable rows */}
+      {status === "reviewing" &&
+        validationResult &&
+        (validationResult.flagged.length > 0 || validationResult.unparseable.length > 0) && (
+          <ValidationSummaryCard
+            bankName={detectedSchema?.bank_name ?? ""}
+            statementType={detectedSchema?.statement_type ?? ""}
+            totalCount={items.length}
+            cleanCount={validationResult.clean.length}
+            flaggedCount={validationResult.flagged.length}
+            unparseableCount={validationResult.unparseable.length}
+            knownCount={items.filter((i) => i.confidence === "known").length}
+            pendingAiCount={items.filter((i) => i.aiStatus === "waiting").length}
+            onReviewAll={() => setFlaggedFirst(false)}
+            onShowFlaggedFirst={() => setFlaggedFirst(true)}
+          />
+        )}
+
       {/* Review */}
       {status === "reviewing" && (
-        <ReviewTable
-          items={items}
-          groups={groups}
-          onUpdateItem={updateItem}
-          onAcceptAll={acceptAll}
-          onCommit={handleCommit}
-          onCancel={reset}
-          isCommitting={false}
-          onCreateCategory={handleCreateCategory}
-        />
+        <>
+          <ReviewTable
+            items={
+              flaggedFirst
+                ? [...items].sort((a, b) => (b.warnings?.length ?? 0) - (a.warnings?.length ?? 0))
+                : items
+            }
+            groups={groups}
+            onUpdateItem={updateItem}
+            onAcceptAll={acceptAll}
+            onCommit={handleCommit}
+            onCancel={reset}
+            isCommitting={false}
+            onCreateCategory={handleCreateCategory}
+          />
+          {validationResult && validationResult.unparseable.length > 0 && (
+            <UnparseableSection rows={validationResult.unparseable} />
+          )}
+        </>
       )}
 
       {/* Category creation dialog (triggered from review table) */}
