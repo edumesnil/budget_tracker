@@ -4,9 +4,13 @@ import { supabase } from "@/lib/supabase";
 import { sanitize } from "@/lib/sanitizer";
 import { getAIProvider, cleanFallback } from "@/lib/ai";
 import { merchantMappingKeys } from "@/hooks/use-merchant-mappings";
-import { parsePdf } from "@/lib/parsers/pdf";
+import { parsePdf, type SchemaParsePipelineResult } from "@/lib/parsers/pdf";
+import { parseWithSchema } from "@/lib/parsers/column-parser";
+import { validateTransactions } from "@/lib/parsers/validate";
+import { buildSchema, saveSchema } from "@/lib/parsers/schema-store";
 import { getHeaders, parseCsv, detectColumns } from "@/lib/parsers/csv";
-import type { ParsedTransaction, CsvColumnMap } from "@/lib/parsers/types";
+import type { ParsedTransaction, ValidatedTransaction, CsvColumnMap } from "@/lib/parsers/types";
+import type { TextItem, StatementSchema } from "@/lib/parsers/schema-types";
 import type { MerchantMapping, Category } from "@/types/database";
 import type { CategoryOption } from "@/lib/ai";
 
@@ -17,6 +21,8 @@ import type { CategoryOption } from "@/lib/ai";
 export type ImportStatus =
   | "idle"
   | "parsing"
+  | "schema_detecting" // AI analyzing format
+  | "schema_validating" // user confirming sample rows
   | "mapping" // CSV column mapping needed
   | "reviewing"
   | "importing"
@@ -36,6 +42,10 @@ export interface ReviewItem {
   aiStatus: "waiting" | "analyzing" | "done" | "skipped"; // per-row AI progress
   duplicate: DuplicateMatch | null;
   suggestedCategory?: string; // AI-suggested new category when nothing fits
+  warnings: string[]; // validation warnings
+  rawLine?: string; // original PDF line
+  parseError?: string; // unparseable reason
+  transferType?: "internal" | "external-income" | null;
 }
 
 export interface DuplicateMatch {
@@ -78,6 +88,21 @@ export function useImport(
 
   // Keep a ref to abort background categorization
   const abortRef = useRef(false);
+
+  // Schema detection state
+  const [schemaPreview, setSchemaPreview] = useState<ParsedTransaction[] | null>(null);
+  const [detectedSchema, setDetectedSchema] = useState<Omit<
+    StatementSchema,
+    "id" | "user_id" | "created_at"
+  > | null>(null);
+  const [schemaItems, setSchemaItems] = useState<TextItem[][] | null>(null);
+  const [schemaFullText, setSchemaFullText] = useState<string | null>(null);
+  const [validationResult, setValidationResult] = useState<{
+    clean: ValidatedTransaction[];
+    flagged: ValidatedTransaction[];
+    unparseable: ValidatedTransaction[];
+  } | null>(null);
+  const [flaggedFirst, setFlaggedFirst] = useState(false);
 
   // Build category options for the AI
   const categoryOptions: CategoryOption[] = categories.map((c) => ({
@@ -316,10 +341,20 @@ export function useImport(
         status: isDuplicate ? "skipped" : "pending",
         aiStatus: isDuplicate ? "skipped" : isPreMatched ? "skipped" : "waiting",
         duplicate: duplicates.get(i) ?? null,
+        warnings: [],
+        rawLine: undefined,
+        parseError: undefined,
+        transferType: tx.transferType ?? null,
       };
 
-      // Pre-accept high-confidence pre-matched items (not duplicates)
-      if (!isDuplicate && isPreMatched && item.category_id) {
+      // Handle internal transfers — auto-skip them
+      if (tx.transferType === "internal") {
+        item.status = "skipped";
+        item.aiStatus = "skipped";
+      }
+
+      // Pre-accept high-confidence pre-matched items (not duplicates, not transfers)
+      if (!isDuplicate && isPreMatched && item.category_id && tx.transferType !== "internal") {
         item.status = "accepted";
       }
 
@@ -401,14 +436,45 @@ export function useImport(
       if (ext === "pdf") {
         setStatus("parsing");
         try {
-          const result = await parsePdf(file);
+          const result: SchemaParsePipelineResult = await parsePdf(file);
           setWarnings(result.warnings);
-          if (result.transactions.length === 0) {
-            setError("No transactions found in the PDF.");
-            setStatus("idle");
-            return;
+
+          if (result.status === "cached") {
+            if (!result.transactions || result.transactions.length === 0) {
+              setError("No transactions found in the PDF.");
+              setStatus("idle");
+              return;
+            }
+            setValidationResult(result.validation ?? null);
+            await processTransactions(result.transactions);
+          } else {
+            // Need schema detection
+            setSchemaItems(result.items ?? null);
+            setSchemaFullText(result.fullText ?? null);
+
+            setStatus("schema_detecting");
+            const ai = getAIProvider();
+            const rawSchema = await ai.detectSchema(result.sanitizedSample!);
+
+            if (!rawSchema) {
+              setError("Failed to detect statement format. Try a different file.");
+              setStatus("idle");
+              return;
+            }
+
+            const schema = buildSchema(rawSchema, result.fingerprint!);
+            setDetectedSchema(schema);
+
+            // Preview: parse first 5 rows for validation
+            const preview = parseWithSchema(
+              result.items!,
+              result.fullText!,
+              { ...schema, id: "", user_id: "", created_at: "" } as StatementSchema,
+              { limit: 5 },
+            );
+            setSchemaPreview(preview.transactions);
+            setStatus("schema_validating");
           }
-          await processTransactions(result.transactions);
         } catch (err) {
           setError(err instanceof Error ? err.message : "Failed to parse PDF");
           setStatus("idle");
@@ -462,6 +528,48 @@ export function useImport(
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [csvRows, merchantMappings, categories, categoryGroups],
   );
+
+  const confirmSchema = useCallback(async () => {
+    if (!detectedSchema || !schemaItems || !schemaFullText) return;
+
+    try {
+      const saved = await saveSchema(detectedSchema);
+
+      setStatus("parsing");
+      const fullSchema = {
+        ...detectedSchema,
+        id: saved.id,
+        user_id: saved.user_id,
+        created_at: saved.created_at,
+      } as StatementSchema;
+      const result = parseWithSchema(schemaItems, schemaFullText, fullSchema);
+      const rawLines = schemaItems.map((line) => line.map((i) => i.text).join(" "));
+      const validation = validateTransactions(result.transactions, rawLines);
+      setValidationResult(validation);
+
+      const allTx = [...validation.clean, ...validation.flagged];
+      if (allTx.length === 0) {
+        setError("No transactions found after parsing with detected schema.");
+        setStatus("idle");
+        return;
+      }
+
+      setWarnings(result.warnings);
+      await processTransactions(allTx);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save schema");
+      setStatus("idle");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detectedSchema, schemaItems, schemaFullText]);
+
+  const rejectSchema = useCallback(() => {
+    setDetectedSchema(null);
+    setSchemaPreview(null);
+    setSchemaItems(null);
+    setSchemaFullText(null);
+    setStatus("idle");
+  }, []);
 
   // -------------------------------------------------------------------------
   // Review actions
@@ -574,6 +682,12 @@ export function useImport(
     setProgress(0);
     setCsvHeaders([]);
     setCsvRows([]);
+    setDetectedSchema(null);
+    setSchemaPreview(null);
+    setSchemaItems(null);
+    setSchemaFullText(null);
+    setValidationResult(null);
+    setFlaggedFirst(false);
   }, []);
 
   return {
@@ -583,8 +697,15 @@ export function useImport(
     error,
     progress,
     csvHeaders,
+    schemaPreview,
+    detectedSchema,
+    validationResult,
+    flaggedFirst,
+    setFlaggedFirst,
     handleFile,
     handleCsvMapping,
+    confirmSchema,
+    rejectSchema,
     updateItem,
     acceptAll,
     commit,
