@@ -100,11 +100,29 @@ export function classifyItem(text: string): "keep" | "mask" {
 }
 
 // ---------------------------------------------------------------------------
+// Garbled accent normalization (common pdfjs font encoding issues)
+// ---------------------------------------------------------------------------
+
+/**
+ * Some PDFs use custom font encodings that map accented characters to wrong
+ * Unicode codepoints. This normalizes the most common French accent garbling
+ * so the AI can read column headers like "Dépôts" instead of "DÁp¦ts".
+ */
+function normalizeGarbledText(text: string): string {
+  return text
+    .replace(/\u00C1/g, "\u00E9") // Á → é
+    .replace(/\u00AF/g, "\u00C9") // ¯ → É
+    .replace(/\u00A6/g, "\u00F4") // ¦ → ô
+    .replace(/\u00BE/g, "\u00E8") // ¾ → è
+    .replace(/\u00C7(?![a-z])/g, "\u00E0"); // Ç → à (only when not followed by lowercase)
+}
+
+// ---------------------------------------------------------------------------
 // Main sanitizer
 // ---------------------------------------------------------------------------
 
 function formatLineVerbatim(line: TextItem[]): string {
-  return line.map((it) => `x:${Math.round(it.x)} ${it.text}`).join(" | ");
+  return line.map((it) => `x:${Math.round(it.x)} ${normalizeGarbledText(it.text)}`).join(" | ");
 }
 
 function formatLineMasked(line: TextItem[]): string {
