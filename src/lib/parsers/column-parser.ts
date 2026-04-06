@@ -57,8 +57,9 @@ function parseDate(
   const ddmmm = parseDateDDMMM(text);
   if (ddmmm) return ddmmm;
 
-  // DD MM (two numbers separated by space)
-  const ddmm = text.match(/^(\d{1,2})\s+(\d{2})$/);
+  // DD MM — take first pair even if more numbers follow
+  // (handles "DD MM DD MM" from CC statements with transaction + inscription dates)
+  const ddmm = text.match(/^(\d{1,2})\s+(\d{2})/);
   if (ddmm) {
     const a = parseInt(ddmm[1], 10);
     const b = parseInt(ddmm[2], 10);

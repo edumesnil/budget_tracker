@@ -50,11 +50,15 @@ export function validateTransactions(
     }
 
     if (tx.amount > 10000) {
-      warnings.push(`Amount unusually high ($${tx.amount.toLocaleString()})`);
+      warnings.push(
+        `$${tx.amount.toLocaleString()} is unusually high — verify the amount is correct, or click to edit`,
+      );
     }
 
     if (med > 0 && tx.amount > med * 10 && transactions.length >= 5) {
-      warnings.push(`Statistical outlier — ${Math.round(tx.amount / med)}x the batch median`);
+      warnings.push(
+        `$${tx.amount.toLocaleString()} is ${Math.round(tx.amount / med)}x larger than typical — verify or edit the amount`,
+      );
     }
 
     if (tx.amount > 50000 && tx.amount % 1000 === 0) {
