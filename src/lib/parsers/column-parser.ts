@@ -66,10 +66,17 @@ function getAmountText(line: TextItem[], col: ColumnDef | undefined): string {
 }
 
 function parseDateDDMMM(text: string): { day: number; month: number } | null {
-  const m = text.match(/^(\d{1,2})\s+([A-ZÀ-Ü]{3})/i);
+  // "DD MMM" (with space) or "DDMMM" (condensed, e.g. "13MAR", "27FÉV")
+  const m = text.match(/^(\d{1,2})\s*([A-ZÀ-Ü\u00C0-\u00FF]{3,4})/i);
   if (!m) return null;
   const day = parseInt(m[1], 10);
-  const month = MONTH_MAP[m[2].toUpperCase()];
+  // Normalize garbled accents from broken PDF font encoding
+  // Á(00C1)→É, ¯(00AF)→É, ¦(00A6)→É, Â(00C2)→É
+  const monthStr = m[2]
+    .toUpperCase()
+    .replace(/[\u00C1\u00AF\u00A6\u00C2]/g, "\u00C9") // → É
+    .replace(/[\u00DB\u00BB]/g, "\u00DB"); // Û variants
+  const month = MONTH_MAP[monthStr];
   if (!month || day < 1 || day > 31) return null;
   return { day, month };
 }
@@ -123,7 +130,10 @@ function extractYear(fullText: string, schema: StatementSchema): number {
   if (schema.year_pattern) {
     const re = new RegExp(schema.year_pattern, "i");
     const m = fullText.match(re);
-    if (m?.[1]) return parseInt(m[1], 10);
+    if (m?.[1]) {
+      const y = parseInt(m[1], 10);
+      return y < 100 ? 2000 + y : y;
+    }
   }
   const yearMatch = fullText.match(/\b(20\d{2})\b/);
   return yearMatch ? parseInt(yearMatch[1], 10) : new Date().getFullYear();

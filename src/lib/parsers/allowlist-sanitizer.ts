@@ -14,12 +14,23 @@ function hasDigitAndDecimal(s: string): boolean {
 // Transaction line detection
 // ---------------------------------------------------------------------------
 
+/** Date as first item: "DD", "DD MMM", "DD/MM", "YYYY-MM-DD" */
 const DATE_START_RE =
   /^\d{1,2}$|^\d{1,2}\s+[A-ZÀ-Ü]{3}$|^\d{1,2}[/-]\d{1,2}([/-]\d{2,4})?$|^\d{4}-\d{2}-\d{2}$/i;
 
+/** Condensed date anywhere in line: "13MAR", "27FÉV", "31DÉC" (no space) */
+const DATE_CONDENSED_RE = /^\d{1,2}[A-ZÀ-Ü\u00C0-\u00FF]{3,4}$/i;
+
+function hasDateItem(line: TextItem[]): boolean {
+  // Check first item (most common: date-first formats)
+  if (DATE_START_RE.test(line[0].text.trim())) return true;
+  // Check any item for condensed dates (date-in-middle formats like TD)
+  return line.some((it) => DATE_CONDENSED_RE.test(it.text.trim()));
+}
+
 function looksLikeTransaction(line: TextItem[]): boolean {
   if (line.length < 4) return false;
-  if (!DATE_START_RE.test(line[0].text.trim())) return false;
+  if (!hasDateItem(line)) return false;
   return line.some(
     (it) => AMOUNT_RE.test(it.text.trim()) && hasDigitAndDecimal(it.text.trim()),
   );
@@ -77,6 +88,7 @@ export function classifyItem(text: string): "keep" | "mask" {
   if (!trimmed) return "mask";
 
   if (DATE_RE.test(trimmed)) return "keep";
+  if (DATE_CONDENSED_RE.test(trimmed)) return "keep"; // "13MAR", "27FÉV"
   if (/^\d{1,2}$/.test(trimmed)) return "keep";
   if (AMOUNT_RE.test(trimmed) && hasDigitAndDecimal(trimmed)) return "keep";
   if (SHORT_CODE_RE.test(trimmed)) return "keep";

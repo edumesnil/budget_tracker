@@ -367,4 +367,59 @@ describe("parseWithSchema", () => {
     const currentYear = new Date().getFullYear();
     expect(result.transactions[0].date).toBe(`${currentYear}-06-15`);
   });
+
+  it("parses condensed DDMMM dates and garbled accents (TD format)", () => {
+    const schema: StatementSchema = {
+      id: "test-td",
+      user_id: "test-user",
+      fingerprint: "test-td",
+      bank_name: "TD",
+      statement_type: "chequing",
+      columns: {
+        description: { x: [69, 200] },
+        withdrawal: { x: [280, 310] },
+        deposit: { x: [370, 400] },
+        date: { x: [410, 440], format: "DDMMM" },
+        balance: { x: [500, 530] },
+      },
+      amount_format: "french",
+      skip_patterns: ["^SOLDE INITIAL"],
+      year_source: "header",
+      year_pattern: "\\d{1,2}\\s*MAR\\s*(\\d{2,4})",
+      confirmed: true,
+      created_at: "",
+    };
+    const fullText = "27F\u00AFV 26 - 31 MAR 26";
+    const lines: TextItem[][] = [
+      [item("SOLDE INITIAL", 69, 50), item("27F\u00AFV", 418, 50), item("12,71DC", 513, 50)],
+      [
+        item("Recept - VFC", 69, 100),
+        item("50,00", 383, 100),
+        item("13MAR", 416, 100),
+        item("37,29", 513, 100),
+      ],
+      [
+        item("INT.SUR DECOUVERT", 69, 115),
+        item("0,09", 289, 115),
+        item("31MAR", 416, 115),
+      ],
+      [
+        item("FRAIS MENSUEL", 69, 130),
+        item("3,95", 289, 130),
+        item("31MAR", 416, 130),
+        item("33,25", 513, 130),
+      ],
+    ];
+
+    const result = parseWithSchema(lines, fullText, schema);
+
+    expect(result.transactions).toHaveLength(3);
+    // 13MAR with year from header (26 → 2026)
+    expect(result.transactions[0].date).toBe("2026-03-13");
+    expect(result.transactions[0].type).toBe("INCOME"); // deposit column
+    expect(result.transactions[0].amount).toBe(50);
+    // 31MAR withdrawal
+    expect(result.transactions[1].date).toBe("2026-03-31");
+    expect(result.transactions[1].type).toBe("EXPENSE");
+  });
 });
