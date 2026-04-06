@@ -27,6 +27,7 @@ export default function ImportPage() {
   const { groups, allCategories, createCategory } = useCategories();
   const { mappings } = useMerchantMappings();
   const [clearing, setClearing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   // Category creation dialog triggered from the review table
   const [catDialogOpen, setCatDialogOpen] = useState(false);
@@ -295,9 +296,16 @@ export default function ImportPage() {
           bankName={detectedSchema.bank_name}
           statementType={detectedSchema.statement_type}
           preview={schemaPreview}
-          onConfirm={confirmSchema}
+          onConfirm={async () => {
+            setConfirming(true);
+            try {
+              await confirmSchema();
+            } finally {
+              setConfirming(false);
+            }
+          }}
           onReject={rejectSchema}
-          isConfirming={false}
+          isConfirming={confirming}
         />
       )}
 

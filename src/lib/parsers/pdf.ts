@@ -69,7 +69,7 @@ export async function extractLines(file: File): Promise<string[]> {
 /**
  * Remove duplicate transactions within a single parse result, keeping rawLines aligned.
  */
-function deduplicateTransactions(
+export function deduplicateTransactions(
   txs: ParsedTransaction[],
   lines: string[],
 ): { transactions: ParsedTransaction[]; rawLines: string[] } {
