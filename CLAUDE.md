@@ -52,12 +52,13 @@ src/
     transactions/  # Transaction feature components
     budgets/       # Budget feature components
     categories/    # Category feature components
-    import/        # Import pipeline components (file-upload, review-table, column-mapper)
+    import/        # Import pipeline components (file-upload, review-table, column-mapper, stepper, schema cards)
   hooks/           # One hook per entity (use-transactions.ts, etc.)
   lib/
-    parsers/       # PDF and CSV statement parsers (bank-specific + generic)
-    ai.ts          # LLM adapter (Groq, Gemini, Ollama providers)
-    sanitizer.ts   # PII stripping before LLM calls
+    parsers/       # Schema-based PDF parser pipeline + CSV parser
+    ai.ts          # LLM adapter (Groq, Gemini, Ollama providers) — detectSchema + categorize
+    sanitizer.ts   # PII stripping before categorization LLM calls
+    logger.ts      # Debug logger (stripped in prod via import.meta.env.DEV)
     supabase.ts    # Supabase client
     query-client.ts
     utils.ts
@@ -67,9 +68,9 @@ styled-system/     # Panda CSS generated output (gitignored, regenerate with cod
 panda.config.ts    # Design tokens, recipes, presets
 ```
 
-### Database Schema (7 tables)
+### Database Schema (8 tables)
 
-users, category_groups, categories, transactions, budgets, account_snapshots, merchant_mappings. All with RLS. Types in `types/database.ts`.
+users, category_groups, categories, transactions, budgets, account_snapshots, merchant_mappings, statement_schemas. All with RLS. Types in `types/database.ts`.
 
 ### Feature Organization
 
@@ -77,26 +78,45 @@ Each feature follows: route in `routes/<feature>.tsx`, components in `components
 
 ### Import Pipeline
 
-PDF/CSV bank statement import with AI-assisted categorization. Architecture:
+PDF/CSV bank statement import with AI-driven schema detection and categorization.
 
 ```
-File upload → Parser (bank-specific) → PII sanitizer → Merchant lookup →
-  Known merchants: auto-categorized from merchant_mappings table
-  Unknown merchants: sent to LLM (sanitized descriptions only) →
-    LLM returns: category ID + clean display name →
-      Keyboard-driven batch review → Commit to DB + save new mappings
+First import of new format:
+  Upload → Extract text items (pdfjs) → Compute fingerprint → Cache miss →
+  Allowlist sanitize (zero PII) → AI schema detection → User confirms sample rows →
+  Save schema to Supabase → Deterministic column parse → Validate → Categorize → Review
+
+Subsequent imports (same format):
+  Upload → Extract → Fingerprint → Cache hit → Load schema →
+  Deterministic column parse → Validate → Categorize → Review
 ```
 
-Key files:
+#### Schema Detection Pipeline
 
-- `lib/parsers/pdf.ts` — pdfjs text extraction + pluggable `BankParser` interface (Desjardins CC, generic fallback)
+The AI detects column layout from allowlist-sanitized structural data. Only dates, amounts, short codes, and banking terms pass through — merchant names and PII are masked to `[TEXT]`. The AI returns column x-position ranges which are cached in `statement_schemas` for all future imports.
+
+Key parser files:
+
+- `lib/parsers/extract-items.ts` — pdfjs text extraction preserving x/y positions, fragment merging
+- `lib/parsers/fingerprint.ts` — structural hash for schema cache lookup
+- `lib/parsers/allowlist-sanitizer.ts` — aggressive PII masking for schema detection AI
+- `lib/parsers/schema-prompt.ts` — AI prompt builder + response parser
+- `lib/parsers/column-parser.ts` — deterministic column parser using schema x-positions
+- `lib/parsers/validate.ts` — post-parse amount validation (flags outliers, suspicious amounts)
+- `lib/parsers/schema-store.ts` — Supabase CRUD for cached schemas
+- `lib/parsers/schema-types.ts` — TextItem, ColumnDef, StatementSchema types
+- `lib/parsers/pdf.ts` — pipeline orchestrator (fingerprint → cache check → detect or parse)
+
+#### Categorization Pipeline (unchanged)
+
 - `lib/parsers/csv.ts` — generic CSV parser with auto-detect + manual column mapping
-- `lib/sanitizer.ts` — strips PII before LLM sees data
-- `lib/ai.ts` — `AIProvider` interface with Groq, Gemini, Ollama providers. Auto-selects from env vars
-- `hooks/use-import.ts` — orchestrates the full import flow
+- `lib/sanitizer.ts` — strips PII before categorization LLM sees merchant descriptions
+- `lib/ai.ts` — `AIProvider` interface with Groq, Gemini, Ollama providers. `detectSchema` + `categorize` methods
+- `lib/logger.ts` — debug logger stripped from production builds via `import.meta.env.DEV`
+- `hooks/use-import.ts` — orchestrates the full import flow (schema detection + categorization)
 - `hooks/use-merchant-mappings.ts` — CRUD for merchant→category mappings
 
-AI provider priority: `VITE_GROQ_API_KEY` → `VITE_GEMINI_API_KEY` → Ollama (localhost). The prompt uses numeric category IDs (not names) to avoid accent/spelling mismatches.
+AI provider priority: `VITE_GROQ_API_KEY` → `VITE_GEMINI_API_KEY` → Ollama (localhost). Schema detection retries up to 3 times. The categorization prompt uses numeric category IDs (not names) to avoid accent/spelling mismatches.
 
 ## Environment Variables
 
