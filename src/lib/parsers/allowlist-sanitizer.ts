@@ -31,9 +31,7 @@ function hasDateItem(line: TextItem[]): boolean {
 function looksLikeTransaction(line: TextItem[]): boolean {
   if (line.length < 4) return false;
   if (!hasDateItem(line)) return false;
-  return line.some(
-    (it) => AMOUNT_RE.test(it.text.trim()) && hasDigitAndDecimal(it.text.trim()),
-  );
+  return line.some((it) => AMOUNT_RE.test(it.text.trim()) && hasDigitAndDecimal(it.text.trim()));
 }
 
 /** Minimum consecutive transaction-like lines to confirm a real table */
@@ -71,8 +69,7 @@ export function findFirstTransactionLine(lines: TextItem[][]): number {
 // PII classification for transaction data rows
 // ---------------------------------------------------------------------------
 
-const MONTH_ABBREVS =
-  "JAN|FÉV|FEV|FEB|MAR|AVR|APR|MAI|MAY|JUN|JUL|AOÛ|AOU|AUG|SEP|OCT|NOV|DÉC|DEC";
+const MONTH_ABBREVS = "JAN|FÉV|FEV|FEB|MAR|AVR|APR|MAI|MAY|JUN|JUL|AOÛ|AOU|AUG|SEP|OCT|NOV|DÉC|DEC";
 
 const DATE_RE = new RegExp(
   `^\\d{1,2}\\s+(${MONTH_ABBREVS})$|^\\d{1,2}[/\\-]\\d{1,2}([/\\-]\\d{2,4})?$`,

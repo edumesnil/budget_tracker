@@ -35,7 +35,9 @@ describe("validateTransactions", () => {
       tx({ amount: 5000 }),
     ];
     const result = validateTransactions(txs);
-    expect(result.flagged.some((f) => f.warnings.some((w) => w.includes("larger than typical")))).toBe(true);
+    expect(
+      result.flagged.some((f) => f.warnings.some((w) => w.includes("larger than typical"))),
+    ).toBe(true);
   });
 
   it("flags suspiciously round large amounts (likely balance)", () => {

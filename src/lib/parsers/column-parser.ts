@@ -53,10 +53,7 @@ function getAmountText(line: TextItem[], col: ColumnDef | undefined): string {
   // Look for digit-only items just to the left of the leftmost matched item
   const leftmost = inRange[0];
   const adjacent = line.filter(
-    (i) =>
-      i.x < leftmost.x &&
-      leftmost.x - (i.x + i.width) < 15 &&
-      /^\d+$/.test(i.text.trim()),
+    (i) => i.x < leftmost.x && leftmost.x - (i.x + i.width) < 15 && /^\d+$/.test(i.text.trim()),
   );
 
   return [...adjacent, ...inRange]

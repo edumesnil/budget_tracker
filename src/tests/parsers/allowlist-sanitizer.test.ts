@@ -99,10 +99,7 @@ describe("allowlistSanitize", () => {
   });
 
   it("falls back to verbatim first 12 lines when no transactions found", () => {
-    const lines: TextItem[][] = [
-      [item("Some header", 50, 10)],
-      [item("More stuff", 50, 20)],
-    ];
+    const lines: TextItem[][] = [[item("Some header", 50, 10)], [item("More stuff", 50, 20)]];
 
     const result = allowlistSanitize(lines);
     // Falls back to verbatim — no masking
