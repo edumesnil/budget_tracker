@@ -91,6 +91,12 @@ export function parseSchemaResponse(raw: string): RawSchemaResponse | null {
 
     if (!parsed.columns?.date || !parsed.columns?.description) return null;
     if (!parsed.amount_format) return null;
+    // Must have at least one amount column
+    if (
+      !parsed.columns?.amount &&
+      !(parsed.columns?.withdrawal && parsed.columns?.deposit)
+    )
+      return null;
 
     const cols = parsed.columns;
     for (const key of Object.keys(cols)) {

@@ -74,4 +74,19 @@ describe("parseSchemaResponse", () => {
   it("returns null for garbage input", () => {
     expect(parseSchemaResponse("not json at all")).toBeNull();
   });
+
+  it("returns null when no amount columns present", () => {
+    const raw = JSON.stringify({
+      bank_name: "Unknown",
+      statement_type: "unknown",
+      columns: {
+        date: { x: [10, 60] },
+        description: { x: [70, 300] },
+      },
+      amount_format: "english",
+      skip_patterns: [],
+      year_source: "header",
+    });
+    expect(parseSchemaResponse(raw)).toBeNull();
+  });
 });
