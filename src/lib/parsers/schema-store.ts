@@ -71,10 +71,16 @@ export function buildSchema(
 export async function saveSchema(
   schema: Omit<StatementSchema, "id" | "user_id" | "created_at">,
 ): Promise<StatementSchema> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
   const { data, error } = await supabase
     .from("statement_schemas")
     .upsert(
       {
+        user_id: user.id,
         fingerprint: schema.fingerprint,
         bank_name: schema.bank_name,
         statement_type: schema.statement_type,
