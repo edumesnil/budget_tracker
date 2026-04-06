@@ -51,27 +51,42 @@ function parseDateDDMMM(text: string): { day: number; month: number } | null {
 
 function parseDate(
   text: string,
-  _format?: string,
+  format?: string,
 ): { day: number; month: number; year?: number } | null {
+  // DD MMM always unambiguous — try first regardless of format
   const ddmmm = parseDateDDMMM(text);
   if (ddmmm) return ddmmm;
 
-  const slashMatch = text.match(/^(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?$/);
-  if (slashMatch) {
-    const day = parseInt(slashMatch[1], 10);
-    const month = parseInt(slashMatch[2], 10);
-    const year = slashMatch[3] ? parseInt(slashMatch[3], 10) : undefined;
-    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
-      return { day, month, year: year && year < 100 ? 2000 + year : year };
+  // DD MM (two numbers separated by space)
+  const ddmm = text.match(/^(\d{1,2})\s+(\d{2})$/);
+  if (ddmm) {
+    const a = parseInt(ddmm[1], 10);
+    const b = parseInt(ddmm[2], 10);
+    if (b >= 1 && b <= 12 && a >= 1 && a <= 31) {
+      return { day: a, month: b };
     }
   }
 
-  const ddmm = text.match(/^(\d{1,2})\s+(\d{2})$/);
-  if (ddmm) {
-    const day = parseInt(ddmm[1], 10);
-    const month = parseInt(ddmm[2], 10);
+  // Slash/dash dates — use format hint for DD/MM vs MM/DD
+  const slashMatch = text.match(/^(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?$/);
+  if (slashMatch) {
+    const a = parseInt(slashMatch[1], 10);
+    const b = parseInt(slashMatch[2], 10);
+    const year = slashMatch[3] ? parseInt(slashMatch[3], 10) : undefined;
+
+    let day: number, month: number;
+    if (format?.startsWith("MM")) {
+      // MM/DD format
+      month = a;
+      day = b;
+    } else {
+      // DD/MM format (default for Canadian context)
+      day = a;
+      month = b;
+    }
+
     if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
-      return { day, month };
+      return { day, month, year: year && year < 100 ? 2000 + year : year };
     }
   }
 
@@ -112,14 +127,54 @@ export function parseWithSchema(
     ? new RegExp(schema.external_income_pattern, "i")
     : null;
 
+  // Section tracking
+  const sectionRules = schema.sections?.map((s) => ({
+    re: new RegExp(s.header_pattern, "i"),
+    parse: s.parse,
+  }));
+  const continuationRe = schema.continuation_pattern
+    ? new RegExp(schema.continuation_pattern, "i")
+    : null;
+  let activeSection: { parse: boolean } | null = null;
+
   for (const line of lines) {
     if (options.limit && transactions.length >= options.limit) break;
 
     const lineText = line.map((i) => i.text).join(" ");
     if (skipRes.some((re) => re.test(lineText))) continue;
 
+    // Section header detection
+    if (sectionRules) {
+      let isSectionHeader = false;
+      for (const rule of sectionRules) {
+        if (rule.re.test(lineText)) {
+          activeSection = { parse: rule.parse };
+          isSectionHeader = true;
+          break;
+        }
+      }
+      if (isSectionHeader) continue;
+      if (continuationRe?.test(lineText)) continue;
+      if (activeSection && !activeSection.parse) continue;
+    }
+
     const dateText = getColumnText(line, schema.columns.date);
-    if (!dateText) continue;
+    if (!dateText) {
+      // Multiline continuation: append description to previous transaction
+      if (schema.multiline_rule === "indent" && transactions.length > 0) {
+        const contDesc = getColumnText(line, schema.columns.description);
+        if (contDesc) {
+          const prev = transactions[transactions.length - 1];
+          transactions[transactions.length - 1] = {
+            ...prev,
+            description: `${prev.description} ${contDesc}`,
+          };
+          // Update rawLine too
+          rawLines[rawLines.length - 1] += ` ${lineText}`;
+        }
+      }
+      continue;
+    }
 
     const parsed = parseDate(dateText, schema.columns.date.format);
     if (!parsed) continue;
