@@ -76,6 +76,30 @@ export interface MerchantMapping {
   categories?: Category; // joined
 }
 
+export interface StatementSchemaRow {
+  id: string;
+  user_id: string;
+  fingerprint: string;
+  bank_name: string;
+  statement_type: string;
+  columns: Record<string, unknown>;
+  amount_format: "french" | "english";
+  credit_marker: string | null;
+  sections: Record<string, unknown>[] | null;
+  continuation_pattern: string | null;
+  skip_patterns: string[];
+  multiline_rule: string | null;
+  transfer_codes: string[] | null;
+  internal_transfer_pattern: string | null;
+  external_income_pattern: string | null;
+  year_source: "header" | "inline";
+  year_pattern: string | null;
+  confirmed: boolean;
+  created_at: string;
+}
+
+export type InsertStatementSchema = Omit<StatementSchemaRow, "id" | "user_id" | "created_at">;
+
 // =============================================================================
 // Utility types for insert/update operations
 // =============================================================================
