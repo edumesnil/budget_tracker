@@ -1,5 +1,4 @@
 import type { TextItem } from "./schema-types";
-import { detectColumnHeaderLine } from "./fingerprint";
 
 const MONTH_ABBREVS = "JAN|FÉV|FEV|FEB|MAR|AVR|APR|MAI|MAY|JUN|JUL|AOÛ|AOU|AUG|SEP|OCT|NOV|DÉC|DEC";
 
@@ -78,23 +77,51 @@ export function classifyItem(text: string): "keep" | "mask" {
 }
 
 /**
+ * Check if a line looks like a transaction row: 4+ items, starts with a
+ * date-like value, and has an amount-like item (with decimal).
+ */
+const DATE_START_RE =
+  /^\d{1,2}$|^\d{1,2}\s+[A-ZÀ-Ü]{3}$|^\d{1,2}[/-]\d{1,2}([/-]\d{2,4})?$|^\d{4}-\d{2}-\d{2}$/i;
+
+function looksLikeTransaction(line: TextItem[]): boolean {
+  if (line.length < 4) return false;
+  if (!DATE_START_RE.test(line[0].text.trim())) return false;
+  return line.some(
+    (it) => AMOUNT_RE.test(it.text.trim()) && hasDigitAndDecimal(it.text.trim()),
+  );
+}
+
+/**
+ * Find the first transaction line by looking for consecutive matches.
+ * A real transaction table has back-to-back rows that match.
+ * Isolated summary lines that happen to have dates+amounts are skipped.
+ */
+function findFirstTransactionLine(lines: TextItem[][]): number {
+  for (let i = 0; i < lines.length - 1; i++) {
+    if (!looksLikeTransaction(lines[i])) continue;
+
+    // Check that at least one of the next 3 lines also matches —
+    // real transaction tables have consecutive matching rows
+    const hasNeighbor = lines
+      .slice(i + 1, i + 4)
+      .some((l) => looksLikeTransaction(l));
+    if (hasNeighbor) return i;
+  }
+  return -1;
+}
+
+/**
  * Allowlist-sanitize extracted lines for AI schema detection.
- * Finds the column header line, then samples header + 8-10 data rows after it.
+ * Finds the first transaction line, then samples column headers + data rows.
  * Returns a formatted string with x-positions and masked PII.
  */
 export function allowlistSanitize(lines: TextItem[][]): string {
-  // Find the column header line to start sampling from there
-  const headerLine = detectColumnHeaderLine(lines);
-  let startIdx = 0;
-  if (headerLine && headerLine.length > 0) {
-    // Find which line index contains the header
-    const headerY = headerLine[0].y;
-    startIdx = lines.findIndex((line) => line.some((item) => Math.abs(item.y - headerY) < 3));
-    if (startIdx < 0) startIdx = 0;
-  }
+  // Find first transaction line, then back up 4 lines to capture column headers
+  const txIdx = findFirstTransactionLine(lines);
+  const startIdx = txIdx > 0 ? Math.max(0, txIdx - 4) : 0;
 
-  // Take column header line + next 10 data lines
-  const sample = lines.slice(startIdx, startIdx + 12);
+  // Take column headers + ~10 transaction lines
+  const sample = lines.slice(startIdx, startIdx + 14);
 
   const result: string[] = [];
   for (const line of sample) {
