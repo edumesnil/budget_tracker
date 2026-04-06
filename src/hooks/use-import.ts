@@ -13,6 +13,7 @@ import type { ParsedTransaction, ValidatedTransaction, CsvColumnMap } from "@/li
 import type { TextItem, StatementSchema } from "@/lib/parsers/schema-types";
 import type { MerchantMapping, Category } from "@/types/database";
 import type { CategoryOption } from "@/lib/ai";
+import { log } from "@/lib/logger";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -192,7 +193,7 @@ export function useImport(
 
     for (let b = 0; b < totalUnique; b += BATCH_SIZE) {
       if (abortRef.current) {
-        console.log("[import] Background categorization aborted");
+        log.info("[import] Background categorization aborted");
         return;
       }
 
@@ -406,7 +407,7 @@ export function useImport(
     const preMatchedCount = reviewItems.filter((r) => r.aiStatus === "skipped").length;
     const uniqueUnknowns = unknowns.length;
     const totalUnknownRows = reviewItems.filter((r) => r.aiStatus === "waiting").length;
-    console.log(
+    log.info(
       `[import] ${reviewItems.length} transactions: ${preMatchedCount} pre-matched, ${totalUnknownRows} unknown (${uniqueUnknowns} unique descriptions)`,
     );
 
