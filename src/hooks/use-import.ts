@@ -4,11 +4,16 @@ import { supabase } from "@/lib/supabase";
 import { sanitize } from "@/lib/sanitizer";
 import { getAIProvider, cleanFallback } from "@/lib/ai";
 import { merchantMappingKeys } from "@/hooks/use-merchant-mappings";
-import { parsePdf } from "@/lib/parsers/pdf";
+import { parsePdf, deduplicateTransactions, type SchemaParsePipelineResult } from "@/lib/parsers/pdf";
+import { parseWithSchema } from "@/lib/parsers/column-parser";
+import { validateTransactions } from "@/lib/parsers/validate";
+import { buildSchema, saveSchema } from "@/lib/parsers/schema-store";
 import { getHeaders, parseCsv, detectColumns } from "@/lib/parsers/csv";
-import type { ParsedTransaction, CsvColumnMap } from "@/lib/parsers/types";
+import type { ParsedTransaction, ValidatedTransaction, CsvColumnMap } from "@/lib/parsers/types";
+import type { TextItem, StatementSchema } from "@/lib/parsers/schema-types";
 import type { MerchantMapping, Category } from "@/types/database";
 import type { CategoryOption } from "@/lib/ai";
+import { log } from "@/lib/logger";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -17,6 +22,8 @@ import type { CategoryOption } from "@/lib/ai";
 export type ImportStatus =
   | "idle"
   | "parsing"
+  | "schema_detecting" // AI analyzing format
+  | "schema_validating" // user confirming sample rows
   | "mapping" // CSV column mapping needed
   | "reviewing"
   | "importing"
@@ -36,6 +43,10 @@ export interface ReviewItem {
   aiStatus: "waiting" | "analyzing" | "done" | "skipped"; // per-row AI progress
   duplicate: DuplicateMatch | null;
   suggestedCategory?: string; // AI-suggested new category when nothing fits
+  warnings: string[]; // validation warnings
+  rawLine?: string; // original PDF line
+  parseError?: string; // unparseable reason
+  transferType?: "internal" | "external-income" | null;
 }
 
 export interface DuplicateMatch {
@@ -78,6 +89,22 @@ export function useImport(
 
   // Keep a ref to abort background categorization
   const abortRef = useRef(false);
+
+  // Schema detection state
+  const [schemaPreview, setSchemaPreview] = useState<ParsedTransaction[] | null>(null);
+  const [detectedSchema, setDetectedSchema] = useState<Omit<
+    StatementSchema,
+    "id" | "user_id" | "created_at"
+  > | null>(null);
+  const [schemaItems, setSchemaItems] = useState<TextItem[][] | null>(null);
+  const [schemaFullText, setSchemaFullText] = useState<string | null>(null);
+  const [validationResult, setValidationResult] = useState<{
+    clean: ValidatedTransaction[];
+    flagged: ValidatedTransaction[];
+    unparseable: ValidatedTransaction[];
+  } | null>(null);
+  const [flaggedFirst, setFlaggedFirst] = useState(false);
+  const [schemaTxStart, setSchemaTxStart] = useState<number | undefined>(undefined);
 
   // Build category options for the AI
   const categoryOptions: CategoryOption[] = categories.map((c) => ({
@@ -167,7 +194,7 @@ export function useImport(
 
     for (let b = 0; b < totalUnique; b += BATCH_SIZE) {
       if (abortRef.current) {
-        console.log("[import] Background categorization aborted");
+        log.info("[import] Background categorization aborted");
         return;
       }
 
@@ -303,6 +330,9 @@ export function useImport(
 
       const isDuplicate = duplicates.has(i);
 
+      // Carry through validation metadata if this is a ValidatedTransaction
+      const vtx = tx as ValidatedTransaction;
+
       const item: ReviewItem = {
         id: `import-${i}`,
         date: tx.date,
@@ -316,10 +346,20 @@ export function useImport(
         status: isDuplicate ? "skipped" : "pending",
         aiStatus: isDuplicate ? "skipped" : isPreMatched ? "skipped" : "waiting",
         duplicate: duplicates.get(i) ?? null,
+        warnings: vtx.warnings ?? [],
+        rawLine: vtx.rawLine,
+        parseError: vtx.parseError,
+        transferType: tx.transferType ?? null,
       };
 
-      // Pre-accept high-confidence pre-matched items (not duplicates)
-      if (!isDuplicate && isPreMatched && item.category_id) {
+      // Handle internal transfers — auto-skip them
+      if (tx.transferType === "internal") {
+        item.status = "skipped";
+        item.aiStatus = "skipped";
+      }
+
+      // Pre-accept high-confidence pre-matched items (not duplicates, not transfers)
+      if (!isDuplicate && isPreMatched && item.category_id && tx.transferType !== "internal") {
         item.status = "accepted";
       }
 
@@ -368,7 +408,7 @@ export function useImport(
     const preMatchedCount = reviewItems.filter((r) => r.aiStatus === "skipped").length;
     const uniqueUnknowns = unknowns.length;
     const totalUnknownRows = reviewItems.filter((r) => r.aiStatus === "waiting").length;
-    console.log(
+    log.info(
       `[import] ${reviewItems.length} transactions: ${preMatchedCount} pre-matched, ${totalUnknownRows} unknown (${uniqueUnknowns} unique descriptions)`,
     );
 
@@ -401,14 +441,55 @@ export function useImport(
       if (ext === "pdf") {
         setStatus("parsing");
         try {
-          const result = await parsePdf(file);
+          const result: SchemaParsePipelineResult = await parsePdf(file);
           setWarnings(result.warnings);
-          if (result.transactions.length === 0) {
-            setError("No transactions found in the PDF.");
-            setStatus("idle");
-            return;
+
+          if (result.status === "cached") {
+            if (!result.transactions || result.transactions.length === 0) {
+              setError("No transactions found in the PDF.");
+              setStatus("idle");
+              return;
+            }
+            setValidationResult(result.validation ?? null);
+            await processTransactions(result.transactions);
+          } else {
+            setSchemaItems(result.items ?? null);
+            setSchemaFullText(result.fullText ?? null);
+            setSchemaTxStart(result.txStartLine);
+
+            setStatus("schema_detecting");
+            const ai = getAIProvider();
+
+            // Retry up to 3 times — AI is non-deterministic
+            let rawSchema = null;
+            for (let attempt = 1; attempt <= 3; attempt++) {
+              log.info(`[import] Schema detection attempt ${attempt}/3`);
+              rawSchema = await ai.detectSchema(result.sanitizedSample!);
+              if (rawSchema) break;
+              if (attempt < 3) log.warn(`[import] Attempt ${attempt} failed, retrying...`);
+            }
+
+            if (!rawSchema) {
+              setError(
+                "Could not detect statement format after 3 attempts. The PDF may use a font encoding that prevents text extraction — try CSV export from your bank's website.",
+              );
+              setStatus("idle");
+              return;
+            }
+
+            const schema = buildSchema(rawSchema, result.fingerprint!, result.bankId);
+            setDetectedSchema(schema);
+
+            // Preview: parse first 5 rows, starting from transaction section
+            const preview = parseWithSchema(
+              result.items!,
+              result.fullText!,
+              { ...schema, id: "", user_id: "", created_at: "" } as StatementSchema,
+              { limit: 5, startLine: result.txStartLine },
+            );
+            setSchemaPreview(preview.transactions);
+            setStatus("schema_validating");
           }
-          await processTransactions(result.transactions);
         } catch (err) {
           setError(err instanceof Error ? err.message : "Failed to parse PDF");
           setStatus("idle");
@@ -462,6 +543,51 @@ export function useImport(
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [csvRows, merchantMappings, categories, categoryGroups],
   );
+
+  const confirmSchema = useCallback(async () => {
+    if (!detectedSchema || !schemaItems || !schemaFullText) return;
+
+    try {
+      setStatus("parsing");
+      const tempSchema = {
+        ...detectedSchema,
+        id: "",
+        user_id: "",
+        created_at: "",
+      } as StatementSchema;
+      const result = parseWithSchema(schemaItems, schemaFullText, tempSchema, {
+        startLine: schemaTxStart,
+      });
+      const deduped = deduplicateTransactions(result.transactions, result.rawLines);
+      const validation = validateTransactions(deduped.transactions, deduped.rawLines);
+      setValidationResult(validation);
+
+      const allTx = [...validation.clean, ...validation.flagged];
+      if (allTx.length === 0) {
+        setError("No transactions found after parsing with detected schema.");
+        setStatus("idle");
+        return;
+      }
+
+      // Save schema AFTER verifying it produces transactions
+      await saveSchema(detectedSchema);
+
+      setWarnings(result.warnings);
+      await processTransactions(allTx);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save schema");
+      setStatus("idle");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detectedSchema, schemaItems, schemaFullText, schemaTxStart]);
+
+  const rejectSchema = useCallback(() => {
+    setDetectedSchema(null);
+    setSchemaPreview(null);
+    setSchemaItems(null);
+    setSchemaFullText(null);
+    setStatus("idle");
+  }, []);
 
   // -------------------------------------------------------------------------
   // Review actions
@@ -574,6 +700,13 @@ export function useImport(
     setProgress(0);
     setCsvHeaders([]);
     setCsvRows([]);
+    setDetectedSchema(null);
+    setSchemaPreview(null);
+    setSchemaItems(null);
+    setSchemaFullText(null);
+    setValidationResult(null);
+    setFlaggedFirst(false);
+    setSchemaTxStart(undefined);
   }, []);
 
   return {
@@ -583,8 +716,15 @@ export function useImport(
     error,
     progress,
     csvHeaders,
+    schemaPreview,
+    detectedSchema,
+    validationResult,
+    flaggedFirst,
+    setFlaggedFirst,
     handleFile,
     handleCsvMapping,
+    confirmSchema,
+    rejectSchema,
     updateItem,
     acceptAll,
     commit,

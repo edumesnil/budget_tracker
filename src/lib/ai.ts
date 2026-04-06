@@ -3,6 +3,8 @@
 // =============================================================================
 
 import type { MerchantMapping } from "@/types/database";
+import type { RawSchemaResponse } from "@/lib/parsers/schema-prompt";
+import { log } from "@/lib/logger";
 
 // ---------------------------------------------------------------------------
 // Interface
@@ -29,6 +31,7 @@ export interface AIProvider {
     existingMappings?: MerchantMapping[],
     types?: Array<"INCOME" | "EXPENSE">,
   ): Promise<CategorizationResult[]>;
+  detectSchema(sanitizedSample: string): Promise<RawSchemaResponse | null>;
 }
 
 // ---------------------------------------------------------------------------
@@ -52,7 +55,7 @@ async function fetchWithRetry(
 
     // Rate limit (429) or server error (5xx) — retry with backoff
     lastErr = new Error(`HTTP ${res.status}: ${await res.text()}`);
-    console.warn(`[ai] Request failed (attempt ${attempt + 1}/${maxRetries + 1}): ${res.status}`);
+    log.warn(`[ai] Request failed (attempt ${attempt + 1}/${maxRetries + 1}): ${res.status}`);
 
     if (attempt < maxRetries) {
       // Use Retry-After header if present, otherwise exponential backoff
@@ -163,14 +166,14 @@ ${merchantList}`;
   const prompt = `${system}\n\n${user}`;
 
   // Debug: log the category ID mapping so we can verify LLM responses
-  console.log(
+  log.info(
     "[ai] Category ID map:",
     Object.fromEntries(
       [...idMap.entries()].map(([k, v]) => [k, categories.find((c) => c.id === v)?.name ?? v]),
     ),
   );
-  console.log("[ai] Total categories:", idMap.size);
-  console.log("[ai] User message sent to LLM:\n", user);
+  log.info("[ai] Total categories:", idMap.size);
+  log.info("[ai] User message sent to LLM:\n", user);
 
   return { prompt, system, user, idMap };
 }
@@ -244,7 +247,7 @@ function parseResponse(
   descriptions: string[],
   idMap: Map<number, string>,
 ): CategorizationResult[] {
-  console.log("[ai] Raw LLM response:", raw.slice(0, 500));
+  log.info("[ai] Raw LLM response:", raw.slice(0, 500));
 
   const fallbackAll = () =>
     descriptions.map((d) => ({
@@ -256,11 +259,11 @@ function parseResponse(
 
   const results = extractResults(raw);
   if (!results) {
-    console.warn("[ai] Could not extract results array from response");
+    log.warn("[ai] Could not extract results array from response");
     return fallbackAll();
   }
 
-  console.log("[ai] Parsed results:", results.length, "items");
+  log.info("[ai] Parsed results:", results.length, "items");
 
   return descriptions.map((desc, i) => {
     const match = results.find((p) => p.index === i + 1);
@@ -278,7 +281,7 @@ function parseResponse(
     const catId = idMap.get(match.category_id) ?? null;
 
     if (!catId) {
-      console.warn(`[ai] Unknown numeric category ID: ${match.category_id}`);
+      log.warn(`[ai] Unknown numeric category ID: ${match.category_id}`);
     }
 
     const confidence = (
@@ -401,6 +404,32 @@ export class OllamaProvider implements AIProvider {
     const data = (await res.json()) as { response: string };
     return parseResponse(data.response, descriptions, idMap);
   }
+
+  async detectSchema(sanitizedSample: string): Promise<RawSchemaResponse | null> {
+    const { buildSchemaPrompt, parseSchemaResponse } = await import("@/lib/parsers/schema-prompt");
+    const { system, user } = buildSchemaPrompt(sanitizedSample);
+
+    const res = await fetchWithRetry(`${this.baseUrl}/api/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: this.model,
+        prompt: `${system}\n\n${user}`,
+        format: "json",
+        stream: false,
+        options: { temperature: 0.1 },
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Ollama schema detection failed: ${res.status} ${err}`);
+    }
+
+    const data = (await res.json()) as { response: string };
+    log.info("[ai] Schema detection response:", data.response.slice(0, 500));
+    return parseSchemaResponse(data.response);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -454,6 +483,40 @@ export class GeminiProvider implements AIProvider {
 
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
     return parseResponse(text, descriptions, idMap);
+  }
+
+  async detectSchema(sanitizedSample: string): Promise<RawSchemaResponse | null> {
+    const { buildSchemaPrompt, parseSchemaResponse } = await import("@/lib/parsers/schema-prompt");
+    const { system, user } = buildSchemaPrompt(sanitizedSample);
+
+    const res = await fetchWithRetry(
+      `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: system }] },
+          contents: [{ parts: [{ text: user }] }],
+          generationConfig: {
+            temperature: 0.1,
+            responseMimeType: "application/json",
+          },
+        }),
+      },
+    );
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Gemini schema detection failed: ${res.status} ${err}`);
+    }
+
+    const data = (await res.json()) as {
+      candidates: Array<{ content: { parts: Array<{ text: string }> } }>;
+    };
+
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+    log.info("[ai] Schema detection response:", text.slice(0, 500));
+    return parseSchemaResponse(text);
   }
 }
 
@@ -514,6 +577,45 @@ export class GroqProvider implements AIProvider {
     const text = data.choices?.[0]?.message?.content ?? "";
     return parseResponse(text, descriptions, idMap);
   }
+
+  async detectSchema(sanitizedSample: string): Promise<RawSchemaResponse | null> {
+    const { buildSchemaPrompt, parseSchemaResponse } = await import("@/lib/parsers/schema-prompt");
+    const { system, user } = buildSchemaPrompt(sanitizedSample);
+
+    const res = await fetchWithRetry(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: this.model,
+          messages: [
+            { role: "system", content: system },
+            { role: "user", content: user },
+          ],
+          temperature: 0.1,
+          response_format: { type: "json_object" },
+        }),
+      },
+      { maxRetries: 2, baseDelay: 1000 },
+    );
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Groq schema detection failed: ${res.status} ${err}`);
+    }
+
+    const data = (await res.json()) as {
+      choices: Array<{ message: { content: string } }>;
+    };
+
+    const text = data.choices?.[0]?.message?.content ?? "";
+    log.info("[ai] Schema detection response:", text.slice(0, 500));
+    return parseSchemaResponse(text);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -523,17 +625,17 @@ export class GroqProvider implements AIProvider {
 function createProvider(): AIProvider {
   const groqKey = import.meta.env.VITE_GROQ_API_KEY;
   if (groqKey) {
-    console.log("[ai] Using Groq provider (llama-3.3-70b)");
+    log.info("[ai] Using Groq provider (llama-3.3-70b)");
     return new GroqProvider(groqKey);
   }
 
   const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
   if (geminiKey) {
-    console.log("[ai] Using Gemini provider");
+    log.info("[ai] Using Gemini provider");
     return new GeminiProvider(geminiKey);
   }
 
-  console.log("[ai] No API key found, falling back to Ollama (localhost:11434)");
+  log.info("[ai] No API key found, falling back to Ollama (localhost:11434)");
   return new OllamaProvider();
 }
 

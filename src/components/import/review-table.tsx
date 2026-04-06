@@ -1,13 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Check,
-  X,
-  AlertTriangle,
-  Sparkles,
-  Database,
-  HelpCircle,
-  Plus,
-} from "lucide-react";
+import { Check, X, AlertTriangle, Sparkles, Database, HelpCircle, Plus } from "lucide-react";
 import { css } from "../../../styled-system/css";
 import { Badge } from "@/components/ui/badge";
 import * as Card from "@/components/ui/card";
@@ -329,8 +321,7 @@ function CategoryPicker({
           bg: "transparent",
           cursor: "pointer",
           border: "none",
-          borderTopWidth: "1px",
-          borderColor: "border.subtle",
+          boxShadow: "inset 0 1px 0 0 var(--colors-border-subtle)",
           textAlign: "left",
           _hover: { bg: "teal.a2" },
         })}
@@ -375,6 +366,8 @@ const AnimatedRow = memo(function AnimatedRow({
 }: AnimatedRowProps) {
   const prevAiStatus = useRef(item.aiStatus);
   const [flashActive, setFlashActive] = useState(false);
+  const [editingField, setEditingField] = useState<"name" | "amount" | null>(null);
+  const [editValue, setEditValue] = useState("");
 
   useEffect(() => {
     if (prevAiStatus.current !== "done" && item.aiStatus === "done") {
@@ -403,6 +396,36 @@ const AnimatedRow = memo(function AnimatedRow({
     prevDisplayName.current = item.displayName;
   }, [item.displayName]);
 
+  const isFlagged = item.warnings && item.warnings.length > 0;
+
+  const handleSaveEdit = () => {
+    if (!editingField) return;
+    if (editingField === "name" && editValue.trim()) {
+      onUpdateItem(item.id, { displayName: editValue.trim() });
+    } else if (editingField === "amount") {
+      const num = parseFloat(editValue);
+      if (!isNaN(num) && num > 0) {
+        onUpdateItem(item.id, { amount: num, warnings: [] });
+      }
+    }
+    setEditingField(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingField(null);
+  };
+
+  const handleEditKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleSaveEdit();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      handleCancelEdit();
+    }
+    e.stopPropagation();
+  };
+
   const rowBg = isActive ? "var(--colors-teal-a2)" : "transparent";
 
   return (
@@ -423,6 +446,10 @@ const AnimatedRow = memo(function AnimatedRow({
         ...(item.aiStatus === "analyzing" && {
           boxShadow: "inset 3px 0 0 0 var(--colors-teal-8)",
         }),
+        ...(isFlagged &&
+          !item.duplicate && {
+            boxShadow: "inset 3px 0 0 0 var(--colors-orange-8)",
+          }),
         ...(flashActive && {
           animation: "flash-row 400ms ease-out",
         }),
@@ -446,19 +473,45 @@ const AnimatedRow = memo(function AnimatedRow({
       {/* Description */}
       <Table.Cell>
         <div>
-          <span
-            key={`dn-${item.id}-${displayNameAnimKey}`}
-            className={css({
-              display: "block",
-              fontSize: "sm",
-              fontWeight: "500",
-              ...(displayNameAnimKey > 0 && {
-                animation: "slide-fade-in-y 200ms ease-out",
-              }),
-            })}
-          >
-            {item.displayName}
-          </span>
+          {editingField === "name" ? (
+            <input
+              autoFocus
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onKeyDown={handleEditKeyDown}
+              onBlur={handleSaveEdit}
+              className={css({
+                fontSize: "sm",
+                fontWeight: "500",
+                bg: "transparent",
+                border: "none",
+                outline: "none",
+                w: "full",
+                p: "0",
+                color: "fg.default",
+              })}
+            />
+          ) : (
+            <span
+              key={`dn-${item.id}-${displayNameAnimKey}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setEditingField("name");
+                setEditValue(item.displayName);
+              }}
+              className={css({
+                display: "block",
+                fontSize: "sm",
+                fontWeight: "500",
+                cursor: "text",
+                ...(displayNameAnimKey > 0 && {
+                  animation: "slide-fade-in-y 200ms ease-out",
+                }),
+              })}
+            >
+              {item.displayName}
+            </span>
+          )}
           <p className={css({ fontSize: "xs", color: "fg.muted", mt: "0.5" })}>
             {item.description}
           </p>
@@ -478,6 +531,21 @@ const AnimatedRow = memo(function AnimatedRow({
               </span>
             </div>
           )}
+          {isFlagged &&
+            item.warnings.map((w, wi) => (
+              <div
+                key={wi}
+                className={css({
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "1",
+                  mt: "0.5",
+                })}
+              >
+                <AlertTriangle size={12} className={css({ color: "orange.9" })} />
+                <span className={css({ fontSize: "xs", color: "orange.11" })}>{w}</span>
+              </div>
+            ))}
         </div>
       </Table.Cell>
 
@@ -490,8 +558,49 @@ const AnimatedRow = memo(function AnimatedRow({
           color: item.type === "INCOME" ? "income" : "expense",
         })}
       >
-        {item.type === "INCOME" ? "+" : "−"}
-        {formatCurrency(item.amount)}
+        {editingField === "amount" ? (
+          <input
+            autoFocus
+            type="number"
+            step="0.01"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onKeyDown={handleEditKeyDown}
+            onBlur={handleSaveEdit}
+            className={css({
+              fontSize: "sm",
+              bg: "transparent",
+              border: "none",
+              outline: "none",
+              w: "20",
+              p: "0",
+              textAlign: "right",
+              color: item.type === "INCOME" ? "income" : "expense",
+            })}
+          />
+        ) : (
+          <>
+            <span
+              onClick={(e) => {
+                e.stopPropagation();
+                onUpdateItem(item.id, { type: item.type === "INCOME" ? "EXPENSE" : "INCOME" });
+              }}
+              className={css({ cursor: "pointer", _hover: { opacity: 0.7 } })}
+            >
+              {item.type === "INCOME" ? "+" : "\u2212"}
+            </span>
+            <span
+              onClick={(e) => {
+                e.stopPropagation();
+                setEditingField("amount");
+                setEditValue(String(item.amount));
+              }}
+              className={css({ cursor: "text" })}
+            >
+              {formatCurrency(item.amount)}
+            </span>
+          </>
+        )}
       </Table.Cell>
 
       {/* Category */}
@@ -680,6 +789,14 @@ export function ReviewTable({
         <span className={css({ fontSize: "sm", color: "income" })}>{accepted} accepted</span>
         <span className={css({ fontSize: "sm", color: "fg.muted" })}>{skipped} skipped</span>
         <span className={css({ fontSize: "sm", color: "fg.muted" })}>{pending} pending</span>
+        {(() => {
+          const flaggedCount = items.filter((i) => i.warnings && i.warnings.length > 0).length;
+          return flaggedCount > 0 ? (
+            <span className={css({ fontSize: "sm", color: "orange.11" })}>
+              {flaggedCount} flagged
+            </span>
+          ) : null;
+        })()}
         {dupeCount > 0 && (
           <span className={css({ fontSize: "sm", color: "expense" })}>
             {dupeCount} possible duplicates

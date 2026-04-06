@@ -8,6 +8,15 @@ export interface ParsedTransaction {
   description: string; // raw merchant description from the statement
   amount: number; // always positive — category.type determines direction
   type: "INCOME" | "EXPENSE";
+  transferType?: "internal" | "external-income" | null;
+  transferParty?: string; // extracted name from transfer description
+}
+
+/** Transaction after post-parse validation pass */
+export interface ValidatedTransaction extends ParsedTransaction {
+  warnings: string[]; // validation warnings
+  rawLine: string; // original PDF line text for debugging
+  parseError?: string; // if row couldn't be fully parsed
 }
 
 /** Result from any statement parser */

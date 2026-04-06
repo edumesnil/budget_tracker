@@ -1,0 +1,40 @@
+flowchart TD
+    subgraph Upload
+        A[PDF uploaded] --> B[Extract text items\nwith x,y positions]
+    end
+
+    subgraph Schema["Schema Detection (once per new bank format)"]
+        B --> C{Fingerprint\nmatches cached\nschema?}
+        C -->|Yes| G[Load cached schema]
+        C -->|No| D["Allowlist sanitization\n(aggressive)\n\nDates → keep\nAmounts → keep\nShort codes → keep\nBanking terms → keep\nEverything else → [TEXT]"]
+        D --> E["AI call #1: Schema detection\n\nSees ONLY:\n• Column positions\n• Date/amount formats\n• [TEXT] placeholders\n\nNO PII possible"]
+        E --> F["Preview 3-5 rows\nUser confirms amounts\nlook correct"]
+        F -->|Confirmed| G2[Save schema to Supabase\nconfirmed = true]
+        F -->|Rejected| E
+        G2 --> G
+    end
+
+    subgraph Parse["Deterministic Parsing (no AI, fully local)"]
+        G --> H["Column parser reads\nFULL unmasked text\nusing schema x-positions\n\n• Date from x=46-80\n• Code from x=84\n• Description from x=108-380\n• Amount from x=388-450\n• SKIP balance at x=533+"]
+        H --> I["ParsedTransaction[]\ndate, description, amount, type"]
+    end
+
+    subgraph Categorize["Categorization (existing flow)"]
+        I --> J[Merchant mapping lookup\nKnown merchants auto-matched]
+        J --> K{Unknown\nmerchants?}
+        K -->|No| M[Review table]
+        K -->|Yes| L["Light sanitization\n(existing sanitize fn)\n\nStrips: card numbers,\naccount refs, long digits\nKEEPS: merchant names,\ncities, descriptions"]
+        L --> N["AI call #2: Categorize\n\nSees:\n'Achat / SUBWAY'\n'Paiement / HYDRO-QUEBEC'\n'Paie / BEEHIVR TECHNOLOGIE'\n\nMerchant names intact\nfor accurate categorization"]
+        N --> M
+    end
+
+    subgraph Review
+        M --> O[User reviews\naccepts/skips/edits]
+        O --> P[Commit to Supabase\nSave new merchant mappings]
+    end
+
+    style D fill:#fef3c7,stroke:#d97706
+    style E fill:#dbeafe,stroke:#2563eb
+    style H fill:#d1fae5,stroke:#059669
+    style L fill:#fef3c7,stroke:#d97706
+    style N fill:#dbeafe,stroke:#2563eb
