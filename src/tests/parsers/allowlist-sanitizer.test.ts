@@ -53,7 +53,7 @@ describe("classifyItem (transaction row masking)", () => {
 });
 
 describe("allowlistSanitize", () => {
-  it("sends header lines verbatim and masks transaction PII", () => {
+  it("masks PII in headers and transactions, keeps banking terms", () => {
     const lines: TextItem[][] = [
       // Non-transaction lines (< 4 items, no date start)
       item("SOME BANK NAME", 50, 10),
