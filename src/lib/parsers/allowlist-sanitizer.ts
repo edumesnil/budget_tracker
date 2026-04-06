@@ -210,9 +210,10 @@ function formatLineMasked(line: TextItem[]): string {
  *
  * Strategy:
  * 1. Find the first block of 5+ consecutive transaction-like lines
- * 2. Take up to 10 lines before it as column headers — sent VERBATIM
+ * 2. Take up to 10 lines before it as column headers — PII-masked
+ *    (banking terms like "Date", "Retrait", "Dépôt" pass through the allowlist)
  * 3. Take 20 transaction lines — PII-masked
- * 4. Fallback: send first 50 lines verbatim if no transaction block found
+ * 4. Fallback: send first 50 lines PII-masked if no transaction block found
  */
 export function allowlistSanitize(lines: TextItem[][]): string {
   const txIdx = findFirstTransactionLine(lines);
