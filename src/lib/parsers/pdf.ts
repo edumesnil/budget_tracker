@@ -9,20 +9,7 @@
 // =============================================================================
 
 import type { ParseResult, ParsedTransaction } from "./types";
-
-// Lazy-load pdfjs-dist — ~300KB deferred until first PDF upload
-let pdfjsMod: typeof import("pdfjs-dist") | null = null;
-
-async function getPdfjs() {
-  if (!pdfjsMod) {
-    pdfjsMod = await import("pdfjs-dist");
-    pdfjsMod.GlobalWorkerOptions.workerSrc = new URL(
-      "pdfjs-dist/build/pdf.worker.min.mjs",
-      import.meta.url,
-    ).toString();
-  }
-  return pdfjsMod;
-}
+import { extractItems } from "./extract-items";
 
 // ---------------------------------------------------------------------------
 // Generic text extraction — reusable across all bank formats
@@ -33,54 +20,10 @@ async function getPdfjs() {
  * Groups text items by Y position, inserts spacing based on X gaps.
  */
 export async function extractLines(file: File): Promise<string[]> {
-  const pdfjsLib = await getPdfjs();
-  const buffer = await file.arrayBuffer();
-  const doc = await pdfjsLib.getDocument({ data: buffer }).promise;
+  const lineGroups = await extractItems(file);
 
-  const allItems: Array<{ text: string; x: number; y: number; width: number }> = [];
-  let pageOffset = 0;
-
-  for (let i = 1; i <= doc.numPages; i++) {
-    const page = await doc.getPage(i);
-    const content = await page.getTextContent();
-    const viewport = page.getViewport({ scale: 1 });
-
-    for (const item of content.items) {
-      if (!("str" in item) || !item.str.trim()) continue;
-      allItems.push({
-        text: item.str,
-        x: item.transform[4],
-        y: pageOffset + (viewport.height - item.transform[5]),
-        width: item.width,
-      });
-    }
-
-    pageOffset += viewport.height + 50;
-  }
-
-  // Cluster items into lines by Y position (tolerance of 3 units)
-  allItems.sort((a, b) => a.y - b.y || a.x - b.x);
-
-  const lineGroups: (typeof allItems)[] = [];
-  let currentLine: typeof allItems = [];
-  let currentY = -Infinity;
-
-  for (const item of allItems) {
-    if (Math.abs(item.y - currentY) > 3) {
-      if (currentLine.length > 0) lineGroups.push(currentLine);
-      currentLine = [item];
-      currentY = item.y;
-    } else {
-      currentLine.push(item);
-    }
-  }
-  if (currentLine.length > 0) lineGroups.push(currentLine);
-
-  // Build line strings with gap-aware spacing
   const lines: string[] = [];
   for (const group of lineGroups) {
-    group.sort((a, b) => a.x - b.x);
-
     let line = "";
     for (let j = 0; j < group.length; j++) {
       const item = group[j];
