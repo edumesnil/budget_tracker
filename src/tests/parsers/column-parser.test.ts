@@ -398,11 +398,7 @@ describe("parseWithSchema", () => {
         item("13MAR", 416, 100),
         item("37,29", 513, 100),
       ],
-      [
-        item("INT.SUR DECOUVERT", 69, 115),
-        item("0,09", 289, 115),
-        item("31MAR", 416, 115),
-      ],
+      [item("INT.SUR DECOUVERT", 69, 115), item("0,09", 289, 115), item("31MAR", 416, 115)],
       [
         item("FRAIS MENSUEL", 69, 130),
         item("3,95", 289, 130),

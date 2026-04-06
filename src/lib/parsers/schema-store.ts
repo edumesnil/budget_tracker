@@ -47,7 +47,7 @@ export function buildSchema(
 ): Omit<StatementSchema, "id" | "user_id" | "created_at"> {
   return {
     fingerprint,
-    bank_name: raw.bank_name !== "Unknown" ? raw.bank_name : bankId ?? "Unknown",
+    bank_name: raw.bank_name !== "Unknown" ? raw.bank_name : (bankId ?? "Unknown"),
     statement_type: raw.statement_type,
     columns: raw.columns as StatementSchema["columns"],
     amount_format: raw.amount_format,

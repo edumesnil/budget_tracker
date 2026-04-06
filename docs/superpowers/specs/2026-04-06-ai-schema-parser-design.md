@@ -45,18 +45,18 @@ Split into two functions:
 
 ```ts
 interface TextItem {
-  text: string
-  x: number      // horizontal position
-  y: number      // vertical position (page-adjusted)
-  width: number  // item width for gap detection
-  page: number   // source page (1-indexed)
+  text: string;
+  x: number; // horizontal position
+  y: number; // vertical position (page-adjusted)
+  width: number; // item width for gap detection
+  page: number; // source page (1-indexed)
 }
 
 /** Returns raw positioned text items grouped into lines by Y proximity */
-async function extractItems(file: File): Promise<TextItem[][]>
+async function extractItems(file: File): Promise<TextItem[][]>;
 
 /** Backward-compatible string extraction (calls extractItems internally) */
-async function extractLines(file: File): Promise<string[]>
+async function extractLines(file: File): Promise<string[]>;
 ```
 
 `extractItems` is the existing extraction logic from `extractLines` but returning structured data instead of flattening to strings. The `page` field is added to support per-page header stripping.
@@ -75,60 +75,60 @@ The declarative structure the AI produces and the column parser consumes.
 
 ```ts
 interface ColumnDef {
-  x: [number, number]    // min and max x-position for this column
-  format?: string         // for date columns: "DD MMM", "DD MM", "DD/MM/YYYY", etc.
+  x: [number, number]; // min and max x-position for this column
+  format?: string; // for date columns: "DD MMM", "DD MM", "DD/MM/YYYY", etc.
 }
 
 interface SectionRule {
-  header_pattern: string  // regex string matching section headers
-  parse: boolean          // true = extract transactions from this section
+  header_pattern: string; // regex string matching section headers
+  parse: boolean; // true = extract transactions from this section
 }
 
 interface StatementSchema {
   // Identity
-  id: string              // UUID, auto-generated
-  user_id: string         // RLS
-  fingerprint: string     // structural hash for cache lookup
-  bank_name: string       // "Desjardins", "TD", etc.
-  statement_type: string  // "chequing", "credit-card", "savings"
+  id: string; // UUID, auto-generated
+  user_id: string; // RLS
+  fingerprint: string; // structural hash for cache lookup
+  bank_name: string; // "Desjardins", "TD", etc.
+  statement_type: string; // "chequing", "credit-card", "savings"
 
   // Column layout
   columns: {
-    date: ColumnDef                // required
-    code?: ColumnDef               // transaction code (ACH, RA, DI, VFF...)
-    description: ColumnDef         // required
-    withdrawal?: ColumnDef         // chequing: separate debit column
-    deposit?: ColumnDef            // chequing: separate credit column
-    amount?: ColumnDef             // credit card: single amount column
-    balance?: ColumnDef            // identified so the parser can SKIP it
-  }
+    date: ColumnDef; // required
+    code?: ColumnDef; // transaction code (ACH, RA, DI, VFF...)
+    description: ColumnDef; // required
+    withdrawal?: ColumnDef; // chequing: separate debit column
+    deposit?: ColumnDef; // chequing: separate credit column
+    amount?: ColumnDef; // credit card: single amount column
+    balance?: ColumnDef; // identified so the parser can SKIP it
+  };
 
   // Amount parsing
-  amount_format: "french" | "english"
+  amount_format: "french" | "english";
   // french: space thousands, comma decimal ("1 234,56")
   // english: comma thousands, period decimal ("1,234.56")
-  credit_marker?: string           // e.g., "CR" for credit card statements
+  credit_marker?: string; // e.g., "CR" for credit card statements
 
   // Document structure
-  sections?: SectionRule[]
-  continuation_pattern?: string    // e.g., "(SUITE)" for multi-page sections
-  skip_patterns: string[]          // lines to ignore: totals, headers, footers
+  sections?: SectionRule[];
+  continuation_pattern?: string; // e.g., "(SUITE)" for multi-page sections
+  skip_patterns: string[]; // lines to ignore: totals, headers, footers
 
   // Line handling
-  multiline_rule?: "indent"        // continuation lines: same description x, no date
+  multiline_rule?: "indent"; // continuation lines: same description x, no date
 
   // Transfer detection
-  transfer_codes?: string[]        // codes indicating transfers: ["VFF", "VMW", "VWW"]
-  internal_transfer_pattern?: string  // regex: "Virement entre folios|Virement - AccèsD"
-  external_income_pattern?: string    // regex: "Virement (Interac )?de|reçu de"
+  transfer_codes?: string[]; // codes indicating transfers: ["VFF", "VMW", "VWW"]
+  internal_transfer_pattern?: string; // regex: "Virement entre folios|Virement - AccèsD"
+  external_income_pattern?: string; // regex: "Virement (Interac )?de|reçu de"
 
   // Year extraction
-  year_source: "header" | "inline"
-  year_pattern?: string            // regex to extract year (applied to full text)
+  year_source: "header" | "inline";
+  year_pattern?: string; // regex to extract year (applied to full text)
 
   // State
-  confirmed: boolean               // user validated sample rows
-  created_at: string
+  confirmed: boolean; // user validated sample rows
+  created_at: string;
 }
 ```
 
@@ -199,6 +199,7 @@ function computeFingerprint(items: TextItem[][]): string {
 ```
 
 The fingerprint is stable across statements of the same type because:
+
 - Column headers don't change between months
 - Bank identifier is constant
 - x-positions are consistent within a bank's PDF template
@@ -215,33 +216,64 @@ The schema detection AI receives only provably-safe content. Everything else is 
 
 Each text item is classified independently:
 
-| Type | Pattern | Action |
-|------|---------|--------|
-| Date-like | `/^\d{1,2}\s+(JAN\|FÉV\|MAR\|AVR\|MAI\|JUN\|JUL\|AOÛ\|SEP\|OCT\|NOV\|DÉC\|FEB\|APR\|MAY\|AUG\|DEC)$/i` or `/^\d{1,2}[\/\-]\d{1,2}([\/\-]\d{2,4})?$/` | Keep |
-| Amount-like | `/^[\d\s.,]+$/` where string contains at least one digit and a decimal separator (comma or period) | Keep |
-| Short code | `/^[A-Z]{1,5}$/` (2-5 uppercase letters, e.g., ACH, RA, DI, VFF, IRGA) | Keep |
-| Banking term | Matches a dictionary of ~60 known financial terms (EN + FR) | Keep |
-| Page indicator | `/^Page\s+\d+/i` or `/^\d+\s+de\s+\d+$/` | Keep |
-| Everything else | Any text not matching above | Replace with `[TEXT]` |
+| Type            | Pattern                                                                                                                                              | Action                |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| Date-like       | `/^\d{1,2}\s+(JAN\|FÉV\|MAR\|AVR\|MAI\|JUN\|JUL\|AOÛ\|SEP\|OCT\|NOV\|DÉC\|FEB\|APR\|MAY\|AUG\|DEC)$/i` or `/^\d{1,2}[\/\-]\d{1,2}([\/\-]\d{2,4})?$/` | Keep                  |
+| Amount-like     | `/^[\d\s.,]+$/` where string contains at least one digit and a decimal separator (comma or period)                                                   | Keep                  |
+| Short code      | `/^[A-Z]{1,5}$/` (2-5 uppercase letters, e.g., ACH, RA, DI, VFF, IRGA)                                                                               | Keep                  |
+| Banking term    | Matches a dictionary of ~60 known financial terms (EN + FR)                                                                                          | Keep                  |
+| Page indicator  | `/^Page\s+\d+/i` or `/^\d+\s+de\s+\d+$/`                                                                                                             | Keep                  |
+| Everything else | Any text not matching above                                                                                                                          | Replace with `[TEXT]` |
 
 ### Banking terms dictionary
 
 ```ts
 const SAFE_BANKING_TERMS = new Set([
   // Column headers (FR)
-  "date", "code", "description", "frais", "retrait", "dépôt", "solde",
-  "montant", "détail", "libellé", "crédit", "débit",
+  "date",
+  "code",
+  "description",
+  "frais",
+  "retrait",
+  "dépôt",
+  "solde",
+  "montant",
+  "détail",
+  "libellé",
+  "crédit",
+  "débit",
   // Column headers (EN)
-  "amount", "balance", "withdrawal", "deposit", "credit", "debit",
-  "details", "memo", "payee", "merchant",
+  "amount",
+  "balance",
+  "withdrawal",
+  "deposit",
+  "credit",
+  "debit",
+  "details",
+  "memo",
+  "payee",
+  "merchant",
   // Section / structural (FR)
-  "total", "sous-total", "sommaire", "suite", "reporté",
+  "total",
+  "sous-total",
+  "sommaire",
+  "suite",
+  "reporté",
   // Section / structural (EN)
-  "subtotal", "summary", "continued", "carried forward",
+  "subtotal",
+  "summary",
+  "continued",
+  "carried forward",
   // Statement types
-  "relevé", "compte", "opérations", "courantes", "épargne",
-  "placement", "mastercard", "visa",
-])
+  "relevé",
+  "compte",
+  "opérations",
+  "courantes",
+  "épargne",
+  "placement",
+  "mastercard",
+  "visa",
+]);
 ```
 
 This dictionary is additive — new terms can be added without security risk (they're all generic financial vocabulary, never PII).
@@ -382,7 +414,7 @@ An item belongs to a column if its x-position falls within the column's `[min, m
 
 ```ts
 function itemInColumn(item: TextItem, col: ColumnDef): boolean {
-  return item.x >= col.x[0] - 5 && item.x <= col.x[1] + 5
+  return item.x >= col.x[0] - 5 && item.x <= col.x[1] + 5;
 }
 ```
 
@@ -402,16 +434,16 @@ Transfer detection is a natural byproduct of the schema system. The `code` colum
 
 ### Desjardins codes (detected by schema)
 
-| Code | Meaning | Handling |
-|------|---------|----------|
-| VFF | Virement entre folios | Internal transfer → skip |
-| VMW | Virement Interac (outgoing or incoming) | Check description pattern |
-| VWW | Virement AccèsD Internet | Check description pattern |
-| PWW | Paiement facture AccèsD | Bill payment → expense |
-| DI | Dépôt direct | Income |
-| RA | Retrait/paiement autorisé | Expense |
-| ACH | Achat | Expense |
-| RGA | Retrait au GA | ATM withdrawal → expense |
+| Code | Meaning                                 | Handling                  |
+| ---- | --------------------------------------- | ------------------------- |
+| VFF  | Virement entre folios                   | Internal transfer → skip  |
+| VMW  | Virement Interac (outgoing or incoming) | Check description pattern |
+| VWW  | Virement AccèsD Internet                | Check description pattern |
+| PWW  | Paiement facture AccèsD                 | Bill payment → expense    |
+| DI   | Dépôt direct                            | Income                    |
+| RA   | Retrait/paiement autorisé               | Expense                   |
+| ACH  | Achat                                   | Expense                   |
+| RGA  | Retrait au GA                           | ATM withdrawal → expense  |
 
 ### Transfer classification in review
 
@@ -420,8 +452,8 @@ Add to `ParsedTransaction` and `ReviewItem`:
 ```ts
 interface ParsedTransaction {
   // ... existing fields
-  transferType?: "internal" | "external-income" | null
-  transferParty?: string  // extracted name: "MICHEL DUMESNIL", "315535 EOP"
+  transferType?: "internal" | "external-income" | null;
+  transferParty?: string; // extracted name: "MICHEL DUMESNIL", "315535 EOP"
 }
 ```
 
@@ -435,62 +467,62 @@ Internal transfers default to `status: "skipped"` in the review table. External 
 type ImportStatus =
   | "idle"
   | "parsing"
-  | "schema_detecting"   // NEW: AI analyzing format
-  | "schema_validating"  // NEW: user confirming sample rows
-  | "mapping"            // CSV column mapping (existing)
+  | "schema_detecting" // NEW: AI analyzing format
+  | "schema_validating" // NEW: user confirming sample rows
+  | "mapping" // CSV column mapping (existing)
   | "reviewing"
   | "importing"
-  | "done"
+  | "done";
 ```
 
 ### New state in useImport
 
 ```ts
 // Schema detection state
-const [schemaPreview, setSchemaPreview] = useState<ParsedTransaction[] | null>(null)
-const [detectedSchema, setDetectedSchema] = useState<StatementSchema | null>(null)
+const [schemaPreview, setSchemaPreview] = useState<ParsedTransaction[] | null>(null);
+const [detectedSchema, setDetectedSchema] = useState<StatementSchema | null>(null);
 
 // User actions
 const confirmSchema = useCallback(async () => {
   // Save schema to Supabase with confirmed=true
   // Re-parse full statement with confirmed schema
   // Proceed to reviewing status
-}, [detectedSchema])
+}, [detectedSchema]);
 
 const rejectSchema = useCallback(() => {
   // Discard schema, reset to idle
   // User can retry or upload different file
-}, [])
+}, []);
 ```
 
 ### Updated PDF flow in handleFile
 
 ```ts
 if (ext === "pdf") {
-  setStatus("parsing")
-  const items = await extractItems(file)
-  const fullText = items.map(line => line.map(i => i.text).join(" ")).join("\n")
-  const fingerprint = computeFingerprint(items)
+  setStatus("parsing");
+  const items = await extractItems(file);
+  const fullText = items.map((line) => line.map((i) => i.text).join(" ")).join("\n");
+  const fingerprint = computeFingerprint(items);
 
   // Check for cached schema
-  const cached = await loadSchema(fingerprint)
+  const cached = await loadSchema(fingerprint);
 
   if (cached) {
     // Fast path: parse directly
-    const result = parseWithSchema(items, fullText, cached)
-    await processTransactions(result.transactions)
+    const result = parseWithSchema(items, fullText, cached);
+    await processTransactions(result.transactions);
   } else {
     // Slow path: detect schema
-    setStatus("schema_detecting")
-    const sanitized = allowlistSanitize(items)
-    const rawSchema = await ai.detectSchema(sanitized)
-    const schema = buildSchema(rawSchema, fingerprint)
+    setStatus("schema_detecting");
+    const sanitized = allowlistSanitize(items);
+    const rawSchema = await ai.detectSchema(sanitized);
+    const schema = buildSchema(rawSchema, fingerprint);
 
     // Preview: parse 3-5 rows for validation
-    const preview = parseWithSchema(items, fullText, schema, { limit: 5 })
-    setDetectedSchema(schema)
-    setSchemaPreview(preview.transactions)
-    setStatus("schema_validating")
+    const preview = parseWithSchema(items, fullText, schema, { limit: 5 });
+    setDetectedSchema(schema);
+    setSchemaPreview(preview.transactions);
+    setStatus("schema_validating");
     // Wait for user to call confirmSchema() or rejectSchema()
   }
 }
@@ -513,14 +545,14 @@ A deterministic validation pass runs between column parsing and categorization. 
 
 ### Validation rules
 
-| Check | Condition | Action |
-|-------|-----------|--------|
-| Amount unreasonably high | > $10,000 single transaction | Flag with warning |
-| Amount is statistical outlier | > 10x the batch median | Flag with warning |
-| Amount suspiciously round + large | > $50,000 and ends in 000 | Flag — likely grabbed balance column |
-| Deposit parsed as expense | Amount in deposit column but type = EXPENSE | Auto-correct type |
-| No amount found | Amount = 0 or NaN | Mark as unparseable |
-| Description empty or too short | < 3 chars after sanitization | Mark as unparseable |
+| Check                             | Condition                                   | Action                               |
+| --------------------------------- | ------------------------------------------- | ------------------------------------ |
+| Amount unreasonably high          | > $10,000 single transaction                | Flag with warning                    |
+| Amount is statistical outlier     | > 10x the batch median                      | Flag with warning                    |
+| Amount suspiciously round + large | > $50,000 and ends in 000                   | Flag — likely grabbed balance column |
+| Deposit parsed as expense         | Amount in deposit column but type = EXPENSE | Auto-correct type                    |
+| No amount found                   | Amount = 0 or NaN                           | Mark as unparseable                  |
+| Description empty or too short    | < 3 chars after sanitization                | Mark as unparseable                  |
 
 ### Three tiers of parsed rows
 
@@ -537,9 +569,9 @@ Every row the parser touches is visible to the user. Flagged rows are not skippe
 ```ts
 interface ReviewItem {
   // ... existing fields
-  warnings: string[]     // validation warnings, e.g., ["Amount unusually high ($868,726.28)"]
-  rawLine?: string       // original PDF line text for debugging / manual correction
-  parseError?: string    // if row couldn't be fully parsed — reason shown in unparseable section
+  warnings: string[]; // validation warnings, e.g., ["Amount unusually high ($868,726.28)"]
+  rawLine?: string; // original PDF line text for debugging / manual correction
+  parseError?: string; // if row couldn't be fully parsed — reason shown in unparseable section
 }
 ```
 
@@ -552,11 +584,13 @@ The current import page goes: upload → spinner → review table. The new flow 
 A horizontal stepper at the top of the import page. Steps are contextual — first-time imports show all steps, returning imports skip schema detection/confirmation.
 
 **First import of new format:**
+
 ```
 [Extract] → [Detect format] → [Confirm format] → [Review] → [Import]
 ```
 
 **Subsequent imports (cached schema):**
+
 ```
 [Extract] → [Review] → [Import]
 ```
@@ -566,17 +600,21 @@ Each step: filled circle = completed, pulsing = in progress, empty = pending.
 ### Step-by-step UI states
 
 **Extract** (`status: "parsing"`)
+
 - Progress bar with page count: "Extracting text from PDF... Page 2 of 3"
 
 **Detect format** (`status: "schema_detecting"`) — first time only
+
 - Spinner: "Analyzing statement structure..."
 
 **Confirm format** (`status: "schema_validating"`) — first time only
+
 - Card: "New format detected: {bank_name} {statement_type}"
 - Table with 3-5 sample transactions showing date, description, withdrawal, deposit columns
 - Two buttons: "These look correct" / "Something's wrong"
 
 **Validation summary** (shown briefly before review table)
+
 ```
 Parsed 42 transactions from Desjardins Chequing (March 2026)
 
@@ -596,14 +634,14 @@ Parsed 42 transactions from Desjardins Chequing (March 2026)
 
 ### New components
 
-| Component | Type | Description |
-|-----------|------|-------------|
-| `ImportStepper` | New | Horizontal step indicator with contextual steps |
-| `SchemaDetectingCard` | New | Spinner + "Analyzing format" message |
-| `SchemaValidationCard` | New | Sample rows table + confirm/reject buttons |
-| `ValidationSummaryCard` | New | Post-parse stats with flagged/error counts |
-| `FlaggedRowBadge` | New | Amber warning badge with tooltip showing reason |
-| `UnparseableSection` | New | Collapsible section showing raw text of failed rows |
+| Component               | Type | Description                                         |
+| ----------------------- | ---- | --------------------------------------------------- |
+| `ImportStepper`         | New  | Horizontal step indicator with contextual steps     |
+| `SchemaDetectingCard`   | New  | Spinner + "Analyzing format" message                |
+| `SchemaValidationCard`  | New  | Sample rows table + confirm/reject buttons          |
+| `ValidationSummaryCard` | New  | Post-parse stats with flagged/error counts          |
+| `FlaggedRowBadge`       | New  | Amber warning badge with tooltip showing reason     |
+| `UnparseableSection`    | New  | Collapsible section showing raw text of failed rows |
 
 ## 11. Review Table: Flagged Row Handling
 
@@ -615,6 +653,7 @@ Flagged rows appear in the review table with distinct styling:
 - Raw bank text visible in an expandable detail row below
 
 Unparseable rows appear in a collapsible section below the main table:
+
 - Header: "1 row could not be parsed" (expandable)
 - Shows raw PDF text for each failed row
 - Not selectable/importable — informational only
@@ -622,6 +661,7 @@ Unparseable rows appear in a collapsible section below the main table:
 ### Stats bar update
 
 The existing stats bar adds flagged count:
+
 ```
 35 accepted · 3 flagged · 4 pending · 0 skipped
 ```
@@ -632,13 +672,13 @@ All transaction fields are editable inline during review, regardless of parsing 
 
 ### Editable fields
 
-| Field | Interaction | Component |
-|-------|-------------|-----------|
-| Display name | Click cell → text input | Inline text field |
-| Amount | Click cell → number input | Inline number field |
-| Type (Income/Expense) | Click badge → toggles | Badge click handler |
-| Category | Existing category picker | Unchanged |
-| Date | Click cell → date input | Inline date field |
+| Field                 | Interaction               | Component           |
+| --------------------- | ------------------------- | ------------------- |
+| Display name          | Click cell → text input   | Inline text field   |
+| Amount                | Click cell → number input | Inline number field |
+| Type (Income/Expense) | Click badge → toggles     | Badge click handler |
+| Category              | Existing category picker  | Unchanged           |
+| Date                  | Click cell → date input   | Inline date field   |
 
 ### Interaction pattern
 
@@ -659,6 +699,7 @@ Clicking the Income/Expense badge flips the type. No text input needed. This als
 ### Flagged amount editing
 
 For flagged rows, clicking the amount cell shows:
+
 - The editable number input (pre-filled with the parsed amount)
 - A tooltip or subtitle showing the raw bank text for that line, so the user can see what the statement actually said and type the correct value
 
@@ -716,10 +757,10 @@ After editing, the warning badge is removed and the row becomes a normal clean r
 
 ## 15. Token Cost Analysis
 
-| Event | AI calls | Tokens | Frequency |
-|-------|----------|--------|-----------|
-| First import of new bank format | 1 schema detection | ~1,100 | Once per format (ever) |
-| Subsequent imports (same format) | 0 for parsing | 0 | Every import |
-| Categorization (unknown merchants) | 1 per 10 merchants | ~800/batch | Same as today |
+| Event                              | AI calls           | Tokens     | Frequency              |
+| ---------------------------------- | ------------------ | ---------- | ---------------------- |
+| First import of new bank format    | 1 schema detection | ~1,100     | Once per format (ever) |
+| Subsequent imports (same format)   | 0 for parsing      | 0          | Every import           |
+| Categorization (unknown merchants) | 1 per 10 merchants | ~800/batch | Same as today          |
 
 Schema detection adds ~1,100 tokens total, once. After that, parsing is free. The overall token usage may actually decrease because the schema system reduces categorization errors (correct income/expense detection means fewer mismatches to re-categorize).

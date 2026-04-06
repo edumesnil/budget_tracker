@@ -141,7 +141,9 @@ export async function parsePdf(file: File): Promise<SchemaParsePipelineResult> {
 
   if (cached) {
     log.info(`[pdf-parser] Cache hit: ${cached.bank_name} ${cached.statement_type}`);
-    const result = parseWithSchema(items, fullText, cached, { startLine: txStartLine > 0 ? txStartLine : undefined });
+    const result = parseWithSchema(items, fullText, cached, {
+      startLine: txStartLine > 0 ? txStartLine : undefined,
+    });
     const deduped = deduplicateTransactions(result.transactions, result.rawLines);
     const validation = validateTransactions(deduped.transactions, deduped.rawLines);
     log.info(

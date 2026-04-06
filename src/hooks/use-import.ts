@@ -557,7 +557,9 @@ export function useImport(
         user_id: saved.user_id,
         created_at: saved.created_at,
       } as StatementSchema;
-      const result = parseWithSchema(schemaItems, schemaFullText, fullSchema, { startLine: schemaTxStart });
+      const result = parseWithSchema(schemaItems, schemaFullText, fullSchema, {
+        startLine: schemaTxStart,
+      });
       const validation = validateTransactions(result.transactions, result.rawLines);
       setValidationResult(validation);
 
