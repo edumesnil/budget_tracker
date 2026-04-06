@@ -86,11 +86,13 @@ export default function ImportPage() {
   };
 
   const handleCommit = async () => {
-    await commit();
-    toaster.success({
-      title: "Import complete",
-      description: `${items.filter((i) => i.status === "accepted").length} transactions imported.`,
-    });
+    const ok = await commit();
+    if (ok) {
+      toaster.success({
+        title: "Import complete",
+        description: `${items.filter((i) => i.status === "accepted").length} transactions imported.`,
+      });
+    }
   };
 
   const stepperSteps: Step[] = (() => {
