@@ -507,7 +507,164 @@ A simple intermediate step shown during `schema_validating`:
 
 Minimal UI — this only appears once per bank format.
 
-## 9. What Gets Replaced
+## 9. Post-Parse Validation
+
+A deterministic validation pass runs between column parsing and categorization. No AI involved — just sanity checks.
+
+### Validation rules
+
+| Check | Condition | Action |
+|-------|-----------|--------|
+| Amount unreasonably high | > $10,000 single transaction | Flag with warning |
+| Amount is statistical outlier | > 10x the batch median | Flag with warning |
+| Amount suspiciously round + large | > $50,000 and ends in 000 | Flag — likely grabbed balance column |
+| Deposit parsed as expense | Amount in deposit column but type = EXPENSE | Auto-correct type |
+| No amount found | Amount = 0 or NaN | Mark as unparseable |
+| Description empty or too short | < 3 chars after sanitization | Mark as unparseable |
+
+### Three tiers of parsed rows
+
+1. **Clean rows** — pass all checks, sent to AI categorization as normal
+2. **Flagged rows** — appear in review table with amber warning badge, NOT sent to AI until user verifies or fixes. User can: edit amount, accept as-is, or skip
+3. **Unparseable rows** — could not be extracted at all. Shown in a collapsible section below the review table with raw bank text. Not importable, but visible so the user knows nothing was silently lost
+
+### Nothing is hidden
+
+Every row the parser touches is visible to the user. Flagged rows are not skipped — they require explicit user action. Unparseable rows are surfaced, not silently dropped. The validation summary (see section 10) shows exact counts for each tier so the user always has the full picture.
+
+### ReviewItem changes
+
+```ts
+interface ReviewItem {
+  // ... existing fields
+  warnings: string[]     // validation warnings, e.g., ["Amount unusually high ($868,726.28)"]
+  rawLine?: string       // original PDF line text for debugging / manual correction
+  parseError?: string    // if row couldn't be fully parsed — reason shown in unparseable section
+}
+```
+
+## 10. Multi-Step Progress UI
+
+The current import page goes: upload → spinner → review table. The new flow adds visible intermediate steps.
+
+### Step indicator
+
+A horizontal stepper at the top of the import page. Steps are contextual — first-time imports show all steps, returning imports skip schema detection/confirmation.
+
+**First import of new format:**
+```
+[Extract] → [Detect format] → [Confirm format] → [Review] → [Import]
+```
+
+**Subsequent imports (cached schema):**
+```
+[Extract] → [Review] → [Import]
+```
+
+Each step: filled circle = completed, pulsing = in progress, empty = pending.
+
+### Step-by-step UI states
+
+**Extract** (`status: "parsing"`)
+- Progress bar with page count: "Extracting text from PDF... Page 2 of 3"
+
+**Detect format** (`status: "schema_detecting"`) — first time only
+- Spinner: "Analyzing statement structure..."
+
+**Confirm format** (`status: "schema_validating"`) — first time only
+- Card: "New format detected: {bank_name} {statement_type}"
+- Table with 3-5 sample transactions showing date, description, withdrawal, deposit columns
+- Two buttons: "These look correct" / "Something's wrong"
+
+**Validation summary** (shown briefly before review table)
+```
+Parsed 42 transactions from Desjardins Chequing (March 2026)
+
+  ● 35 auto-categorized (known merchants)
+  ● 3 pending AI categorization
+  ⚠ 3 flagged — amounts need verification
+  ✕ 1 row could not be parsed
+
+  [Review all]    [Show flagged first]
+```
+
+"Show flagged first" sorts flagged rows to the top so the user addresses problems before bulk-accepting clean rows.
+
+**Review table** (`status: "reviewing"`) — existing table, enhanced (see sections 11 and 12)
+
+**Import** (`status: "importing"`) — existing progress bar
+
+### New components
+
+| Component | Type | Description |
+|-----------|------|-------------|
+| `ImportStepper` | New | Horizontal step indicator with contextual steps |
+| `SchemaDetectingCard` | New | Spinner + "Analyzing format" message |
+| `SchemaValidationCard` | New | Sample rows table + confirm/reject buttons |
+| `ValidationSummaryCard` | New | Post-parse stats with flagged/error counts |
+| `FlaggedRowBadge` | New | Amber warning badge with tooltip showing reason |
+| `UnparseableSection` | New | Collapsible section showing raw text of failed rows |
+
+## 11. Review Table: Flagged Row Handling
+
+Flagged rows appear in the review table with distinct styling:
+
+- Amber left border (vs. normal rows)
+- Warning badge showing the specific issue: "Amount unusually high ($868,726.28)"
+- Amount cell is highlighted and editable on click
+- Raw bank text visible in an expandable detail row below
+
+Unparseable rows appear in a collapsible section below the main table:
+- Header: "1 row could not be parsed" (expandable)
+- Shows raw PDF text for each failed row
+- Not selectable/importable — informational only
+
+### Stats bar update
+
+The existing stats bar adds flagged count:
+```
+35 accepted · 3 flagged · 4 pending · 0 skipped
+```
+
+## 12. Review Table: Inline Editing
+
+All transaction fields are editable inline during review, regardless of parsing status. This allows the user to correct any parsing error before import.
+
+### Editable fields
+
+| Field | Interaction | Component |
+|-------|-------------|-----------|
+| Display name | Click cell → text input | Inline text field |
+| Amount | Click cell → number input | Inline number field |
+| Type (Income/Expense) | Click badge → toggles | Badge click handler |
+| Category | Existing category picker | Unchanged |
+| Date | Click cell → date input | Inline date field |
+
+### Interaction pattern
+
+- **Click** any editable cell to enter edit mode
+- **Enter** to confirm the edit
+- **Escape** to cancel and revert
+- **Tab** to confirm and move to next editable cell in the row
+- Clicking outside the cell confirms the edit
+
+### Keyboard shortcuts preserved
+
+The existing keyboard shortcuts (Enter to accept, S to skip, U to undo, arrow keys to navigate) continue to work when no cell is in edit mode. Entering edit mode on a cell temporarily suspends row-level keyboard shortcuts until the edit is confirmed or cancelled.
+
+### Type toggle
+
+Clicking the Income/Expense badge flips the type. No text input needed. This also re-runs the merchant mapping lookup for the new type (an expense merchant mapping shouldn't apply to an income transaction and vice versa).
+
+### Flagged amount editing
+
+For flagged rows, clicking the amount cell shows:
+- The editable number input (pre-filled with the parsed amount)
+- A tooltip or subtitle showing the raw bank text for that line, so the user can see what the statement actually said and type the correct value
+
+After editing, the warning badge is removed and the row becomes a normal clean row.
+
+## 13. What Gets Replaced
 
 ### Removed
 
@@ -533,24 +690,31 @@ Minimal UI — this only appears once per bank format.
 
 - `src/lib/parsers/schema.ts` — `StatementSchema` type, `parseWithSchema()`, `computeFingerprint()`, `allowlistSanitize()`, `loadSchema()`, `saveSchema()`
 - `src/lib/parsers/schema-prompt.ts` — schema detection prompt builder and response parser
+- `src/lib/parsers/validate.ts` — post-parse validation rules (amount sanity checks, outlier detection)
+- `src/components/import/import-stepper.tsx` — horizontal step indicator
+- `src/components/import/schema-detecting-card.tsx` — spinner during AI schema analysis
+- `src/components/import/schema-validation-card.tsx` — sample rows + confirm/reject
+- `src/components/import/validation-summary-card.tsx` — post-parse stats with flagged/error counts
+- `src/components/import/unparseable-section.tsx` — collapsible section for failed rows
 - Supabase migration for `statement_schemas` table
 
 ### Modified files
 
 - `src/lib/parsers/pdf.ts` — `extractItems()` extracted from `extractLines()`, `parsePdf()` rewritten to use schema pipeline
+- `src/lib/parsers/types.ts` — `transferType`/`transferParty` fields on `ParsedTransaction`, `warnings`/`rawLine`/`parseError` on review types
 - `src/lib/ai.ts` — `detectSchema` method added to `AIProvider` interface and providers
-- `src/hooks/use-import.ts` — new statuses, schema detection flow, `confirmSchema`/`rejectSchema` actions
-- `src/routes/import.tsx` — schema validation UI step
-- `src/lib/parsers/types.ts` — `transferType`/`transferParty` fields on `ParsedTransaction`
+- `src/hooks/use-import.ts` — new statuses, schema detection flow, validation pass, `confirmSchema`/`rejectSchema` actions, inline edit support
+- `src/routes/import.tsx` — render step-appropriate components, wire up stepper
+- `src/components/import/review-table.tsx` — inline editing for all fields, flagged row styling, unparseable section, stats bar update
 
-## 10. What This Resolves
+## 14. What This Resolves
 
 - **Issue #6** (wrong amounts) — column parser reads the correct column by x-position, ignores balance column
 - **Issue #7** (transfers) — schema detects transfer codes from the code column, flags internal vs external
 - **Future banks** — no code changes needed, AI detects the format, user confirms, schema cached
 - **Format changes** — fingerprint mismatch triggers re-detection automatically
 
-## 11. Token Cost Analysis
+## 15. Token Cost Analysis
 
 | Event | AI calls | Tokens | Frequency |
 |-------|----------|--------|-----------|
