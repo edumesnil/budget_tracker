@@ -9,6 +9,9 @@ import { useImport } from "@/hooks/use-import";
 import { FileUpload } from "@/components/import/file-upload";
 import { ColumnMapper } from "@/components/import/column-mapper";
 import { ReviewTable } from "@/components/import/review-table";
+import { ImportStepper, type Step } from "@/components/import/import-stepper";
+import { SchemaDetectingCard } from "@/components/import/schema-detecting-card";
+import { SchemaValidationCard } from "@/components/import/schema-validation-card";
 import { CategoryFormDialog } from "@/components/categories/category-form-dialog";
 import { Button } from "@/components/ui/button";
 import * as Card from "@/components/ui/card";
@@ -45,6 +48,13 @@ export default function ImportPage() {
     acceptAll,
     commit,
     reset,
+    schemaPreview,
+    detectedSchema,
+    validationResult,
+    confirmSchema,
+    rejectSchema,
+    flaggedFirst,
+    setFlaggedFirst,
   } = useImport(allCategories, groups, mappings);
 
   const handleClearData = async () => {
@@ -77,6 +87,83 @@ export default function ImportPage() {
       description: `${items.filter((i) => i.status === "accepted").length} transactions imported.`,
     });
   };
+
+  const stepperSteps: Step[] = (() => {
+    const isFirstTime =
+      status === "schema_detecting" || status === "schema_validating" || detectedSchema !== null;
+
+    if (isFirstTime) {
+      return [
+        {
+          label: "Extract",
+          status: (status === "parsing"
+            ? "active"
+            : status === "idle"
+              ? "pending"
+              : "completed") as Step["status"],
+        },
+        {
+          label: "Detect format",
+          status: (status === "schema_detecting"
+            ? "active"
+            : ["schema_validating", "reviewing", "importing", "done"].includes(status)
+              ? "completed"
+              : "pending") as Step["status"],
+        },
+        {
+          label: "Confirm format",
+          status: (status === "schema_validating"
+            ? "active"
+            : ["reviewing", "importing", "done"].includes(status)
+              ? "completed"
+              : "pending") as Step["status"],
+        },
+        {
+          label: "Review",
+          status: (status === "reviewing"
+            ? "active"
+            : ["importing", "done"].includes(status)
+              ? "completed"
+              : "pending") as Step["status"],
+        },
+        {
+          label: "Import",
+          status: (status === "importing"
+            ? "active"
+            : status === "done"
+              ? "completed"
+              : "pending") as Step["status"],
+        },
+      ];
+    }
+
+    return [
+      {
+        label: "Extract",
+        status: (status === "parsing"
+          ? "active"
+          : status === "idle"
+            ? "pending"
+            : "completed") as Step["status"],
+      },
+      {
+        label: "Review",
+        status: (status === "reviewing"
+          ? "active"
+          : ["importing", "done"].includes(status)
+            ? "completed"
+            : "pending") as Step["status"],
+      },
+      {
+        label: "Import",
+        status: (status === "importing"
+          ? "active"
+          : status === "done"
+            ? "completed"
+            : "pending") as Step["status"],
+      },
+    ];
+  })();
 
   return (
     <div className={css({ display: "flex", flexDir: "column", gap: "6" })}>
@@ -114,6 +201,9 @@ export default function ImportPage() {
           Clear transactions + mappings
         </Button>
       </div>
+
+      {/* Stepper — shown during active import */}
+      {status !== "idle" && <ImportStepper steps={stepperSteps} />}
 
       {/* Error display */}
       {error && (
@@ -192,6 +282,21 @@ export default function ImportPage() {
             </div>
           </Card.Body>
         </Card.Root>
+      )}
+
+      {/* Schema detecting: AI analyzing format */}
+      {status === "schema_detecting" && <SchemaDetectingCard />}
+
+      {/* Schema validating: user confirms sample rows */}
+      {status === "schema_validating" && schemaPreview && detectedSchema && (
+        <SchemaValidationCard
+          bankName={detectedSchema.bank_name}
+          statementType={detectedSchema.statement_type}
+          preview={schemaPreview}
+          onConfirm={confirmSchema}
+          onReject={rejectSchema}
+          isConfirming={false}
+        />
       )}
 
       {/* CSV column mapping */}
