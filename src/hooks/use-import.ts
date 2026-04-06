@@ -570,10 +570,7 @@ export function useImport(
       }
 
       // Save schema AFTER verifying it produces transactions
-      const saved = await saveSchema(detectedSchema);
-      tempSchema.id = saved.id;
-      tempSchema.user_id = saved.user_id;
-      tempSchema.created_at = saved.created_at;
+      await saveSchema(detectedSchema);
 
       setWarnings(result.warnings);
       await processTransactions(allTx);
