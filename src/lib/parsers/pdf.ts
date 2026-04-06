@@ -16,6 +16,7 @@ import { allowlistSanitize } from "./allowlist-sanitizer";
 import { loadSchema } from "./schema-store";
 import { parseWithSchema } from "./column-parser";
 import { validateTransactions } from "./validate";
+import { log } from "@/lib/logger";
 
 // Re-export for backward compat (used by other modules)
 export { extractItems } from "./extract-items";
@@ -124,21 +125,21 @@ export async function parsePdf(file: File): Promise<SchemaParsePipelineResult> {
   const fullText = items.map((line) => line.map((i) => i.text).join(" ")).join("\n");
   const fingerprint = computeFingerprint(items);
 
-  console.group("[pdf-parser] Schema pipeline");
-  console.log(`${items.length} lines extracted, fingerprint: ${fingerprint}`);
+  log.group("[pdf-parser] Schema pipeline");
+  log.info(`${items.length} lines extracted, fingerprint: ${fingerprint}`);
 
   // Check for cached schema
   const cached = await loadSchema(fingerprint);
 
   if (cached) {
-    console.log(`[pdf-parser] Cache hit: ${cached.bank_name} ${cached.statement_type}`);
+    log.info(`[pdf-parser] Cache hit: ${cached.bank_name} ${cached.statement_type}`);
     const result = parseWithSchema(items, fullText, cached);
     const deduped = deduplicateTransactions(result.transactions, result.rawLines);
     const validation = validateTransactions(deduped.transactions, deduped.rawLines);
-    console.log(
+    log.info(
       `[pdf-parser] ${deduped.transactions.length} transactions (${validation.clean.length} clean, ${validation.flagged.length} flagged, ${validation.unparseable.length} unparseable)`,
     );
-    console.groupEnd();
+    log.groupEnd();
 
     return {
       status: "cached",
@@ -149,10 +150,10 @@ export async function parsePdf(file: File): Promise<SchemaParsePipelineResult> {
   }
 
   // No cached schema — prepare for detection
-  console.log("[pdf-parser] Cache miss, preparing for schema detection");
+  log.info("[pdf-parser] Cache miss, preparing for schema detection");
   const sanitizedSample = allowlistSanitize(items);
-  console.log("[pdf-parser] Sanitized sample:\n", sanitizedSample);
-  console.groupEnd();
+  log.info("[pdf-parser] Sanitized sample:\n", sanitizedSample);
+  log.groupEnd();
 
   return {
     status: "needs_detection",

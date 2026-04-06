@@ -4,6 +4,7 @@
 
 import type { MerchantMapping } from "@/types/database";
 import type { RawSchemaResponse } from "@/lib/parsers/schema-prompt";
+import { log } from "@/lib/logger";
 
 // ---------------------------------------------------------------------------
 // Interface
@@ -54,7 +55,7 @@ async function fetchWithRetry(
 
     // Rate limit (429) or server error (5xx) — retry with backoff
     lastErr = new Error(`HTTP ${res.status}: ${await res.text()}`);
-    console.warn(`[ai] Request failed (attempt ${attempt + 1}/${maxRetries + 1}): ${res.status}`);
+    log.warn(`[ai] Request failed (attempt ${attempt + 1}/${maxRetries + 1}): ${res.status}`);
 
     if (attempt < maxRetries) {
       // Use Retry-After header if present, otherwise exponential backoff
@@ -165,14 +166,14 @@ ${merchantList}`;
   const prompt = `${system}\n\n${user}`;
 
   // Debug: log the category ID mapping so we can verify LLM responses
-  console.log(
+  log.info(
     "[ai] Category ID map:",
     Object.fromEntries(
       [...idMap.entries()].map(([k, v]) => [k, categories.find((c) => c.id === v)?.name ?? v]),
     ),
   );
-  console.log("[ai] Total categories:", idMap.size);
-  console.log("[ai] User message sent to LLM:\n", user);
+  log.info("[ai] Total categories:", idMap.size);
+  log.info("[ai] User message sent to LLM:\n", user);
 
   return { prompt, system, user, idMap };
 }
@@ -246,7 +247,7 @@ function parseResponse(
   descriptions: string[],
   idMap: Map<number, string>,
 ): CategorizationResult[] {
-  console.log("[ai] Raw LLM response:", raw.slice(0, 500));
+  log.info("[ai] Raw LLM response:", raw.slice(0, 500));
 
   const fallbackAll = () =>
     descriptions.map((d) => ({
@@ -258,11 +259,11 @@ function parseResponse(
 
   const results = extractResults(raw);
   if (!results) {
-    console.warn("[ai] Could not extract results array from response");
+    log.warn("[ai] Could not extract results array from response");
     return fallbackAll();
   }
 
-  console.log("[ai] Parsed results:", results.length, "items");
+  log.info("[ai] Parsed results:", results.length, "items");
 
   return descriptions.map((desc, i) => {
     const match = results.find((p) => p.index === i + 1);
@@ -280,7 +281,7 @@ function parseResponse(
     const catId = idMap.get(match.category_id) ?? null;
 
     if (!catId) {
-      console.warn(`[ai] Unknown numeric category ID: ${match.category_id}`);
+      log.warn(`[ai] Unknown numeric category ID: ${match.category_id}`);
     }
 
     const confidence = (
@@ -426,7 +427,7 @@ export class OllamaProvider implements AIProvider {
     }
 
     const data = (await res.json()) as { response: string };
-    console.log("[ai] Schema detection response:", data.response.slice(0, 500));
+    log.info("[ai] Schema detection response:", data.response.slice(0, 500));
     return parseSchemaResponse(data.response);
   }
 }
@@ -514,7 +515,7 @@ export class GeminiProvider implements AIProvider {
     };
 
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-    console.log("[ai] Schema detection response:", text.slice(0, 500));
+    log.info("[ai] Schema detection response:", text.slice(0, 500));
     return parseSchemaResponse(text);
   }
 }
@@ -612,7 +613,7 @@ export class GroqProvider implements AIProvider {
     };
 
     const text = data.choices?.[0]?.message?.content ?? "";
-    console.log("[ai] Schema detection response:", text.slice(0, 500));
+    log.info("[ai] Schema detection response:", text.slice(0, 500));
     return parseSchemaResponse(text);
   }
 }
@@ -624,17 +625,17 @@ export class GroqProvider implements AIProvider {
 function createProvider(): AIProvider {
   const groqKey = import.meta.env.VITE_GROQ_API_KEY;
   if (groqKey) {
-    console.log("[ai] Using Groq provider (llama-3.3-70b)");
+    log.info("[ai] Using Groq provider (llama-3.3-70b)");
     return new GroqProvider(groqKey);
   }
 
   const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
   if (geminiKey) {
-    console.log("[ai] Using Gemini provider");
+    log.info("[ai] Using Gemini provider");
     return new GeminiProvider(geminiKey);
   }
 
-  console.log("[ai] No API key found, falling back to Ollama (localhost:11434)");
+  log.info("[ai] No API key found, falling back to Ollama (localhost:11434)");
   return new OllamaProvider();
 }
 
