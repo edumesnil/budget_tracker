@@ -10,7 +10,7 @@ Household budget tracker built for tracking income, expenses, and savings across
 - **Styling:** Panda CSS + Park UI (Ark UI primitives)
 - **Database/Auth:** Supabase (PostgreSQL + Auth, local via CLI)
 - **State:** TanStack React Query v5
-- **AI:** Groq / Gemini / Ollama (schema detection + merchant categorization)
+- **AI:** Groq / Ollama (schema detection + merchant categorization)
 
 ## Setup
 
@@ -38,8 +38,7 @@ The import pipeline uses AI for two tasks:
 
 ```bash
 VITE_GROQ_API_KEY=gsk_...     # Groq (free tier, recommended)
-VITE_GEMINI_API_KEY=AI...      # Google Gemini (free tier, alternative)
-# If neither is set, falls back to Ollama on localhost:11434
+# If not set, falls back to Ollama on localhost:11434
 ```
 
 Get a free Groq key at [console.groq.com/keys](https://console.groq.com/keys).

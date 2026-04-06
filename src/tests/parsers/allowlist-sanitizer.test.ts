@@ -85,7 +85,7 @@ describe("allowlistSanitize", () => {
 
     const result = allowlistSanitize(lines);
 
-    // Column headers sent verbatim (no masking)
+    // Banking column labels pass through allowlist (needed for AI schema detection)
     expect(result).toContain("Date");
     expect(result).toContain("Description");
     expect(result).toContain("Retrait");

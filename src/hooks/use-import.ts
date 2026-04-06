@@ -1,10 +1,14 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { sanitize } from "@/lib/sanitizer";
 import { getAIProvider, cleanFallback } from "@/lib/ai";
 import { merchantMappingKeys } from "@/hooks/use-merchant-mappings";
-import { parsePdf, deduplicateTransactions, type SchemaParsePipelineResult } from "@/lib/parsers/pdf";
+import {
+  parsePdf,
+  deduplicateTransactions,
+  type SchemaParsePipelineResult,
+} from "@/lib/parsers/pdf";
 import { parseWithSchema } from "@/lib/parsers/column-parser";
 import { validateTransactions } from "@/lib/parsers/validate";
 import { buildSchema, saveSchema } from "@/lib/parsers/schema-store";
@@ -107,11 +111,15 @@ export function useImport(
   const [schemaTxStart, setSchemaTxStart] = useState<number | undefined>(undefined);
 
   // Build category options for the AI
-  const categoryOptions: CategoryOption[] = categories.map((c) => ({
-    id: c.id,
-    name: c.name,
-    group: categoryGroups.find((g) => g.id === c.group_id)?.name ?? "",
-  }));
+  const categoryOptions: CategoryOption[] = useMemo(
+    () =>
+      categories.map((c) => ({
+        id: c.id,
+        name: c.name,
+        group: categoryGroups.find((g) => g.id === c.group_id)?.name ?? "",
+      })),
+    [categories, categoryGroups],
+  );
 
   // -------------------------------------------------------------------------
   // Duplicate detection
@@ -435,6 +443,12 @@ export function useImport(
       setError(null);
       setWarnings([]);
       setItems([]);
+
+      const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+      if (file.size > MAX_FILE_SIZE) {
+        setError("File too large (max 5 MB). Try a single-month statement or CSV export.");
+        return;
+      }
 
       const ext = file.name.split(".").pop()?.toLowerCase();
 

@@ -4,10 +4,16 @@ import type { RawSchemaResponse } from "./schema-prompt";
 
 /** Load a cached schema by fingerprint */
 export async function loadSchema(fingerprint: string): Promise<StatementSchema | null> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
   const { data, error } = await supabase
     .from("statement_schemas")
     .select("*")
     .eq("fingerprint", fingerprint)
+    .eq("user_id", user.id)
     .eq("confirmed", true)
     .maybeSingle();
 
