@@ -623,7 +623,7 @@ export function useImport(
   // Commit: insert accepted transactions + save new merchant mappings
   // -------------------------------------------------------------------------
 
-  const commit = useCallback(async () => {
+  const commit = useCallback(async (): Promise<boolean> => {
     setStatus("importing");
     setProgress(0);
 
@@ -631,7 +631,7 @@ export function useImport(
     if (accepted.length === 0) {
       setError("No transactions to import.");
       setStatus("reviewing");
-      return;
+      return false;
     }
 
     try {
@@ -696,12 +696,16 @@ export function useImport(
 
       // Invalidate caches so the UI reflects new data without a page reload
       queryClient.invalidateQueries({ queryKey: merchantMappingKeys.all });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
 
       setProgress(100);
       setStatus("done");
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to import transactions");
       setStatus("reviewing");
+      return false;
     }
   }, [items, merchantMappings, queryClient]);
 
