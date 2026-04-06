@@ -130,25 +130,6 @@ export async function parsePdf(file: File): Promise<SchemaParsePipelineResult> {
   log.group("[pdf-parser] Schema pipeline");
   log.info(`${items.length} lines extracted, fingerprint: ${fingerprint}`);
 
-  // Detect garbled PDFs (custom font encoding pdfjs can't decode)
-  const allTexts = items.flat().map((it) => it.text);
-  const avgLen = allTexts.reduce((s, t) => s + t.length, 0) / (allTexts.length || 1);
-  if (avgLen < 3 && items.length > 5) {
-    log.warn(`[pdf-parser] Garbled text detected (avg item length: ${avgLen.toFixed(1)}). PDF may use custom font encoding.`);
-    log.groupEnd();
-    return {
-      status: "needs_detection",
-      warnings: [
-        "This PDF uses a font encoding that prevents text extraction. Try exporting as CSV from your bank's website instead.",
-      ],
-      items,
-      fullText,
-      fingerprint,
-      sanitizedSample: "",
-      bankId: detectBankIdentifier(items),
-    };
-  }
-
   // Check for cached schema
   const cached = await loadSchema(fingerprint);
 
