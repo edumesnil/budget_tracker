@@ -46,4 +46,24 @@ describe("groupItemsIntoLines", () => {
   it("returns empty array for empty input", () => {
     expect(groupItemsIntoLines([])).toEqual([]);
   });
+
+  it("merges adjacent touching items into whole words", () => {
+    // Simulates fragmented text from PDFs with custom font encoding
+    const items: TextItem[] = [
+      { text: "ASSO", x: 228, y: 100, width: 23, page: 1 },
+      { text: "CI", x: 251, y: 100, width: 6, page: 1 },
+      { text: "AT", x: 257, y: 100, width: 11, page: 1 },
+      { text: "IO", x: 268, y: 100, width: 8, page: 1 },
+      { text: "N", x: 276, y: 100, width: 5, page: 1 },
+      // Separate column — big gap
+      { text: "500.00", x: 450, y: 100, width: 40, page: 1 },
+    ];
+
+    const lines = groupItemsIntoLines(items);
+
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toHaveLength(2); // "ASSOCIATION" + "500.00"
+    expect(lines[0][0].text).toBe("ASSOCIATION");
+    expect(lines[0][1].text).toBe("500.00");
+  });
 });
