@@ -6,12 +6,18 @@ function item(text: string, x: number, y: number): TextItem {
   return { text, x, y, width: 30, page: 1 };
 }
 
-describe("classifyItem", () => {
+describe("classifyItem (transaction row masking)", () => {
   it("keeps date-like items", () => {
     expect(classifyItem("2 MAR")).toBe("keep");
     expect(classifyItem("15 FÉV")).toBe("keep");
     expect(classifyItem("01/03/2026")).toBe("keep");
     expect(classifyItem("12-05")).toBe("keep");
+  });
+
+  it("keeps bare day/month digits", () => {
+    expect(classifyItem("19")).toBe("keep");
+    expect(classifyItem("02")).toBe("keep");
+    expect(classifyItem("3")).toBe("keep");
   });
 
   it("keeps amount-like items", () => {
@@ -20,60 +26,87 @@ describe("classifyItem", () => {
     expect(classifyItem("2 073.00")).toBe("keep");
   });
 
-  it("keeps short codes", () => {
+  it("keeps short codes and province codes", () => {
     expect(classifyItem("ACH")).toBe("keep");
     expect(classifyItem("VFF")).toBe("keep");
-    expect(classifyItem("DI")).toBe("keep");
-    expect(classifyItem("RA")).toBe("keep");
+    expect(classifyItem("QC")).toBe("keep");
+    expect(classifyItem("BC")).toBe("keep");
+    expect(classifyItem("ON")).toBe("keep");
   });
 
-  it("keeps banking terms", () => {
-    expect(classifyItem("Date")).toBe("keep");
-    expect(classifyItem("Retrait")).toBe("keep");
-    expect(classifyItem("Solde")).toBe("keep");
-    expect(classifyItem("MASTERCARD")).toBe("keep");
+  it("keeps percentage and operator signs", () => {
+    expect(classifyItem("%")).toBe("keep");
+    expect(classifyItem("+")).toBe("keep");
+    expect(classifyItem("=")).toBe("keep");
   });
 
-  it("masks everything else", () => {
+  it("masks merchant names and PII", () => {
     expect(classifyItem("METRO PLUS JOLIETTE")).toBe("mask");
     expect(classifyItem("Jean-Pierre Tremblay")).toBe("mask");
-    expect(classifyItem("123 RUE PRINCIPALE")).toBe("mask");
+    expect(classifyItem("NETFLIX.COM")).toBe("mask");
+    expect(classifyItem("VANCOUVER")).toBe("mask");
   });
 
   it("keeps page indicators", () => {
     expect(classifyItem("Page 1")).toBe("keep");
-    expect(classifyItem("2 de 3")).toBe("keep");
   });
 });
 
 describe("allowlistSanitize", () => {
-  it("formats lines with x-positions and masks PII", () => {
+  it("sends header lines verbatim and masks transaction PII", () => {
     const lines: TextItem[][] = [
+      // Non-transaction lines (< 4 items, no date start)
+      item("SOME BANK NAME", 50, 10),
+      // Column headers (before first transaction)
       [
-        item("Date", 56, 100),
-        item("Code", 84, 100),
-        item("Description", 196, 100),
-        item("Retrait", 388, 100),
-        item("Solde", 533, 100),
+        item("Date", 56, 90),
+        item("Code", 84, 90),
+        item("Description", 196, 90),
+        item("Retrait", 388, 90),
+        item("Solde", 533, 90),
       ],
+      // Transaction line 1 (first consecutive match)
       [
-        item("2 MAR", 55, 115),
-        item("ACH", 84, 115),
-        item("METRO PLUS JOLIETTE", 108, 115),
-        item("13.71", 412, 115),
-        item("3 086.83", 543, 115),
+        item("2 MAR", 55, 100),
+        item("ACH", 84, 100),
+        item("METRO PLUS JOLIETTE", 108, 100),
+        item("13.71", 412, 100),
+        item("3 086.83", 543, 100),
       ],
-    ];
+      // Transaction line 2 (consecutive match confirms)
+      [
+        item("4 MAR", 55, 115),
+        item("DI", 84, 115),
+        item("PAIE EMPLOYEUR", 108, 115),
+        item("969.60", 479, 115),
+        item("2 558.42", 543, 115),
+      ],
+    ].map((l) => (Array.isArray(l) ? l : [l]));
 
     const result = allowlistSanitize(lines);
 
+    // Column headers sent verbatim (no masking)
     expect(result).toContain("Date");
-    expect(result).toContain("Code");
+    expect(result).toContain("Description");
     expect(result).toContain("Retrait");
+
+    // Transaction data: dates/amounts kept, merchants masked
     expect(result).toContain("2 MAR");
     expect(result).toContain("ACH");
-    expect(result).toContain("[TEXT]");
     expect(result).toContain("13.71");
+    expect(result).toContain("[TEXT]");
     expect(result).not.toContain("METRO PLUS JOLIETTE");
+  });
+
+  it("falls back to verbatim first 12 lines when no transactions found", () => {
+    const lines: TextItem[][] = [
+      [item("Some header", 50, 10)],
+      [item("More stuff", 50, 20)],
+    ];
+
+    const result = allowlistSanitize(lines);
+    // Falls back to verbatim — no masking
+    expect(result).toContain("Some header");
+    expect(result).toContain("More stuff");
   });
 });

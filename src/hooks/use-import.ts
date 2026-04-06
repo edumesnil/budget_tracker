@@ -453,12 +453,20 @@ export function useImport(
             await processTransactions(result.transactions);
           } else {
             // Need schema detection
+            if (!result.sanitizedSample) {
+              // Garbled PDF — can't extract text
+              setWarnings(result.warnings);
+              setError("Could not extract text from this PDF. Try CSV export instead.");
+              setStatus("idle");
+              return;
+            }
+
             setSchemaItems(result.items ?? null);
             setSchemaFullText(result.fullText ?? null);
 
             setStatus("schema_detecting");
             const ai = getAIProvider();
-            const rawSchema = await ai.detectSchema(result.sanitizedSample!);
+            const rawSchema = await ai.detectSchema(result.sanitizedSample);
 
             if (!rawSchema) {
               setError("Failed to detect statement format. Try a different file.");
