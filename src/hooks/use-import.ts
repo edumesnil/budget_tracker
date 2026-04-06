@@ -104,6 +104,7 @@ export function useImport(
     unparseable: ValidatedTransaction[];
   } | null>(null);
   const [flaggedFirst, setFlaggedFirst] = useState(false);
+  const [schemaTxStart, setSchemaTxStart] = useState<number | undefined>(undefined);
 
   // Build category options for the AI
   const categoryOptions: CategoryOption[] = categories.map((c) => ({
@@ -454,14 +455,23 @@ export function useImport(
           } else {
             setSchemaItems(result.items ?? null);
             setSchemaFullText(result.fullText ?? null);
+            setSchemaTxStart(result.txStartLine);
 
             setStatus("schema_detecting");
             const ai = getAIProvider();
-            const rawSchema = await ai.detectSchema(result.sanitizedSample);
+
+            // Retry up to 3 times — AI is non-deterministic
+            let rawSchema = null;
+            for (let attempt = 1; attempt <= 3; attempt++) {
+              log.info(`[import] Schema detection attempt ${attempt}/3`);
+              rawSchema = await ai.detectSchema(result.sanitizedSample!);
+              if (rawSchema) break;
+              if (attempt < 3) log.warn(`[import] Attempt ${attempt} failed, retrying...`);
+            }
 
             if (!rawSchema) {
               setError(
-                "Could not detect statement format. The PDF may use a font encoding that prevents text extraction — try CSV export from your bank's website.",
+                "Could not detect statement format after 3 attempts. The PDF may use a font encoding that prevents text extraction — try CSV export from your bank's website.",
               );
               setStatus("idle");
               return;
@@ -470,12 +480,12 @@ export function useImport(
             const schema = buildSchema(rawSchema, result.fingerprint!, result.bankId);
             setDetectedSchema(schema);
 
-            // Preview: parse first 5 rows for validation
+            // Preview: parse first 5 rows, starting from transaction section
             const preview = parseWithSchema(
               result.items!,
               result.fullText!,
               { ...schema, id: "", user_id: "", created_at: "" } as StatementSchema,
-              { limit: 5 },
+              { limit: 5, startLine: result.txStartLine },
             );
             setSchemaPreview(preview.transactions);
             setStatus("schema_validating");
@@ -547,7 +557,7 @@ export function useImport(
         user_id: saved.user_id,
         created_at: saved.created_at,
       } as StatementSchema;
-      const result = parseWithSchema(schemaItems, schemaFullText, fullSchema);
+      const result = parseWithSchema(schemaItems, schemaFullText, fullSchema, { startLine: schemaTxStart });
       const validation = validateTransactions(result.transactions, result.rawLines);
       setValidationResult(validation);
 
@@ -565,7 +575,7 @@ export function useImport(
       setStatus("idle");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [detectedSchema, schemaItems, schemaFullText]);
+  }, [detectedSchema, schemaItems, schemaFullText, schemaTxStart]);
 
   const rejectSchema = useCallback(() => {
     setDetectedSchema(null);
@@ -692,6 +702,7 @@ export function useImport(
     setSchemaFullText(null);
     setValidationResult(null);
     setFlaggedFirst(false);
+    setSchemaTxStart(undefined);
   }, []);
 
   return {

@@ -106,6 +106,8 @@ function extractYear(fullText: string, schema: StatementSchema): number {
 
 interface ParseOptions {
   limit?: number;
+  /** Start parsing from this line index (skip header/summary lines before it) */
+  startLine?: number;
 }
 
 export function parseWithSchema(
@@ -138,7 +140,11 @@ export function parseWithSchema(
     : null;
   let activeSection: { parse: boolean } | null = null;
 
-  for (const line of lines) {
+  // Start from the transaction section, not the PDF header
+  const startIdx = options.startLine ?? 0;
+
+  for (let li = startIdx; li < lines.length; li++) {
+    const line = lines[li];
     if (options.limit && transactions.length >= options.limit) break;
 
     const lineText = line.map((i) => i.text).join(" ");

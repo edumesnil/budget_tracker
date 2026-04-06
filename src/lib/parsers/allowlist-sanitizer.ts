@@ -25,20 +25,34 @@ function looksLikeTransaction(line: TextItem[]): boolean {
   );
 }
 
+/** Minimum consecutive transaction-like lines to confirm a real table */
+const MIN_CONSECUTIVE = 5;
+
 /**
- * Find the first transaction line by looking for consecutive matches.
- * A real transaction table has back-to-back rows — isolated summary
- * lines that happen to have dates + amounts are skipped.
+ * Find the first transaction line by requiring MIN_CONSECUTIVE matches
+ * in a window of consecutive lines. This skips isolated summary rows
+ * that happen to have dates + amounts.
+ *
+ * Also exported so the column parser can start from the right line.
  */
-function findFirstTransactionLine(lines: TextItem[][]): number {
-  for (let i = 0; i < lines.length - 1; i++) {
+export function findFirstTransactionLine(lines: TextItem[][]): number {
+  for (let i = 0; i < lines.length; i++) {
     if (!looksLikeTransaction(lines[i])) continue;
 
-    const hasNeighbor = lines
-      .slice(i + 1, i + 4)
-      .some((l) => looksLikeTransaction(l));
-    if (hasNeighbor) return i;
+    // Count how many of the next MIN_CONSECUTIVE-1 lines also match
+    let count = 1;
+    for (let j = i + 1; j < Math.min(i + MIN_CONSECUTIVE + 2, lines.length); j++) {
+      if (looksLikeTransaction(lines[j])) count++;
+    }
+    if (count >= MIN_CONSECUTIVE) return i;
   }
+
+  // Relaxed fallback: accept 2+ consecutive if strict match failed
+  for (let i = 0; i < lines.length - 1; i++) {
+    if (!looksLikeTransaction(lines[i])) continue;
+    if (looksLikeTransaction(lines[i + 1])) return i;
+  }
+
   return -1;
 }
 
@@ -62,19 +76,12 @@ export function classifyItem(text: string): "keep" | "mask" {
   const trimmed = text.trim();
   if (!trimmed) return "mask";
 
-  // Dates, amounts, short codes — always safe
   if (DATE_RE.test(trimmed)) return "keep";
-  if (/^\d{1,2}$/.test(trimmed)) return "keep"; // bare day/month digits
+  if (/^\d{1,2}$/.test(trimmed)) return "keep";
   if (AMOUNT_RE.test(trimmed) && hasDigitAndDecimal(trimmed)) return "keep";
   if (SHORT_CODE_RE.test(trimmed)) return "keep";
-
-  // Province codes (2 uppercase letters)
   if (/^[A-Z]{2}$/.test(trimmed)) return "keep";
-
-  // Page indicators
   if (PAGE_RE.test(trimmed) || PAGE_FR_RE.test(trimmed)) return "keep";
-
-  // Percentage signs and operators
   if (/^[%+=-]$/.test(trimmed)) return "keep";
 
   return "mask";
@@ -84,16 +91,10 @@ export function classifyItem(text: string): "keep" | "mask" {
 // Main sanitizer
 // ---------------------------------------------------------------------------
 
-/**
- * Format a line with x-positions, keeping ALL text (for header lines).
- */
 function formatLineVerbatim(line: TextItem[]): string {
   return line.map((it) => `x:${Math.round(it.x)} ${it.text}`).join(" | ");
 }
 
-/**
- * Format a line with x-positions, masking PII (for transaction data lines).
- */
 function formatLineMasked(line: TextItem[]): string {
   return line
     .map((it) => {
@@ -107,35 +108,32 @@ function formatLineMasked(line: TextItem[]): string {
  * Allowlist-sanitize extracted lines for AI schema detection.
  *
  * Strategy:
- * 1. Find the first block of consecutive transaction-like lines
- * 2. Take 4 lines before it as column headers — sent VERBATIM
- *    (column headers are structural, not PII)
- * 3. Take ~10 transaction lines — PII-masked (merchant names → [TEXT])
- *
- * Returns -1 for txIdx if no transaction block is found (garbled PDF).
+ * 1. Find the first block of 5+ consecutive transaction-like lines
+ * 2. Take up to 10 lines before it as column headers — sent VERBATIM
+ * 3. Take 20 transaction lines — PII-masked
+ * 4. Fallback: send first 50 lines verbatim if no transaction block found
  */
 export function allowlistSanitize(lines: TextItem[][]): string {
   const txIdx = findFirstTransactionLine(lines);
 
   if (txIdx < 0) {
-    // No transaction block found — send first 12 lines verbatim as fallback.
-    // The AI will get limited context but at least sees the structure.
+    // No transaction block found — send up to 50 lines verbatim
     return lines
-      .slice(0, 12)
+      .slice(0, 50)
       .map((l) => formatLineVerbatim(l))
       .join("\n");
   }
 
   const result: string[] = [];
 
-  // Header lines (up to 4 before first transaction) — verbatim, no masking
-  const headerStart = Math.max(0, txIdx - 4);
+  // Header lines (up to 10 before first transaction) — verbatim, no masking
+  const headerStart = Math.max(0, txIdx - 10);
   for (let i = headerStart; i < txIdx; i++) {
     result.push(formatLineVerbatim(lines[i]));
   }
 
-  // Transaction lines (10 rows) — PII-masked
-  const txEnd = Math.min(lines.length, txIdx + 10);
+  // Transaction lines (20 rows) — PII-masked
+  const txEnd = Math.min(lines.length, txIdx + 20);
   for (let i = txIdx; i < txEnd; i++) {
     result.push(formatLineMasked(lines[i]));
   }

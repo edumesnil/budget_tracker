@@ -12,7 +12,7 @@ import type { ParsedTransaction, ValidatedTransaction } from "./types";
 import type { TextItem } from "./schema-types";
 import { extractItems } from "./extract-items";
 import { computeFingerprint, detectBankIdentifier } from "./fingerprint";
-import { allowlistSanitize } from "./allowlist-sanitizer";
+import { allowlistSanitize, findFirstTransactionLine } from "./allowlist-sanitizer";
 import { loadSchema } from "./schema-store";
 import { parseWithSchema } from "./column-parser";
 import { validateTransactions } from "./validate";
@@ -116,6 +116,8 @@ export interface SchemaParsePipelineResult {
   sanitizedSample?: string;
   /** Detected bank identifier from raw text (before sanitization) */
   bankId?: string;
+  /** Index of first transaction line (so parser skips headers) */
+  txStartLine?: number;
 }
 
 /**
@@ -133,9 +135,13 @@ export async function parsePdf(file: File): Promise<SchemaParsePipelineResult> {
   // Check for cached schema
   const cached = await loadSchema(fingerprint);
 
+  // Find where transactions start (used by both cached and detection paths)
+  const txStartLine = findFirstTransactionLine(items);
+  log.info(`[pdf-parser] Transaction start line: ${txStartLine}`);
+
   if (cached) {
     log.info(`[pdf-parser] Cache hit: ${cached.bank_name} ${cached.statement_type}`);
-    const result = parseWithSchema(items, fullText, cached);
+    const result = parseWithSchema(items, fullText, cached, { startLine: txStartLine > 0 ? txStartLine : undefined });
     const deduped = deduplicateTransactions(result.transactions, result.rawLines);
     const validation = validateTransactions(deduped.transactions, deduped.rawLines);
     log.info(
@@ -166,6 +172,7 @@ export async function parsePdf(file: File): Promise<SchemaParsePipelineResult> {
     fingerprint,
     sanitizedSample,
     bankId,
+    txStartLine: txStartLine > 0 ? txStartLine : undefined,
     warnings: [],
   };
 }
