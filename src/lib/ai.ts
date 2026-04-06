@@ -3,6 +3,7 @@
 // =============================================================================
 
 import type { MerchantMapping } from "@/types/database";
+import type { RawSchemaResponse } from "@/lib/parsers/schema-prompt";
 
 // ---------------------------------------------------------------------------
 // Interface
@@ -29,6 +30,7 @@ export interface AIProvider {
     existingMappings?: MerchantMapping[],
     types?: Array<"INCOME" | "EXPENSE">,
   ): Promise<CategorizationResult[]>;
+  detectSchema(sanitizedSample: string): Promise<RawSchemaResponse | null>;
 }
 
 // ---------------------------------------------------------------------------
@@ -401,6 +403,32 @@ export class OllamaProvider implements AIProvider {
     const data = (await res.json()) as { response: string };
     return parseResponse(data.response, descriptions, idMap);
   }
+
+  async detectSchema(sanitizedSample: string): Promise<RawSchemaResponse | null> {
+    const { buildSchemaPrompt, parseSchemaResponse } = await import("@/lib/parsers/schema-prompt");
+    const { system, user } = buildSchemaPrompt(sanitizedSample);
+
+    const res = await fetchWithRetry(`${this.baseUrl}/api/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: this.model,
+        prompt: `${system}\n\n${user}`,
+        format: "json",
+        stream: false,
+        options: { temperature: 0.1 },
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Ollama schema detection failed: ${res.status} ${err}`);
+    }
+
+    const data = (await res.json()) as { response: string };
+    console.log("[ai] Schema detection response:", data.response.slice(0, 500));
+    return parseSchemaResponse(data.response);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -454,6 +482,40 @@ export class GeminiProvider implements AIProvider {
 
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
     return parseResponse(text, descriptions, idMap);
+  }
+
+  async detectSchema(sanitizedSample: string): Promise<RawSchemaResponse | null> {
+    const { buildSchemaPrompt, parseSchemaResponse } = await import("@/lib/parsers/schema-prompt");
+    const { system, user } = buildSchemaPrompt(sanitizedSample);
+
+    const res = await fetchWithRetry(
+      `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: system }] },
+          contents: [{ parts: [{ text: user }] }],
+          generationConfig: {
+            temperature: 0.1,
+            responseMimeType: "application/json",
+          },
+        }),
+      },
+    );
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Gemini schema detection failed: ${res.status} ${err}`);
+    }
+
+    const data = (await res.json()) as {
+      candidates: Array<{ content: { parts: Array<{ text: string }> } }>;
+    };
+
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+    console.log("[ai] Schema detection response:", text.slice(0, 500));
+    return parseSchemaResponse(text);
   }
 }
 
@@ -513,6 +575,45 @@ export class GroqProvider implements AIProvider {
 
     const text = data.choices?.[0]?.message?.content ?? "";
     return parseResponse(text, descriptions, idMap);
+  }
+
+  async detectSchema(sanitizedSample: string): Promise<RawSchemaResponse | null> {
+    const { buildSchemaPrompt, parseSchemaResponse } = await import("@/lib/parsers/schema-prompt");
+    const { system, user } = buildSchemaPrompt(sanitizedSample);
+
+    const res = await fetchWithRetry(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: this.model,
+          messages: [
+            { role: "system", content: system },
+            { role: "user", content: user },
+          ],
+          temperature: 0.1,
+          response_format: { type: "json_object" },
+        }),
+      },
+      { maxRetries: 2, baseDelay: 1000 },
+    );
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Groq schema detection failed: ${res.status} ${err}`);
+    }
+
+    const data = (await res.json()) as {
+      choices: Array<{ message: { content: string } }>;
+    };
+
+    const text = data.choices?.[0]?.message?.content ?? "";
+    console.log("[ai] Schema detection response:", text.slice(0, 500));
+    return parseSchemaResponse(text);
   }
 }
 
