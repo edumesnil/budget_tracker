@@ -466,7 +466,7 @@ export function useImport(
               return;
             }
 
-            const schema = buildSchema(rawSchema, result.fingerprint!);
+            const schema = buildSchema(rawSchema, result.fingerprint!, result.bankId);
             setDetectedSchema(schema);
 
             // Preview: parse first 5 rows for validation

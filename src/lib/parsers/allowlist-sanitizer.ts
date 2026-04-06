@@ -1,4 +1,5 @@
 import type { TextItem } from "./schema-types";
+import { detectColumnHeaderLine } from "./fingerprint";
 
 const MONTH_ABBREVS = "JAN|FÉV|FEV|FEB|MAR|AVR|APR|MAI|MAY|JUN|JUL|AOÛ|AOU|AUG|SEP|OCT|NOV|DÉC|DEC";
 
@@ -78,12 +79,24 @@ export function classifyItem(text: string): "keep" | "mask" {
 
 /**
  * Allowlist-sanitize extracted lines for AI schema detection.
+ * Finds the column header line, then samples header + 8-10 data rows after it.
  * Returns a formatted string with x-positions and masked PII.
  */
 export function allowlistSanitize(lines: TextItem[][]): string {
-  const result: string[] = [];
-  const sample = lines.slice(0, 12);
+  // Find the column header line to start sampling from there
+  const headerLine = detectColumnHeaderLine(lines);
+  let startIdx = 0;
+  if (headerLine && headerLine.length > 0) {
+    // Find which line index contains the header
+    const headerY = headerLine[0].y;
+    startIdx = lines.findIndex((line) => line.some((item) => Math.abs(item.y - headerY) < 3));
+    if (startIdx < 0) startIdx = 0;
+  }
 
+  // Take column header line + next 10 data lines
+  const sample = lines.slice(startIdx, startIdx + 12);
+
+  const result: string[] = [];
   for (const line of sample) {
     const parts = line.map((item) => {
       const classification = classifyItem(item.text);

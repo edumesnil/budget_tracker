@@ -11,7 +11,7 @@
 import type { ParsedTransaction, ValidatedTransaction } from "./types";
 import type { TextItem } from "./schema-types";
 import { extractItems } from "./extract-items";
-import { computeFingerprint } from "./fingerprint";
+import { computeFingerprint, detectBankIdentifier } from "./fingerprint";
 import { allowlistSanitize } from "./allowlist-sanitizer";
 import { loadSchema } from "./schema-store";
 import { parseWithSchema } from "./column-parser";
@@ -114,6 +114,8 @@ export interface SchemaParsePipelineResult {
   fullText?: string;
   fingerprint?: string;
   sanitizedSample?: string;
+  /** Detected bank identifier from raw text (before sanitization) */
+  bankId?: string;
 }
 
 /**
@@ -155,12 +157,15 @@ export async function parsePdf(file: File): Promise<SchemaParsePipelineResult> {
   log.info("[pdf-parser] Sanitized sample:\n", sanitizedSample);
   log.groupEnd();
 
+  const bankId = detectBankIdentifier(items);
+
   return {
     status: "needs_detection",
     items,
     fullText,
     fingerprint,
     sanitizedSample,
+    bankId,
     warnings: [],
   };
 }
