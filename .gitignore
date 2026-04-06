@@ -14,3 +14,4 @@ Thumbs.db
 npm-debug.log*
 supabase/.temp/
 supabase/.branches/
+test
