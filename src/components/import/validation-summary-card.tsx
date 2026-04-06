@@ -50,22 +50,22 @@ export function ValidationSummaryCard({
           })}
         >
           {knownCount > 0 && (
-            <SummaryLine icon="\u25CF" color="teal.11">
+            <SummaryLine icon={"\u25CF"} color="teal.11">
               {knownCount} auto-categorized (known merchants)
             </SummaryLine>
           )}
           {pendingAiCount > 0 && (
-            <SummaryLine icon="\u25CF" color="fg.muted">
+            <SummaryLine icon={"\u25CF"} color="fg.muted">
               {pendingAiCount} pending AI categorization
             </SummaryLine>
           )}
           {flaggedCount > 0 && (
-            <SummaryLine icon="\u26A0" color="expense">
+            <SummaryLine icon={"\u26A0"} color="expense">
               {flaggedCount} flagged — amounts need verification
             </SummaryLine>
           )}
           {unparseableCount > 0 && (
-            <SummaryLine icon="\u2715" color="fg.disabled">
+            <SummaryLine icon={"\u2715"} color="fg.disabled">
               {unparseableCount} row{unparseableCount > 1 ? "s" : ""} could not be parsed
             </SummaryLine>
           )}
