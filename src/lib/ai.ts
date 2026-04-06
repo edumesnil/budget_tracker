@@ -60,7 +60,9 @@ async function fetchWithRetry(
     if (attempt < maxRetries) {
       // Use Retry-After header if present, otherwise exponential backoff
       const retryAfter = res.headers.get("retry-after");
-      const delay = retryAfter ? Number.parseInt(retryAfter, 10) * 1000 : baseDelay * 2 ** attempt;
+      const parsed = retryAfter ? Number.parseInt(retryAfter, 10) : NaN;
+      const retryMs = Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 30) * 1000 : null;
+      const delay = retryMs ?? baseDelay * 2 ** attempt;
       await new Promise((r) => setTimeout(r, delay));
     }
   }
@@ -433,94 +435,6 @@ export class OllamaProvider implements AIProvider {
 }
 
 // ---------------------------------------------------------------------------
-// Gemini provider (free tier — 15 RPM, 1500 RPD)
-// Get API key at https://aistudio.google.com/apikeys
-// ---------------------------------------------------------------------------
-
-export class GeminiProvider implements AIProvider {
-  private apiKey: string;
-  private model: string;
-
-  constructor(apiKey: string, model = "gemini-2.0-flash") {
-    this.apiKey = apiKey;
-    this.model = model;
-  }
-
-  async categorize(
-    descriptions: string[],
-    categories: CategoryOption[],
-    existingMappings: MerchantMapping[] = [],
-    types?: Array<"INCOME" | "EXPENSE">,
-  ): Promise<CategorizationResult[]> {
-    if (descriptions.length === 0) return [];
-
-    const { system, user, idMap } = buildPrompt(descriptions, categories, existingMappings, types);
-
-    const res = await fetchWithRetry(
-      `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: system }] },
-          contents: [{ parts: [{ text: user }] }],
-          generationConfig: {
-            temperature: 0.1,
-            responseMimeType: "application/json", // Gemini JSON mode
-          },
-        }),
-      },
-    );
-
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`Gemini request failed: ${res.status} ${err}`);
-    }
-
-    const data = (await res.json()) as {
-      candidates: Array<{ content: { parts: Array<{ text: string }> } }>;
-    };
-
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-    return parseResponse(text, descriptions, idMap);
-  }
-
-  async detectSchema(sanitizedSample: string): Promise<RawSchemaResponse | null> {
-    const { buildSchemaPrompt, parseSchemaResponse } = await import("@/lib/parsers/schema-prompt");
-    const { system, user } = buildSchemaPrompt(sanitizedSample);
-
-    const res = await fetchWithRetry(
-      `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: system }] },
-          contents: [{ parts: [{ text: user }] }],
-          generationConfig: {
-            temperature: 0.1,
-            responseMimeType: "application/json",
-          },
-        }),
-      },
-    );
-
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`Gemini schema detection failed: ${res.status} ${err}`);
-    }
-
-    const data = (await res.json()) as {
-      candidates: Array<{ content: { parts: Array<{ text: string }> } }>;
-    };
-
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-    log.info("[ai] Schema detection response:", text.slice(0, 500));
-    return parseSchemaResponse(text);
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Groq provider (free tier — 30 RPM, 14400 RPD, very fast)
 // Get API key at https://console.groq.com/keys
 // ---------------------------------------------------------------------------
@@ -627,12 +541,6 @@ function createProvider(): AIProvider {
   if (groqKey) {
     log.info("[ai] Using Groq provider (llama-3.3-70b)");
     return new GroqProvider(groqKey);
-  }
-
-  const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (geminiKey) {
-    log.info("[ai] Using Gemini provider");
-    return new GeminiProvider(geminiKey);
   }
 
   log.info("[ai] No API key found, falling back to Ollama (localhost:11434)");

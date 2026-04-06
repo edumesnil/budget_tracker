@@ -56,7 +56,7 @@ src/
   hooks/           # One hook per entity (use-transactions.ts, etc.)
   lib/
     parsers/       # Schema-based PDF parser pipeline + CSV parser
-    ai.ts          # LLM adapter (Groq, Gemini, Ollama providers) — detectSchema + categorize
+    ai.ts          # LLM adapter (Groq, Ollama providers) — detectSchema + categorize
     sanitizer.ts   # PII stripping before categorization LLM calls
     logger.ts      # Debug logger (stripped in prod via import.meta.env.DEV)
     supabase.ts    # Supabase client
@@ -111,12 +111,12 @@ Key parser files:
 
 - `lib/parsers/csv.ts` — generic CSV parser with auto-detect + manual column mapping
 - `lib/sanitizer.ts` — strips PII before categorization LLM sees merchant descriptions
-- `lib/ai.ts` — `AIProvider` interface with Groq, Gemini, Ollama providers. `detectSchema` + `categorize` methods
+- `lib/ai.ts` — `AIProvider` interface with Groq, Ollama providers. `detectSchema` + `categorize` methods
 - `lib/logger.ts` — debug logger stripped from production builds via `import.meta.env.DEV`
 - `hooks/use-import.ts` — orchestrates the full import flow (schema detection + categorization)
 - `hooks/use-merchant-mappings.ts` — CRUD for merchant→category mappings
 
-AI provider priority: `VITE_GROQ_API_KEY` → `VITE_GEMINI_API_KEY` → Ollama (localhost). Schema detection retries up to 3 times. The categorization prompt uses numeric category IDs (not names) to avoid accent/spelling mismatches.
+AI provider priority: `VITE_GROQ_API_KEY` → Ollama (localhost). Schema detection retries up to 3 times. The categorization prompt uses numeric category IDs (not names) to avoid accent/spelling mismatches.
 
 ## Environment Variables
 
@@ -124,8 +124,7 @@ AI provider priority: `VITE_GROQ_API_KEY` → `VITE_GEMINI_API_KEY` → Ollama (
 VITE_SUPABASE_URL
 VITE_SUPABASE_ANON_KEY
 VITE_GROQ_API_KEY          # Groq (free tier, recommended)
-VITE_GEMINI_API_KEY         # Google Gemini (free tier, alternative)
-# If neither is set, falls back to Ollama on localhost:11434
+# If not set, falls back to Ollama on localhost:11434
 ```
 
 ## Park UI Component Rules

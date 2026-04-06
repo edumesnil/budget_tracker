@@ -4,6 +4,18 @@ import { parseAmount } from "./pdf";
 
 const COLUMN_TOLERANCE = 5;
 
+/** Reject regex patterns with nested quantifiers (ReDoS risk) */
+const NESTED_QUANTIFIER_RE = /(\+|\*|\{)\s*\)(\+|\*|\?|\{)/;
+
+function safeRegExp(pattern: string, flags?: string): RegExp | null {
+  if (NESTED_QUANTIFIER_RE.test(pattern)) return null;
+  try {
+    return new RegExp(pattern, flags);
+  } catch {
+    return null;
+  }
+}
+
 const MONTH_MAP: Record<string, number> = {
   JAN: 1,
   FÉV: 2,
@@ -125,7 +137,8 @@ function parseDate(
 
 function extractYear(fullText: string, schema: StatementSchema): number {
   if (schema.year_pattern) {
-    const re = new RegExp(schema.year_pattern, "i");
+    const re = safeRegExp(schema.year_pattern, "i");
+    if (!re) return new Date().getFullYear();
     const m = fullText.match(re);
     if (m?.[1]) {
       const y = parseInt(m[1], 10);
@@ -153,22 +166,26 @@ export function parseWithSchema(
   const transactions: ParsedTransaction[] = [];
   const rawLines: string[] = [];
 
-  const skipRes = schema.skip_patterns.map((p) => new RegExp(p, "i"));
+  const skipRes = schema.skip_patterns
+    .map((p) => safeRegExp(p, "i"))
+    .filter((r): r is RegExp => r !== null);
   const transferCodes = new Set(schema.transfer_codes?.map((c) => c.toUpperCase()) ?? []);
   const internalRe = schema.internal_transfer_pattern
-    ? new RegExp(schema.internal_transfer_pattern, "i")
+    ? safeRegExp(schema.internal_transfer_pattern, "i")
     : null;
   const externalRe = schema.external_income_pattern
-    ? new RegExp(schema.external_income_pattern, "i")
+    ? safeRegExp(schema.external_income_pattern, "i")
     : null;
 
   // Section tracking
-  const sectionRules = schema.sections?.map((s) => ({
-    re: new RegExp(s.header_pattern, "i"),
-    parse: s.parse,
-  }));
+  const sectionRules = schema.sections
+    ?.map((s) => {
+      const re = safeRegExp(s.header_pattern, "i");
+      return re ? { re, parse: s.parse } : null;
+    })
+    .filter((r): r is { re: RegExp; parse: boolean } => r !== null);
   const continuationRe = schema.continuation_pattern
-    ? new RegExp(schema.continuation_pattern, "i")
+    ? safeRegExp(schema.continuation_pattern, "i")
     : null;
   let activeSection: { parse: boolean } | null = null;
 

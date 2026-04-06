@@ -61,6 +61,8 @@ export default function ImportPage() {
   } = useImport(allCategories, groups, mappings);
 
   const handleClearData = async () => {
+    if (!window.confirm("Delete all transactions and merchant mappings? This cannot be undone."))
+      return;
     setClearing(true);
     try {
       await supabase
@@ -346,7 +348,7 @@ export default function ImportPage() {
             onAcceptAll={acceptAll}
             onCommit={handleCommit}
             onCancel={reset}
-            isCommitting={false}
+            isCommitting={status === "importing"}
             onCreateCategory={handleCreateCategory}
           />
           {validationResult && validationResult.unparseable.length > 0 && (

@@ -79,7 +79,99 @@ const SHORT_CODE_RE = /^[A-Z]{2,5}$/;
 const PAGE_RE = /^Page\s+\d+/i;
 const PAGE_FR_RE = /^\d+\s+de\s+\d+$/;
 
-/** Classify a single text item in a TRANSACTION ROW as "keep" or "mask" */
+// ---------------------------------------------------------------------------
+// Garbled accent normalization (common pdfjs font encoding issues)
+// ---------------------------------------------------------------------------
+
+/**
+ * Some PDFs use custom font encodings that map accented characters to wrong
+ * Unicode codepoints. This normalizes the most common French accent garbling
+ * so "DÁp¦ts" becomes "Dépôts" and can match the banking terms allowlist.
+ */
+function normalizeGarbledText(text: string): string {
+  return text
+    .replace(/\u00C1/g, "\u00E9") // Á → é
+    .replace(/\u00AF/g, "\u00C9") // ¯ → É
+    .replace(/\u00A6/g, "\u00F4") // ¦ → ô
+    .replace(/\u00BE/g, "\u00E8") // ¾ → è
+    .replace(/\u00C7(?![a-z])/g, "\u00E0"); // Ç → à (only when not followed by lowercase)
+}
+
+/**
+ * Banking column labels the AI needs to identify columns.
+ * Normalized to uppercase for case-insensitive matching.
+ */
+const BANKING_TERMS = new Set([
+  // French column headers (Desjardins, TD, etc.)
+  "DATE",
+  "DESCRIPTION",
+  "MONTANT",
+  "SOLDE",
+  "RETRAIT",
+  "RETRAITS",
+  "DÉPÔT",
+  "DÉPÔTS",
+  "DEPOT",
+  "DEPOTS",
+  "CRÉDIT",
+  "CREDIT",
+  "CRÉDITS",
+  "DÉBIT",
+  "DEBIT",
+  "DÉBITS",
+  "DEBITS",
+  "NO",
+  "NUMÉRO",
+  "NUMERO",
+  "CHÈQUE",
+  "CHEQUE",
+  "TRANSACTION",
+  "TRANSACTIONS",
+  "OPÉRATION",
+  "OPERATION",
+  "OPÉRATIONS",
+  "RELEVÉ",
+  "RELEVE",
+  "COMPTE",
+  "FOLIO",
+  "INTÉRÊT",
+  "INTERET",
+  "INTÉRÊTS",
+  "INTERETS",
+  "FRAIS",
+  "TOTAL",
+  "SOUS-TOTAL",
+  "VERSEMENT",
+  "VERSEMENTS",
+  "PAIEMENT",
+  "PAIEMENTS",
+  "ENCAISSEMENT",
+  "VIREMENT",
+  // English equivalents
+  "AMOUNT",
+  "BALANCE",
+  "WITHDRAWAL",
+  "WITHDRAWALS",
+  "DEPOSIT",
+  "DEPOSITS",
+  "PAYMENT",
+  "PAYMENTS",
+  "CHEQUE",
+  "CHECK",
+  "INTEREST",
+  "FEE",
+  "FEES",
+  "TRANSFER",
+  "POSTING",
+  // Common shared labels
+  "CR",
+  "DR",
+  "CODE",
+  "TYPE",
+  "REF",
+]);
+
+/** Classify a single text item as "keep" or "mask" */
 export function classifyItem(text: string): "keep" | "mask" {
   const trimmed = text.trim();
   if (!trimmed) return "mask";
@@ -92,40 +184,22 @@ export function classifyItem(text: string): "keep" | "mask" {
   if (/^[A-Z]{2}$/.test(trimmed)) return "keep";
   if (PAGE_RE.test(trimmed) || PAGE_FR_RE.test(trimmed)) return "keep";
   if (/^[%+=-]$/.test(trimmed)) return "keep";
+  if (BANKING_TERMS.has(trimmed.toUpperCase())) return "keep";
+  // Try again after normalizing garbled French accents from broken PDF fonts
+  const normalized = normalizeGarbledText(trimmed);
+  if (normalized !== trimmed && BANKING_TERMS.has(normalized.toUpperCase())) return "keep";
 
   return "mask";
-}
-
-// ---------------------------------------------------------------------------
-// Garbled accent normalization (common pdfjs font encoding issues)
-// ---------------------------------------------------------------------------
-
-/**
- * Some PDFs use custom font encodings that map accented characters to wrong
- * Unicode codepoints. This normalizes the most common French accent garbling
- * so the AI can read column headers like "Dépôts" instead of "DÁp¦ts".
- */
-function normalizeGarbledText(text: string): string {
-  return text
-    .replace(/\u00C1/g, "\u00E9") // Á → é
-    .replace(/\u00AF/g, "\u00C9") // ¯ → É
-    .replace(/\u00A6/g, "\u00F4") // ¦ → ô
-    .replace(/\u00BE/g, "\u00E8") // ¾ → è
-    .replace(/\u00C7(?![a-z])/g, "\u00E0"); // Ç → à (only when not followed by lowercase)
 }
 
 // ---------------------------------------------------------------------------
 // Main sanitizer
 // ---------------------------------------------------------------------------
 
-function formatLineVerbatim(line: TextItem[]): string {
-  return line.map((it) => `x:${Math.round(it.x)} ${normalizeGarbledText(it.text)}`).join(" | ");
-}
-
 function formatLineMasked(line: TextItem[]): string {
   return line
     .map((it) => {
-      const display = classifyItem(it.text) === "keep" ? it.text : "[TEXT]";
+      const display = classifyItem(it.text) === "keep" ? normalizeGarbledText(it.text) : "[TEXT]";
       return `x:${Math.round(it.x)} ${display}`;
     })
     .join(" | ");
@@ -153,10 +227,12 @@ export function allowlistSanitize(lines: TextItem[][]): string {
 
   const result: string[] = [];
 
-  // Header lines (up to 10 before first transaction) — verbatim, no masking
+  // Header lines (up to 10 before first transaction) — PII-masked
+  // Column labels like "Date", "Retrait", "Dépôt" pass through the allowlist;
+  // personal info (names, addresses, account numbers) gets masked to [TEXT].
   const headerStart = Math.max(0, txIdx - 10);
   for (let i = headerStart; i < txIdx; i++) {
-    result.push(formatLineVerbatim(lines[i]));
+    result.push(formatLineMasked(lines[i]));
   }
 
   // Transaction lines (20 rows) — PII-masked
